@@ -1,0 +1,28 @@
+import { jsonError, jsonOk } from "@/lib/api-response";
+import { searchLocationsForMobile } from "@/lib/mobile-locations/locations-service";
+import { searchLocationsQuerySchema } from "@/lib/mobile-locations/schemas";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const raw = {
+    q: url.searchParams.get("q") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    level: url.searchParams.get("level") ?? undefined,
+  };
+  const parsed = searchLocationsQuerySchema.safeParse(raw);
+  if (!parsed.success) {
+    return jsonError(
+      "VALIDATION_ERROR",
+      "অনুরোধের প্যারামিটার সঠিক নয়",
+      422,
+      parsed.error.flatten(),
+    );
+  }
+
+  try {
+    const items = await searchLocationsForMobile(parsed.data);
+    return jsonOk({ items });
+  } catch {
+    return jsonError("DATABASE_ERROR", "অনুসন্ধান সম্পন্ন করা যায়নি", 500);
+  }
+}

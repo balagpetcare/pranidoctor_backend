@@ -1,0 +1,334 @@
+import type { AppConfig } from '../../shared/config/config.schema.js';
+import { checkDatabaseConnection } from '../../shared/database/prisma.js';
+import { logWarn } from '../../shared/logger/logger.js';
+import { checkRedisConnection } from '../../infra/redis/redis.client.js';
+import { getQueue, QueueNames } from '../../infra/queue/index.js';
+import {
+  getStorage,
+  isStorageEnabled,
+} from '../../modules/media/storage/storage.factory.js';
+import { listRegisteredPaths } from '../../modules/compat-web/route-registry.js';
+import { moduleRegistry } from '../../shared/module/module-registry.js';
+
+import type {
+  HealthCheckResult,
+  HealthResponse,
+  ModulesHealthResponse,
+  ReadinessResponse,
+  DependencyStatus,
+} from './health.types.js';
+
+const startTime = Date.now();
+
+async function checkDatabase(): Promise<HealthCheckResult> {
+  const start = Date.now();
+  try {
+    const result = await checkDatabaseConnection();
+    return {
+      name: 'database',
+      status: result.healthy ? 'healthy' : 'unhealthy',
+      latency: result.latency,
+      ...(result.error && { message: result.error }),
+    };
+  } catch (error) {
+    return {
+      name: 'database',
+      status: 'unhealthy',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function checkDatabaseHealth(): Promise<HealthCheckResult> {
+  return checkDatabase();
+}
+
+export async function checkRedisHealth(): Promise<HealthCheckResult> {
+  return checkRedis();
+}
+
+export async function checkStorageHealth(config: AppConfig): Promise<HealthCheckResult> {
+  if (!isStorageEnabled(config)) {
+    return {
+      name: 'storage',
+      status: 'degraded',
+      latency: 0,
+      message: `Storage disabled (driver=${config.storage.driver})`,
+    };
+  }
+
+  const start = Date.now();
+  try {
+    const storage = getStorage();
+    const health = await storage.checkHealth();
+    return {
+      name: 'storage',
+      status: health.healthy ? 'healthy' : 'unhealthy',
+      latency: health.latency ?? Date.now() - start,
+      ...(health.error && { message: health.error }),
+      details: { driver: config.storage.driver },
+    };
+  } catch (error) {
+    return {
+      name: 'storage',
+      status: 'unhealthy',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: { driver: config.storage.driver },
+    };
+  }
+}
+
+export function getModulesHealth(): ModulesHealthResponse {
+  const moduleNames = moduleRegistry.getModuleNames();
+  return {
+    timestamp: new Date().toISOString(),
+    compatWeb: {
+      mounted: true,
+      legacyRouteFiles: listRegisteredPaths().length,
+      apiPrefix: '/api',
+    },
+    expressModules: moduleNames.map((name) => ({
+      name,
+      mountPath: `/api/${name}`,
+      initialized: moduleRegistry.isInitialized(),
+    })),
+    totalModuleCount: moduleNames.length,
+  };
+}
+
+async function checkRedis(): Promise<HealthCheckResult> {
+  const start = Date.now();
+  try {
+    const result = await checkRedisConnection();
+    return {
+      name: 'redis',
+      status: result.healthy ? 'healthy' : 'unhealthy',
+      latency: result.latency,
+      ...(result.error && { message: result.error }),
+    };
+  } catch (error) {
+    return {
+      name: 'redis',
+      status: 'unhealthy',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+async function checkQueues(): Promise<HealthCheckResult> {
+  const start = Date.now();
+  try {
+    const notificationQueue = getQueue(QueueNames.NOTIFICATION);
+
+    if (!notificationQueue) {
+      return {
+        name: 'queues',
+        status: 'degraded',
+        latency: Date.now() - start,
+        message: 'No queues initialized',
+      };
+    }
+
+    await notificationQueue.getWaitingCount();
+
+    return {
+      name: 'queues',
+      status: 'healthy',
+      latency: Date.now() - start,
+    };
+  } catch (error) {
+    return {
+      name: 'queues',
+      status: 'unhealthy',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+function checkMemory(): HealthCheckResult {
+  const used = process.memoryUsage();
+  const heapUsedMB = Math.round(used.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(used.heapTotal / 1024 / 1024);
+  const rssMB = Math.round(used.rss / 1024 / 1024);
+
+  const heapUsagePercent = (used.heapUsed / used.heapTotal) * 100;
+
+  let status: HealthCheckResult['status'] = 'healthy';
+  if (heapUsagePercent > 90) {
+    status = 'unhealthy';
+  } else if (heapUsagePercent > 75) {
+    status = 'degraded';
+  }
+
+  return {
+    name: 'memory',
+    status,
+    latency: 0,
+    details: {
+      heapUsedMB,
+      heapTotalMB,
+      rssMB,
+      heapUsagePercent: Math.round(heapUsagePercent),
+    },
+  };
+}
+
+function checkEventLoop(): HealthCheckResult {
+  const start = process.hrtime.bigint();
+  const lag = Number(process.hrtime.bigint() - start) / 1e6;
+
+  let status: HealthCheckResult['status'] = 'healthy';
+  if (lag > 100) {
+    status = 'unhealthy';
+  } else if (lag > 50) {
+    status = 'degraded';
+  }
+
+  return {
+    name: 'eventLoop',
+    status,
+    latency: Math.round(lag * 100) / 100,
+  };
+}
+
+export async function getHealthStatus(config: AppConfig): Promise<HealthResponse> {
+  const checks: HealthCheckResult[] = [];
+
+  const [dbResult, redisResult, queueResult, storageResult] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    checkQueues(),
+    checkStorageHealth(config),
+  ]);
+
+  checks.push(dbResult);
+  checks.push(redisResult);
+  checks.push(queueResult);
+  checks.push(storageResult);
+  checks.push(checkMemory());
+  checks.push(checkEventLoop());
+
+  const unhealthyCount = checks.filter((c) => c.status === 'unhealthy').length;
+  const degradedCount = checks.filter((c) => c.status === 'degraded').length;
+
+  let status: HealthResponse['status'];
+  if (unhealthyCount > 0) {
+    status = 'unhealthy';
+  } else if (degradedCount > 0) {
+    status = 'degraded';
+  } else {
+    status = 'healthy';
+  }
+
+  const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+  if (status !== 'healthy') {
+    logWarn('Health check degraded/unhealthy', {
+      status,
+      unhealthyCount,
+      degradedCount,
+      checks: checks.filter((c) => c.status !== 'healthy').map((c) => c.name),
+    });
+  }
+
+  return {
+    status,
+    timestamp: new Date().toISOString(),
+    version: config.appVersion,
+    uptime: uptimeSeconds,
+    checks,
+  };
+}
+
+export async function getReadinessStatus(): Promise<ReadinessResponse> {
+  const checks: HealthCheckResult[] = [];
+
+  const [dbResult, redisResult] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+  ]);
+
+  checks.push(dbResult);
+  checks.push(redisResult);
+
+  const ready = checks.every((c) => c.status === 'healthy');
+
+  if (!ready) {
+    logWarn('Readiness check failed', {
+      checks: checks.filter((c) => c.status !== 'healthy').map((c) => ({
+        name: c.name,
+        status: c.status,
+        message: c.message,
+      })),
+    });
+  }
+
+  return {
+    ready,
+    timestamp: new Date().toISOString(),
+    checks,
+  };
+}
+
+export function getLivenessStatus(): { alive: boolean; timestamp: string } {
+  return {
+    alive: true,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export async function getDependencyStatus(): Promise<DependencyStatus[]> {
+  const [dbResult, redisResult, queueResult] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    checkQueues(),
+  ]);
+
+  return [
+    {
+      name: 'PostgreSQL',
+      type: 'database',
+      status: dbResult.status,
+      latency: dbResult.latency,
+      required: true,
+    },
+    {
+      name: 'Redis',
+      type: 'cache',
+      status: redisResult.status,
+      latency: redisResult.latency,
+      required: true,
+    },
+    {
+      name: 'BullMQ',
+      type: 'queue',
+      status: queueResult.status,
+      latency: queueResult.latency,
+      required: false,
+    },
+  ];
+}
+
+export function getSystemInfo(): {
+  nodeVersion: string;
+  platform: string;
+  arch: string;
+  pid: number;
+  uptime: number;
+  memory: NodeJS.MemoryUsage;
+  cpuUsage: NodeJS.CpuUsage;
+} {
+  return {
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    pid: process.pid,
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    memory: process.memoryUsage(),
+    cpuUsage: process.cpuUsage(),
+  };
+}

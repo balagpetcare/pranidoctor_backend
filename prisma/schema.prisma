@@ -1,0 +1,1878 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                                String                      @id @default(cuid())
+  email                             String                      @unique
+  phone                             String?                     @unique
+  passwordHash                      String
+  role                              UserRole
+  status                            UserStatus                  @default(ACTIVE)
+  createdAt                         DateTime                    @default(now())
+  updatedAt                         DateTime                    @updatedAt
+  adminProfile                      AdminProfile?
+  customerAiServiceRecords          AiServiceRecord[]           @relation("AiServiceRecordCustomer")
+  customerAiServiceRequests         AiServiceRequest[]          @relation("AiServiceRequestCustomer")
+  aiTechnicianModuleComplaintsFiled AiTechnicianComplaint[]     @relation("AiTechnicianComplaintAuthor")
+  aiTechnicianProfilesReviewed      AiTechnicianProfile[]       @relation("AiTechnicianProfileReviewedBy")
+  aiTechnicianProfile               AiTechnicianProfile?
+  aiTechnicianModuleReviewsWritten  AiTechnicianReview[]        @relation("AiTechnicianReviewAuthor")
+  authAuditEvents                   AuthAuditEvent[]
+  complaintsAssigned                Complaint[]                 @relation("ComplaintAssignee")
+  contentPostsAuthored              ContentPost[]               @relation("ContentPostAuthor")
+  customerProfile                   CustomerProfile?
+  doctorProfile                     DoctorProfile?
+  notifications                     Notification[]
+  semenTemplatesApproved            SemenServiceTemplate[]      @relation("SemenTemplateApprovedBy")
+  serviceInstancesLastReviewed      ServiceInstance[]           @relation("ServiceInstanceLastReviewedBy")
+  serviceInstanceAuditEvents        ServiceInstanceAuditEvent[]
+  serviceInstancePublishLogs        ServiceInstancePublishLog[]
+  serviceInstanceReviews            ServiceInstanceReview[]
+  serviceInstanceStatusLogs         ServiceInstanceStatusLog[]
+  uploadedFiles                     UploadedFile[]
+  refreshTokens                     RefreshToken[]
+  userDevices                       UserDevice[]
+  userSessions                      UserSession[]
+
+  @@index([role])
+  @@index([status])
+  @@index([role, status])
+}
+
+/// P1-06 — mobile device registry (push, revoke).
+model UserDevice {
+  id            String         @id @default(cuid())
+  userId        String
+  deviceKey     String
+  platform      String?
+  pushToken     String?
+  appVersion    String?
+  lastActiveAt  DateTime       @default(now())
+  revokedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions      UserSession[]
+
+  @@unique([userId, deviceKey])
+  @@index([userId])
+  @@map("user_devices")
+}
+
+/// P1-06 — revocable server session (linked to refresh tokens).
+model UserSession {
+  id            String         @id @default(cuid())
+  userId        String
+  channel       AuthChannel
+  status        SessionStatus  @default(ACTIVE)
+  deviceId      String?
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  lastSeenAt    DateTime       @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  device        UserDevice?    @relation(fields: [deviceId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channel])
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+/// P1-06 — hashed refresh token with rotation.
+model RefreshToken {
+  id          String      @id @default(cuid())
+  userId      String
+  sessionId   String
+  tokenHash   String      @unique
+  channel     AuthChannel @default(MOBILE)
+  deviceId    String?
+  expiresAt   DateTime
+  revoked     Boolean     @default(false)
+  revokedAt   DateTime?
+  rotatedAt   DateTime?
+  rotatedToId String?
+  lastUsedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  device      UserDevice? @relation(fields: [deviceId], references: [id])
+  session     UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@index([revoked])
+  @@map("refresh_tokens")
+}
+
+model AdminProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DoctorProfile {
+  id                             String                         @id @default(cuid())
+  userId                         String                         @unique
+  licenseNumber                  String
+  specialization                 String?
+  bio                            String?
+  verifiedAt                     DateTime?
+  createdAt                      DateTime                       @default(now())
+  updatedAt                      DateTime                       @updatedAt
+  providerStatus                 ProviderStatus                 @default(PENDING_VERIFICATION)
+  acceptsEmergency               Boolean                        @default(false)
+  acceptsOnlineConsultation      Boolean                        @default(false)
+  degree                         String?
+  /// Display name shown to customers (identity email/phone stay on `User`).
+  displayName                    String?
+  /// Years of professional experience (optional).
+  experienceYears                Int?
+  /// Placeholder or CDN URL for profile photo until uploads exist.
+  profilePhotoUrl                String?
+  visitFeeBdt                    Decimal?                       @db.Decimal(12, 2)
+  billingRecords                 BillingRecord[]
+  complaints                     Complaint[]
+  user                           User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorProfileAreas             DoctorProfileArea[]
+  doctorProfileServiceCategories DoctorProfileServiceCategory[]
+  doctorServiceAreas             DoctorServiceArea[]
+  prescriptions                  Prescription[]
+  reviews                        Review[]
+  assignedRequests               ServiceRequest[]
+  treatmentCases                 TreatmentCase[]
+
+  @@index([providerStatus])
+}
+
+model AiTechnicianProfile {
+  id                                   String                               @id @default(cuid())
+  userId                               String                               @unique
+  certification                        String?
+  bio                                  String?
+  providerStatus                       ProviderStatus                       @default(PENDING_VERIFICATION)
+  verifiedAt                           DateTime?
+  createdAt                            DateTime                             @default(now())
+  updatedAt                            DateTime                             @updatedAt
+  /// Offers urgent / after-hours field AI support (dispatch rules live in product logic).
+  acceptsEmergency                     Boolean                              @default(false)
+  /// Display name shown to customers (identity email/phone stay on `User`).
+  displayName                          String?
+  /// Optional tags for MVP: e.g. livestock breeds, semen services (`{ "livestockFocus": ["cattle"], "semenServices": true }`).
+  metadataJson                         Json?
+  /// Default fee for AI / technician field services (BDT).
+  serviceFeeBdt                        Decimal?                             @db.Decimal(12, 2)
+  adminNote                            String?
+  certificateNumber                    String?
+  correctionNote                       String?
+  dateOfBirth                          DateTime?
+  district                             String?
+  /// Optional public contact; canonical email remains on `User.email`.
+  email                                String?
+  experienceYears                      Int?
+  gender                               Gender?
+  nidNumber                            String?
+  /// Optional public contact; canonical phone remains on `User.phone` when set.
+  phone                                String?
+  presentAddress                       String?
+  publishedAt                          DateTime?
+  reviewedAt                           DateTime?
+  reviewedById                         String?
+  /// Admin / onboarding lifecycle for technician module (see `AiTechnicianStatus`).
+  status                               AiTechnicianStatus                   @default(UNDER_REVIEW)
+  trainingProvider                     String?
+  unionOrArea                          String?
+  upazila                              String?
+  /// Optional FKs to normalized `District` / `Upazila` / `Union` (COMMAND 02). Legacy `district` / `upazila` / `unionOrArea` text retained.
+  districtId                           String?
+  unionId                              String?
+  upazilaId                            String?
+  aiServiceRecords                     AiServiceRecord[]
+  aiServiceRequests                    AiServiceRequest[]                   @relation("AiServiceRequestTechnician")
+  moduleComplaints                     AiTechnicianComplaint[]              @relation("AiTechnicianModuleComplaint")
+  divisionCoverageAreas                AiTechnicianDivisionServiceArea[]
+  documents                            AiTechnicianDocument[]
+  bdDistrict                           District?                            @relation("AiTechnicianProfileDistrict", fields: [districtId], references: [id])
+  reviewedBy                           User?                                @relation("AiTechnicianProfileReviewedBy", fields: [reviewedById], references: [id])
+  bdUnion                              Union?                               @relation("AiTechnicianProfileUnion", fields: [unionId], references: [id])
+  bdUpazila                            Upazila?                             @relation("AiTechnicianProfileUpazila", fields: [upazilaId], references: [id])
+  user                                 User                                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiTechnicianProfileAreas             AiTechnicianProfileArea[]
+  aiTechnicianProfileServiceCategories AiTechnicianProfileServiceCategory[]
+  moduleReviews                        AiTechnicianReview[]                 @relation("AiTechnicianModuleReview")
+  technicianServices                   AiTechnicianService[]
+  aiTechnicianServiceAreas             AiTechnicianServiceArea[]
+  billingRecords                       BillingRecord[]
+  complaints                           Complaint[]
+  prescriptions                        Prescription[]
+  reviews                              Review[]
+  serviceInstances                     ServiceInstance[]
+  assignedRequests                     ServiceRequest[]
+  treatmentCases                       TreatmentCase[]
+
+  @@index([providerStatus])
+  @@index([status])
+  @@index([reviewedById])
+  @@index([districtId])
+  @@index([upazilaId])
+  @@index([unionId])
+}
+
+model CustomerProfile {
+  id                 String           @id @default(cuid())
+  userId             String           @unique
+  displayName        String
+  locale             String?          @default("bn-BD")
+  addressJson        Json?
+  /// P2 — denormalized village FK for service matching (optional).
+  primaryVillageId   String?
+  profileCompletedAt DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  /// HTTPS URL to display asset (same-origin `/api/mobile/uploads/:id` redirect or CDN).
+  profilePhotoUrl    String?
+  coverPhotoUrl      String?
+  animals            AnimalProfile[]
+  billingRecords     BillingRecord[]
+  complaints         Complaint[]
+  primaryVillage     Village?         @relation("CustomerPrimaryVillage", fields: [primaryVillageId], references: [id])
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews            Review[]
+  serviceRequests    ServiceRequest[]
+
+  @@index([primaryVillageId])
+}
+
+/// One active OTP challenge per normalized Bangladesh mobile (customer login).
+model MobileOtpChallenge {
+  id                  String    @id @default(cuid())
+  normalizedPhone     String    @unique
+  codeHash            String
+  expiresAt           DateTime
+  verifyAttempts      Int       @default(0)
+  sendWindowStartedAt DateTime?
+  sendsInWindow       Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  /// Last time an OTP was successfully issued (for resend cooldown).
+  lastOtpSentAt       DateTime?
+
+  @@index([expiresAt])
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Division {
+  id         String     @id @default(cuid())
+  /// Legacy display label (English-oriented seeds). Prefer `nameEn` / `nameBn` when set.
+  name       String
+  slug       String     @unique
+  /// Not globally unique in legacy / merged seeds; match on slug + hierarchy when needed.
+  code       String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  isActive   Boolean    @default(true)
+  nameBn     String?
+  nameEn     String?
+  sortOrder  Int        @default(0)
+  isVerified Boolean    @default(false)
+  /// Centroid or verified point; null if unknown (never guessed).
+  latitude   Decimal?   @db.Decimal(10, 7)
+  longitude  Decimal?   @db.Decimal(10, 7)
+  /// Provenance, e.g. dataset id/version.
+  source     String?
+  districts  District[]
+
+  @@index([isActive])
+  @@index([nameBn])
+  @@index([nameEn])
+  @@index([code])
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model District {
+  id                                String                            @id @default(cuid())
+  divisionId                        String
+  /// Legacy display label. Prefer `nameEn` / `nameBn` when set.
+  name                              String
+  slug                              String                            @unique
+  code                              String?
+  createdAt                         DateTime                          @default(now())
+  updatedAt                         DateTime                          @updatedAt
+  isActive                          Boolean                           @default(true)
+  nameBn                            String?
+  nameEn                            String?
+  sortOrder                         Int                               @default(0)
+  isVerified                        Boolean                           @default(false)
+  latitude                          Decimal?                          @db.Decimal(10, 7)
+  longitude                         Decimal?                          @db.Decimal(10, 7)
+  source                            String?
+  aiTechnicianDivisionAreasDistrict AiTechnicianDivisionServiceArea[] @relation("DivisionServiceAreaDistrict")
+  aiTechnicianProfilesAsDistrict    AiTechnicianProfile[]             @relation("AiTechnicianProfileDistrict")
+  division                          Division                          @relation(fields: [divisionId], references: [id])
+  upazilas                          Upazila[]
+
+  @@index([divisionId])
+  @@index([isActive])
+  @@index([divisionId, code])
+  @@index([divisionId, nameBn])
+  @@index([divisionId, nameEn])
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Upazila {
+  id                               String                            @id @default(cuid())
+  districtId                       String
+  name                             String
+  slug                             String                            @unique
+  code                             String?
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
+  isActive                         Boolean                           @default(true)
+  nameBn                           String?
+  nameEn                           String?
+  sortOrder                        Int                               @default(0)
+  isVerified                       Boolean                           @default(false)
+  latitude                         Decimal?                          @db.Decimal(10, 7)
+  longitude                        Decimal?                          @db.Decimal(10, 7)
+  source                           String?
+  aiTechnicianDivisionAreasUpazila AiTechnicianDivisionServiceArea[] @relation("DivisionServiceAreaUpazila")
+  aiTechnicianProfilesAsUpazila    AiTechnicianProfile[]             @relation("AiTechnicianProfileUpazila")
+  unions                           Union[]
+  district                         District                          @relation(fields: [districtId], references: [id])
+
+  @@index([districtId])
+  @@index([isActive])
+  @@index([districtId, code])
+  @@index([districtId, nameBn])
+  @@index([districtId, nameEn])
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Union {
+  id                             String                            @id @default(cuid())
+  upazilaId                      String
+  name                           String
+  slug                           String                            @unique
+  code                           String?
+  createdAt                      DateTime                          @default(now())
+  updatedAt                      DateTime                          @updatedAt
+  isActive                       Boolean                           @default(true)
+  nameBn                         String?
+  nameEn                         String?
+  sortOrder                      Int                               @default(0)
+  isVerified                     Boolean                           @default(false)
+  latitude                       Decimal?                          @db.Decimal(10, 7)
+  longitude                      Decimal?                          @db.Decimal(10, 7)
+  source                         String?
+  aiTechnicianDivisionAreasUnion AiTechnicianDivisionServiceArea[] @relation("DivisionServiceAreaUnion")
+  aiTechnicianProfilesAsUnion    AiTechnicianProfile[]             @relation("AiTechnicianProfileUnion")
+  upazila                        Upazila                           @relation(fields: [upazilaId], references: [id])
+  villages                       Village[]
+
+  @@index([upazilaId])
+  @@index([isActive])
+  @@index([upazilaId, code])
+  @@index([upazilaId, nameBn])
+  @@index([upazilaId, nameEn])
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Village {
+  id                       String                    @id @default(cuid())
+  unionId                  String
+  /// Legacy single label; prefer `nameBn` / `nameEn` when set.
+  name                     String
+  slug                     String                    @unique
+  code                     String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  isActive                 Boolean                   @default(true)
+  isVerified               Boolean                   @default(false)
+  latitude                 Decimal?                  @db.Decimal(10, 7)
+  longitude                Decimal?                  @db.Decimal(10, 7)
+  nameBn                   String?
+  nameEn                   String?
+  source                   String?
+  aiTechnicianServiceAreas AiTechnicianServiceArea[]
+  customerPrimaryVillages  CustomerProfile[]         @relation("CustomerPrimaryVillage")
+  doctorServiceAreas       DoctorServiceArea[]
+  serviceRequests          ServiceRequest[]
+  union                    Union                     @relation(fields: [unionId], references: [id])
+
+  @@index([unionId])
+  @@index([unionId, nameBn])
+  @@index([unionId, nameEn])
+  @@index([isActive])
+}
+
+/// Unified hierarchical area tree for Bangladesh geography (admin/API).
+/// Coexists with normalized `Division`…`Village` tables; `ServiceRequest.areaId` remains optional during migration.
+model Area {
+  id                       String                    @id @default(cuid())
+  name                     String
+  slug                     String                    @unique
+  parentId                 String?
+  metadataJson             Json?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  code                     String?
+  isActive                 Boolean                   @default(true)
+  nameBn                   String?
+  sortOrder                Int                       @default(0)
+  type                     AreaType                  @default(DIVISION)
+  aiTechnicianProfileAreas AiTechnicianProfileArea[]
+  parent                   Area?                     @relation("AreaHierarchy", fields: [parentId], references: [id])
+  children                 Area[]                    @relation("AreaHierarchy")
+  doctorProfileAreas       DoctorProfileArea[]
+  serviceRequests          ServiceRequest[]
+
+  @@index([parentId])
+  @@index([type])
+  @@index([isActive])
+  @@index([parentId, type])
+}
+
+model DoctorServiceArea {
+  id        String        @id @default(cuid())
+  doctorId  String
+  villageId String
+  priority  Int?
+  createdAt DateTime      @default(now())
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  village   Village       @relation(fields: [villageId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, villageId])
+  @@index([villageId])
+}
+
+model AiTechnicianServiceArea {
+  id             String              @id @default(cuid())
+  aiTechnicianId String
+  villageId      String
+  priority       Int?
+  createdAt      DateTime            @default(now())
+  aiTechnician   AiTechnicianProfile @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
+  village        Village             @relation(fields: [villageId], references: [id], onDelete: Cascade)
+
+  @@unique([aiTechnicianId, villageId])
+  @@index([villageId])
+}
+
+model ServiceCategory {
+  id                                   String                               @id @default(cuid())
+  name                                 String
+  slug                                 String                               @unique
+  description                          String?
+  createdAt                            DateTime                             @default(now())
+  updatedAt                            DateTime                             @updatedAt
+  aiTechnicianProfileServiceCategories AiTechnicianProfileServiceCategory[]
+  doctorProfileServiceCategories       DoctorProfileServiceCategory[]
+  serviceRequests                      ServiceRequest[]
+}
+
+/// Many-to-many: doctor coverage using the unified `Area` tree (admin geography).
+model DoctorProfileArea {
+  id        String        @id @default(cuid())
+  doctorId  String
+  areaId    String
+  priority  Int?
+  createdAt DateTime      @default(now())
+  area      Area          @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, areaId])
+  @@index([areaId])
+}
+
+/// Many-to-many: AI technician coverage using the unified `Area` tree (parallel to `DoctorProfileArea`).
+model AiTechnicianProfileArea {
+  id             String              @id @default(cuid())
+  aiTechnicianId String
+  areaId         String
+  priority       Int?
+  createdAt      DateTime            @default(now())
+  aiTechnician   AiTechnicianProfile @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
+  area           Area                @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@unique([aiTechnicianId, areaId])
+  @@index([areaId])
+}
+
+/// Many-to-many: which service categories a doctor offers.
+model DoctorProfileServiceCategory {
+  id                String          @id @default(cuid())
+  doctorId          String
+  serviceCategoryId String
+  createdAt         DateTime        @default(now())
+  doctor            DoctorProfile   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  serviceCategory   ServiceCategory @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, serviceCategoryId])
+  @@index([serviceCategoryId])
+}
+
+/// Many-to-many: which catalog services an AI technician provides (e.g. slug `ai-service`).
+model AiTechnicianProfileServiceCategory {
+  id                String              @id @default(cuid())
+  aiTechnicianId    String
+  serviceCategoryId String
+  createdAt         DateTime            @default(now())
+  aiTechnician      AiTechnicianProfile @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
+  serviceCategory   ServiceCategory     @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([aiTechnicianId, serviceCategoryId])
+  @@index([serviceCategoryId])
+}
+
+/// Declarative district-level service coverage (text labels or slugs).
+/// Legacy village-level coverage remains on `AiTechnicianServiceArea`.
+model AiTechnicianDivisionServiceArea {
+  id             String              @id @default(cuid())
+  aiTechnicianId String
+  district       String
+  upazila        String
+  unionOrArea    String?
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  /// Optional FKs to normalized geography; text columns above remain for search / legacy clients.
+  districtId     String?
+  unionId        String?
+  upazilaId      String?
+  aiTechnician   AiTechnicianProfile @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
+  bdDistrict     District?           @relation("DivisionServiceAreaDistrict", fields: [districtId], references: [id])
+  bdUnion        Union?              @relation("DivisionServiceAreaUnion", fields: [unionId], references: [id])
+  bdUpazila      Upazila?            @relation("DivisionServiceAreaUpazila", fields: [upazilaId], references: [id])
+
+  @@index([aiTechnicianId])
+  @@index([district, upazila])
+  @@index([districtId])
+  @@index([upazilaId])
+  @@index([unionId])
+}
+
+model AiTechnicianDocument {
+  id             String                           @id @default(cuid())
+  aiTechnicianId String
+  type           AiTechnicianDocumentType
+  title          String
+  /// Public or signed URL when objects are web-accessible.
+  fileUrl        String?
+  /// Opaque storage object key when using bucket-backed uploads.
+  storageKey     String?
+  mimeType       String?
+  reviewStatus   AiTechnicianDocumentReviewStatus @default(PENDING_REVIEW)
+  uploadedAt     DateTime                         @default(now())
+  createdAt      DateTime                         @default(now())
+  updatedAt      DateTime                         @updatedAt
+  /// When set, file bytes and metadata live on `UploadedFile` (preferred path).
+  uploadedFileId String?                          @unique
+  aiTechnician   AiTechnicianProfile              @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
+  uploadedFile   UploadedFile?                    @relation(fields: [uploadedFileId], references: [id])
+
+  @@index([aiTechnicianId])
+  @@index([type])
+}
+
+/// Object storage metadata for universal mobile uploads (S3 / MinIO–compatible).
+model UploadedFile {
+  id                   String                     @id @default(cuid())
+  ownerUserId          String
+  bucket               String
+  storageKey           String                     @unique
+  originalName         String
+  mimeType             String
+  sizeBytes            Int
+  fileCategory         MobileUploadPurpose
+  publicUrl            String?
+  checksum             String?
+  width                Int?
+  height               Int?
+  status               UploadedFileStatus         @default(ACTIVE)
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  aiTechnicianDocument AiTechnicianDocument?
+  semenProviderLogo    SemenProvider?
+  semenTemplateMedia   SemenServiceTemplateMedia?
+  serviceInstanceMedia ServiceInstanceMedia[]
+  owner                User                       @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+  @@index([status])
+  @@index([fileCategory])
+}
+
+/// Semen company / organization master (BRAC, ACI, DLS, etc.).
+model SemenProvider {
+  id                 String                          @id @default(cuid())
+  slug               String                          @unique
+  name               String
+  nameBn             String?
+  description        String?
+  descriptionBn      String?
+  logoUploadedFileId String?                         @unique
+  isActive           Boolean                         @default(true)
+  verificationStatus SemenProviderVerificationStatus @default(UNVERIFIED)
+  sortOrder          Int                             @default(0)
+  createdAt          DateTime                        @default(now())
+  updatedAt          DateTime                        @updatedAt
+  logoUploadedFile   UploadedFile?                   @relation(fields: [logoUploadedFileId], references: [id])
+  templates          SemenServiceTemplate[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+/// Livestock breed master (Bangla + English); used in semen template composition.
+model LivestockBreed {
+  id            String                         @id @default(cuid())
+  slug          String                         @unique
+  nameEn        String
+  nameBn        String
+  animalType    AnimalType
+  description   String?
+  isActive      Boolean                        @default(true)
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
+  templateMixes SemenServiceTemplateBreedMix[]
+
+  @@index([animalType])
+  @@index([isActive])
+}
+
+/// Admin-authored semen service template (locked fields for technician listings).
+model SemenServiceTemplate {
+  id                         String                         @id @default(cuid())
+  internalName               String
+  animalType                 AnimalType
+  semenProviderId            String
+  semenProductKind           SemenProductKind
+  /// When `semenProductKind` is OTHER, short free-text label from admin.
+  otherSemenLabel            String?
+  shortDescription           String?
+  detailedDescription        String?
+  expectedBenefits           String?
+  recommendedAnimalCondition String?
+  warningsContraindications  String?
+  defaultBasePrice           Decimal                        @db.Decimal(12, 2)
+  defaultOfferPrice          Decimal?                       @db.Decimal(12, 2)
+  defaultDiscountPercent     Decimal?                       @db.Decimal(5, 2)
+  tagsJson                   Json?
+  isActive                   Boolean                        @default(true)
+  approvalStatus             SemenTemplateApprovalStatus    @default(DRAFT)
+  approvedById               String?
+  approvedAt                 DateTime?
+  rejectedReason             String?
+  createdAt                  DateTime                       @default(now())
+  updatedAt                  DateTime                       @updatedAt
+  technicianServices         AiTechnicianService[]
+  approvedBy                 User?                          @relation("SemenTemplateApprovedBy", fields: [approvedById], references: [id])
+  semenProvider              SemenProvider                  @relation(fields: [semenProviderId], references: [id])
+  breedMixes                 SemenServiceTemplateBreedMix[]
+  media                      SemenServiceTemplateMedia[]
+  serviceInstances           ServiceInstance[]
+
+  @@index([semenProviderId])
+  @@index([animalType])
+  @@index([approvalStatus, isActive])
+}
+
+model SemenServiceTemplateBreedMix {
+  id         String               @id @default(cuid())
+  templateId String
+  breedId    String
+  percentage Decimal              @db.Decimal(5, 2)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  breed      LivestockBreed       @relation(fields: [breedId], references: [id])
+  template   SemenServiceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, breedId])
+  @@index([breedId])
+}
+
+model SemenServiceTemplateMedia {
+  id             String                 @id @default(cuid())
+  templateId     String
+  kind           SemenTemplateMediaKind
+  uploadedFileId String?                @unique
+  externalUrl    String?
+  sortOrder      Int                    @default(0)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  template       SemenServiceTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  uploadedFile   UploadedFile?          @relation(fields: [uploadedFileId], references: [id])
+
+  @@index([templateId])
+  @@index([sortOrder])
+}
+
+/// Technician-published service / gig (pricing + animal scope).
+model AiTechnicianService {
+  id                           String                     @id @default(cuid())
+  aiTechnicianId               String
+  title                        String
+  animalType                   AnimalType
+  breedOrSemenType             String?
+  description                  String?
+  basePrice                    Decimal                    @db.Decimal(12, 2)
+  visitFee                     Decimal?                   @db.Decimal(12, 2)
+  emergencyFee                 Decimal?                   @db.Decimal(12, 2)
+  repeatServicePolicy          String?
+  followUpIncluded             Boolean                    @default(false)
+  status                       AiTechnicianServiceStatus  @default(DRAFT)
+  createdAt                    DateTime                   @default(now())
+  updatedAt                    DateTime                   @updatedAt
+  /// When set, locked semen copy/media come from this approved template (read API merges live template).
+  semenServiceTemplateId       String?
+  /// Technician listing: optional fixed offer price (mutually exclusive with `discountPercent`).
+  offerPrice                   Decimal?                   @db.Decimal(12, 2)
+  /// Technician listing: optional discount % (mutually exclusive with `offerPrice`).
+  discountPercent              Decimal?                   @db.Decimal(5, 2)
+  /// Technician can hide listing without changing admin `status`.
+  isAvailable                  Boolean                    @default(true)
+  technicianServiceNote        String?
+  aiServiceRequests            AiServiceRequest[]
+  aiTechnician                 AiTechnicianProfile        @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
+  semenServiceTemplate         SemenServiceTemplate?      @relation(fields: [semenServiceTemplateId], references: [id], onDelete: Restrict)
+  publishedFromServiceInstance ServiceInstance?           @relation("ServiceInstancePublishedListing")
+  semenInventoryLots           TechnicianSemenInventory[]
+
+  @@unique([aiTechnicianId, semenServiceTemplateId])
+  @@index([aiTechnicianId])
+  @@index([status])
+  @@index([animalType])
+  @@index([semenServiceTemplateId])
+}
+
+/// Per-batch / lot stock for a technician semen service (one public listing per template).
+model TechnicianSemenInventory {
+  id                    String              @id @default(cuid())
+  aiTechnicianServiceId String
+  currentQuantity       Int                 @default(0)
+  reservedQuantity      Int                 @default(0)
+  usedQuantity          Int                 @default(0)
+  minStockAlert         Int?
+  batchNumber           String?
+  expiryDate            DateTime?
+  sourceNote            String?
+  storageNote           String?
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  aiTechnicianService   AiTechnicianService @relation(fields: [aiTechnicianServiceId], references: [id], onDelete: Cascade)
+
+  @@index([aiTechnicianServiceId])
+  @@index([isActive])
+}
+
+/// Farmer-initiated AI service booking (module-native). Optional link to legacy `ServiceRequest` for integration.
+model AiServiceRequest {
+  id                     String                  @id @default(cuid())
+  customerUserId         String
+  technicianProfileId    String?
+  serviceId              String?
+  animalType             AnimalType
+  breed                  String?
+  animalAge              String?
+  lastHeatDate           DateTime?
+  heatSymptoms           String?
+  previousAiHistory      String?
+  healthIssueNote        String?
+  district               String
+  upazila                String
+  unionOrArea            String?
+  addressDetail          String?
+  preferredTime          String?
+  isEmergency            Boolean                 @default(false)
+  status                 AiServiceRequestStatus  @default(PENDING)
+  estimatedFee           Decimal?                @db.Decimal(12, 2)
+  finalFee               Decimal?                @db.Decimal(12, 2)
+  paymentStatus          AiPaymentStatus         @default(UNPAID)
+  linkedServiceRequestId String?                 @unique
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  /// Optional note when technician declines (native AI requests).
+  declineReason          String?
+  aiServiceRecord        AiServiceRecord?
+  customer               User                    @relation("AiServiceRequestCustomer", fields: [customerUserId], references: [id])
+  linkedServiceRequest   ServiceRequest?         @relation(fields: [linkedServiceRequestId], references: [id])
+  service                AiTechnicianService?    @relation(fields: [serviceId], references: [id])
+  technicianProfile      AiTechnicianProfile?    @relation("AiServiceRequestTechnician", fields: [technicianProfileId], references: [id])
+  aiTechnicianComplaints AiTechnicianComplaint[]
+  aiTechnicianReview     AiTechnicianReview?
+
+  @@index([customerUserId])
+  @@index([technicianProfileId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Structured outcome for a completed (or in-progress) AI visit.
+model AiServiceRecord {
+  id                  String              @id @default(cuid())
+  aiServiceRequestId  String              @unique
+  technicianProfileId String
+  customerUserId      String
+  serviceDate         DateTime
+  animalType          AnimalType
+  breedOrSemenType    String?
+  semenBatch          String?
+  heatObservation     String?
+  inseminationTime    DateTime?
+  serviceNote         String?
+  nextFollowUpDate    DateTime?
+  pregnancyCheckDate  DateTime?
+  totalFee            Decimal?            @db.Decimal(12, 2)
+  paymentStatus       AiPaymentStatus     @default(UNPAID)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  aiServiceRequest    AiServiceRequest    @relation(fields: [aiServiceRequestId], references: [id], onDelete: Cascade)
+  customer            User                @relation("AiServiceRecordCustomer", fields: [customerUserId], references: [id])
+  technicianProfile   AiTechnicianProfile @relation(fields: [technicianProfileId], references: [id])
+
+  @@index([technicianProfileId])
+  @@index([customerUserId])
+  @@index([serviceDate])
+}
+
+/// Farmer rating after a completed native AI visit (one per `AiServiceRequest`).
+model AiTechnicianReview {
+  id                  String                       @id @default(cuid())
+  aiServiceRequestId  String                       @unique
+  technicianProfileId String
+  customerUserId      String
+  rating              Int
+  comment             String?
+  visibility          AiTechnicianReviewVisibility @default(VISIBLE)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  aiServiceRequest    AiServiceRequest             @relation(fields: [aiServiceRequestId], references: [id], onDelete: Cascade)
+  customer            User                         @relation("AiTechnicianReviewAuthor", fields: [customerUserId], references: [id])
+  technicianProfile   AiTechnicianProfile          @relation("AiTechnicianModuleReview", fields: [technicianProfileId], references: [id], onDelete: Cascade)
+
+  @@index([technicianProfileId])
+  @@index([customerUserId])
+  @@index([visibility])
+}
+
+/// Farmer complaint for AI technician module (native requests).
+model AiTechnicianComplaint {
+  id                  String                      @id @default(cuid())
+  aiServiceRequestId  String?
+  technicianProfileId String
+  customerUserId      String
+  category            String
+  message             String
+  status              AiTechnicianComplaintStatus @default(OPEN)
+  adminNote           String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  aiServiceRequest    AiServiceRequest?           @relation(fields: [aiServiceRequestId], references: [id])
+  customer            User                        @relation("AiTechnicianComplaintAuthor", fields: [customerUserId], references: [id])
+  technicianProfile   AiTechnicianProfile         @relation("AiTechnicianModuleComplaint", fields: [technicianProfileId], references: [id], onDelete: Cascade)
+
+  @@index([technicianProfileId])
+  @@index([customerUserId])
+  @@index([status])
+  @@index([aiServiceRequestId])
+}
+
+model AnimalProfile {
+  id              String           @id @default(cuid())
+  customerId      String
+  name            String
+  species         String
+  breed           String?
+  category        AnimalCategory   @default(OTHER)
+  dateOfBirth     DateTime?
+  sex             String?
+  microchipOrTag  String?
+  notes           String?
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  animalType      AnimalType?
+  gender          Gender?
+  weightKg        Decimal?         @db.Decimal(10, 3)
+  photoUrl        String?
+  pregnancyStatus PregnancyStatus?
+  customer        CustomerProfile  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  prescriptions   Prescription[]
+  serviceRequests ServiceRequest[]
+  treatmentCases  TreatmentCase[]
+
+  @@index([customerId])
+}
+
+model ServiceRequest {
+  id                     String               @id @default(cuid())
+  customerId             String
+  animalId               String
+  /// Legacy link — prefer `villageId` for new records.
+  areaId                 String?
+  serviceCategoryId      String
+  assignedDoctorId       String?
+  status                 ServiceRequestStatus @default(PENDING)
+  urgency                String?
+  /// Stored as `symptoms` in PostgreSQL.
+  problemOrSymptom       String?              @map("symptoms")
+  /// Stored as `preferredWindow` in PostgreSQL.
+  preferredTime          String?              @map("preferredWindow")
+  /// Stored as `locationNotes` in PostgreSQL.
+  locationText           String?              @map("locationNotes")
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  completedAt            DateTime?
+  /// Stored as `assignedAiTechnicianId` in PostgreSQL (historic column name).
+  assignedTechnicianId   String?              @map("assignedAiTechnicianId")
+  assignedAt             DateTime?
+  cancelledAt            DateTime?
+  emergencyNotes         String?
+  isEmergency            Boolean              @default(false)
+  /// Stored as `requestType` in PostgreSQL (historic column name).
+  serviceType            ServiceRequestType   @default(DOCTOR_HOME_VISIT) @map("requestType")
+  scheduledEnd           DateTime?
+  scheduledStart         DateTime?
+  startedAt              DateTime?
+  submittedAt            DateTime             @default(now())
+  villageId              String?
+  description            String?
+  cancelReason           String?
+  /// P3 — formal priority (maps from isEmergency / urgency).
+  priority               RequestPriority        @default(NORMAL)
+  adminNote              String?
+  leadId                 String?                @unique
+  linkedAiServiceRequest AiServiceRequest?
+  timelineEvents         ServiceRequestTimelineEvent[]
+  billingRecords         BillingRecord[]
+  complaints             Complaint[]
+  paymentRecords         PaymentRecord[]
+  prescriptions          Prescription[]
+  reviews                Review[]
+  animal                 AnimalProfile        @relation(fields: [animalId], references: [id])
+  area                   Area?                @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  assignedTechnician     AiTechnicianProfile? @relation(fields: [assignedTechnicianId], references: [id])
+  assignedDoctor         DoctorProfile?       @relation(fields: [assignedDoctorId], references: [id])
+  customer               CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceCategory        ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
+  village                Village?             @relation(fields: [villageId], references: [id], onDelete: Restrict)
+  crmLead                Lead?                @relation("LeadServiceRequest", fields: [leadId], references: [id])
+  treatmentCases         TreatmentCase[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([customerId])
+  @@index([animalId])
+  @@index([assignedDoctorId, status])
+  @@index([assignedTechnicianId, status])
+  @@index([serviceType, status])
+  @@index([areaId, serviceCategoryId])
+  @@index([villageId])
+}
+
+/// Former `TreatmentRecord` table — mapped to preserve existing rows.
+model TreatmentCase {
+  id               String               @id @default(cuid())
+  serviceRequestId String
+  doctorId         String?
+  animalId         String
+  chiefComplaint   String?
+  diagnosis        String?
+  procedures       String?
+  followUpNotes    String?
+  recordedAt       DateTime             @default(now())
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  aiTechnicianId   String?
+  followUpDate     DateTime?
+  symptoms         String?
+  treatmentNotes   String?
+  status           TreatmentCaseStatus  @default(DRAFT)
+  billingRecords   BillingRecord[]
+  aiTechnician     AiTechnicianProfile? @relation(fields: [aiTechnicianId], references: [id], onDelete: Restrict)
+  animal           AnimalProfile        @relation(fields: [animalId], references: [id])
+  doctor           DoctorProfile?       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  serviceRequest   ServiceRequest       @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRequestId])
+  @@index([doctorId])
+  @@index([aiTechnicianId])
+  @@index([status])
+  @@map("TreatmentRecord")
+}
+
+/// P3 — append-only audit trail for service requests.
+model ServiceRequestTimelineEvent {
+  id               String                    @id @default(cuid())
+  serviceRequestId String
+  eventType        ServiceRequestEventType
+  actorUserId      String?
+  actorRole        UserRole?
+  note             String?
+  metadataJson     Json?
+  createdAt        DateTime                  @default(now())
+  serviceRequest   ServiceRequest            @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRequestId, createdAt])
+}
+
+/// P3 — CRM lead intake (foundation /api/leads).
+model Lead {
+  id               String         @id @default(cuid())
+  phone            String
+  name             String?
+  source           LeadSource     @default(OTHER)
+  status           LeadStatus     @default(NEW)
+  priority         LeadPriority   @default(MEDIUM)
+  assignedAdminId  String?
+  animalType       String?
+  concern          String?
+  notes            String?
+  villageId        String?
+  convertedUserId  String?
+  serviceRequestId String?        @unique
+  convertedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  activities       LeadActivity[]
+  serviceRequest   ServiceRequest? @relation("LeadServiceRequest")
+
+  @@index([phone])
+  @@index([status])
+  @@index([assignedAdminId])
+}
+
+model LeadActivity {
+  id           String           @id @default(cuid())
+  leadId       String
+  activityType LeadActivityType
+  description  String
+  performedBy  String
+  createdAt    DateTime         @default(now())
+  lead         Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+}
+
+model Prescription {
+  id               String               @id @default(cuid())
+  serviceRequestId String
+  doctorId         String?
+  animalId         String
+  status           PrescriptionStatus   @default(ACTIVE)
+  instructions     String?
+  validUntil       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  aiTechnicianId   String?
+  aiTechnician     AiTechnicianProfile? @relation(fields: [aiTechnicianId], references: [id], onDelete: Restrict)
+  animal           AnimalProfile        @relation(fields: [animalId], references: [id])
+  doctor           DoctorProfile?       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  serviceRequest   ServiceRequest       @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  items            PrescriptionItem[]
+
+  @@index([serviceRequestId])
+  @@index([doctorId])
+  @@index([aiTechnicianId])
+}
+
+model PrescriptionItem {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  medicineName   String
+  dosage         String?
+  duration       String?
+  instruction    String?
+  quantity       Decimal?     @db.Decimal(12, 3)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+}
+
+model BillingRecord {
+  id                 String               @id @default(cuid())
+  serviceRequestId   String
+  doctorId           String?
+  customerId         String
+  currency           String               @default("BDT")
+  /// Legacy aggregates — nullable while migrating to fee breakdown fields.
+  subtotal           Decimal?             @db.Decimal(14, 2)
+  tax                Decimal?             @db.Decimal(14, 2)
+  total              Decimal?             @db.Decimal(14, 2)
+  issuedAt           DateTime?
+  paidAt             DateTime?
+  notes              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  aiTechnicianId     String?
+  discountAmount     Decimal?             @db.Decimal(14, 2)
+  medicineCost       Decimal?             @db.Decimal(14, 2)
+  platformCommission Decimal?             @db.Decimal(14, 2)
+  providerPayout     Decimal?             @db.Decimal(14, 2)
+  serviceFee         Decimal?             @db.Decimal(14, 2)
+  totalCollected     Decimal?             @db.Decimal(14, 2)
+  travelCost         Decimal?             @db.Decimal(14, 2)
+  treatmentCaseId    String?
+  status             BillingStatus        @default(DRAFT)
+  /// Primary/settlement method for this invoice (optional if only PaymentRecord lines are used).
+  paymentMethod      PaymentMethod?
+  /// MVP payment settlement status at invoice level (distinct from BillingStatus lifecycle).
+  paymentStatus      PaymentStatus        @default(UNPAID)
+  aiTechnician       AiTechnicianProfile? @relation(fields: [aiTechnicianId], references: [id], onDelete: Restrict)
+  customer           CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  doctor             DoctorProfile?       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  serviceRequest     ServiceRequest       @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  treatmentCase      TreatmentCase?       @relation(fields: [treatmentCaseId], references: [id])
+  complaints         Complaint[]
+  paymentRecords     PaymentRecord[]
+
+  @@index([customerId])
+  @@index([doctorId])
+  @@index([aiTechnicianId])
+  @@index([status])
+}
+
+model PaymentRecord {
+  id               String          @id @default(cuid())
+  billingRecordId  String?
+  serviceRequestId String?
+  status           PaymentStatus   @default(PENDING)
+  method           PaymentMethod
+  amount           Decimal         @db.Decimal(14, 2)
+  currency         String          @default("BDT")
+  externalId       String?
+  paidAt           DateTime?
+  metadataJson     Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  billingRecord    BillingRecord?  @relation(fields: [billingRecordId], references: [id])
+  serviceRequest   ServiceRequest? @relation(fields: [serviceRequestId], references: [id])
+
+  @@index([billingRecordId])
+  @@index([serviceRequestId])
+  @@index([status])
+  @@index([externalId])
+}
+
+model Review {
+  id               String               @id @default(cuid())
+  customerId       String
+  doctorId         String?
+  aiTechnicianId   String?
+  serviceRequestId String?
+  rating           Int
+  comment          String?
+  status           ReviewStatus         @default(PENDING)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  aiTechnician     AiTechnicianProfile? @relation(fields: [aiTechnicianId], references: [id])
+  customer         CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  doctor           DoctorProfile?       @relation(fields: [doctorId], references: [id])
+  serviceRequest   ServiceRequest?      @relation(fields: [serviceRequestId], references: [id])
+
+  @@index([customerId, serviceRequestId])
+  @@index([doctorId])
+  @@index([aiTechnicianId])
+  @@index([status])
+}
+
+/// Tutorial / Knowledge Hub article (author = `User`: doctor or admin).
+model ContentCategory {
+  id          String        @id @default(cuid())
+  nameBn      String
+  nameEn      String?
+  slug        String        @unique
+  description String?
+  sortOrder   Int           @default(0)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  posts       ContentPost[]
+
+  @@index([isActive, sortOrder])
+}
+
+model ContentPost {
+  id              String                @id @default(cuid())
+  title           String
+  slug            String                @unique
+  body            String
+  authorId        String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  summary         String?
+  coverImageUrl   String?
+  categoryId      String
+  approvalStatus  ContentApprovalStatus @default(DRAFT)
+  rejectionReason String?
+  publishedAt     DateTime?
+  isPublished     Boolean               @default(false)
+  author          User                  @relation("ContentPostAuthor", fields: [authorId], references: [id])
+  category        ContentCategory       @relation(fields: [categoryId], references: [id])
+
+  @@index([approvalStatus])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([isPublished, publishedAt])
+}
+
+model Complaint {
+  id               String               @id @default(cuid())
+  customerId       String
+  doctorId         String?
+  aiTechnicianId   String?
+  adminAssigneeId  String?
+  serviceRequestId String?
+  billingRecordId  String?
+  status           ComplaintStatus      @default(OPEN)
+  resolutionNotes  String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  adminAssignee    User?                @relation("ComplaintAssignee", fields: [adminAssigneeId], references: [id])
+  aiTechnician     AiTechnicianProfile? @relation(fields: [aiTechnicianId], references: [id])
+  billingRecord    BillingRecord?       @relation(fields: [billingRecordId], references: [id])
+  customer         CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  doctor           DoctorProfile?       @relation(fields: [doctorId], references: [id])
+  serviceRequest   ServiceRequest?      @relation(fields: [serviceRequestId], references: [id])
+
+  @@index([status])
+  @@index([customerId])
+  @@index([adminAssigneeId])
+}
+
+model Notification {
+  id           String           @id @default(cuid())
+  userId       String
+  title        String
+  body         String
+  readAt       DateTime?
+  metadataJson Json?
+  createdAt    DateTime         @default(now())
+  type         NotificationType @default(SYSTEM)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([type])
+}
+
+/// Enterprise: worker submission of a semen (main) template for admin review → publish → `AiTechnicianService`.
+model ServiceInstance {
+  id                             String                      @id @default(cuid())
+  semenServiceTemplateId         String
+  aiTechnicianProfileId          String
+  status                         ServiceInstanceStatus       @default(DRAFT)
+  schemaVersion                  Int                         @default(1)
+  payloadJson                    Json                        @default("{}")
+  lockedSnapshotJson             Json?
+  validationResultJson           Json?
+  duplicateOfId                  String?
+  payloadFingerprint             String?
+  correctionNote                 String?
+  adminInternalNote              String?
+  submittedAt                    DateTime?
+  publishedAt                    DateTime?
+  archivedAt                     DateTime?
+  lastReviewedById               String?
+  publishedAiTechnicianServiceId String?                     @unique
+  deploymentBranch               String?                     @default("main")
+  tenantId                       String?
+  deletedAt                      DateTime?
+  version                        Int                         @default(0)
+  createdAt                      DateTime                    @default(now())
+  updatedAt                      DateTime                    @updatedAt
+  aiTechnicianProfile            AiTechnicianProfile         @relation(fields: [aiTechnicianProfileId], references: [id], onDelete: Cascade)
+  duplicateOf                    ServiceInstance?            @relation("ServiceInstanceDuplicateOf", fields: [duplicateOfId], references: [id])
+  duplicates                     ServiceInstance[]           @relation("ServiceInstanceDuplicateOf")
+  lastReviewedBy                 User?                       @relation("ServiceInstanceLastReviewedBy", fields: [lastReviewedById], references: [id])
+  publishedAiTechnicianService   AiTechnicianService?        @relation("ServiceInstancePublishedListing", fields: [publishedAiTechnicianServiceId], references: [id])
+  semenServiceTemplate           SemenServiceTemplate        @relation(fields: [semenServiceTemplateId], references: [id])
+  auditEvents                    ServiceInstanceAuditEvent[]
+  media                          ServiceInstanceMedia[]
+  publishLogs                    ServiceInstancePublishLog[]
+  reviews                        ServiceInstanceReview[]
+  statusLogs                     ServiceInstanceStatusLog[]
+
+  @@index([status, submittedAt])
+  @@index([tenantId, deploymentBranch])
+  @@index([deploymentBranch])
+  @@index([deletedAt])
+  @@index([payloadFingerprint])
+  @@index([semenServiceTemplateId])
+  @@index([aiTechnicianProfileId, semenServiceTemplateId], map: "ServiceInstance_aiTechnicianProfileId_semenServiceTemplateId_id")
+}
+
+model ServiceInstanceMedia {
+  id                String                               @id @default(cuid())
+  serviceInstanceId String
+  kind              ServiceInstanceMediaKind
+  uploadedFileId    String?
+  externalUrl       String?
+  sortOrder         Int                                  @default(0)
+  moderationStatus  ServiceInstanceMediaModerationStatus @default(PENDING)
+  moderationNote    String?
+  deletedAt         DateTime?
+  createdAt         DateTime                             @default(now())
+  updatedAt         DateTime                             @updatedAt
+  serviceInstance   ServiceInstance                      @relation(fields: [serviceInstanceId], references: [id], onDelete: Cascade)
+  uploadedFile      UploadedFile?                        @relation(fields: [uploadedFileId], references: [id])
+
+  @@index([serviceInstanceId])
+  @@index([sortOrder])
+  @@index([uploadedFileId])
+}
+
+model ServiceInstanceStatusLog {
+  id                String                 @id @default(cuid())
+  serviceInstanceId String
+  fromStatus        ServiceInstanceStatus?
+  toStatus          ServiceInstanceStatus
+  actorUserId       String
+  actorRole         String
+  reason            String?
+  ipAddress         String?
+  userAgent         String?
+  metadataJson      Json?
+  createdAt         DateTime               @default(now())
+  actor             User                   @relation(fields: [actorUserId], references: [id])
+  serviceInstance   ServiceInstance        @relation(fields: [serviceInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceInstanceId, createdAt])
+  @@index([actorUserId])
+}
+
+model ServiceInstanceReview {
+  id                String                          @id @default(cuid())
+  serviceInstanceId String
+  reviewerUserId    String
+  decision          ServiceInstanceReviewDecision
+  body              String
+  visibility        ServiceInstanceReviewVisibility @default(WORKER_VISIBLE)
+  createdAt         DateTime                        @default(now())
+  reviewer          User                            @relation(fields: [reviewerUserId], references: [id])
+  serviceInstance   ServiceInstance                 @relation(fields: [serviceInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceInstanceId, createdAt])
+  @@index([reviewerUserId])
+}
+
+model ServiceInstancePublishLog {
+  id                         String                       @id @default(cuid())
+  serviceInstanceId          String
+  action                     ServiceInstancePublishAction
+  actorUserId                String
+  previousPublishedServiceId String?
+  newPublishedServiceId      String?
+  payloadSnapshotJson        Json?
+  createdAt                  DateTime                     @default(now())
+  actor                      User                         @relation(fields: [actorUserId], references: [id])
+  serviceInstance            ServiceInstance              @relation(fields: [serviceInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceInstanceId, createdAt])
+  @@index([actorUserId])
+}
+
+model ServiceInstanceAuditEvent {
+  id                String                     @id @default(cuid())
+  serviceInstanceId String
+  action            ServiceInstanceAuditAction
+  actorUserId       String?
+  ipAddress         String?
+  userAgent         String?
+  detailsJson       Json?
+  createdAt         DateTime                   @default(now())
+  actor             User?                      @relation(fields: [actorUserId], references: [id])
+  serviceInstance   ServiceInstance            @relation(fields: [serviceInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceInstanceId, createdAt])
+  @@index([actorUserId])
+}
+
+/// Phase 1 identity — login, OTP, permission, and session audit (additive).
+model AuthAuditEvent {
+  id        String          @id @default(cuid())
+  action    AuthAuditAction
+  userId    String?
+  role      UserRole?
+  channel   String
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime        @default(now())
+  user      User?           @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  valueJson Json
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+  DOCTOR
+  AI_TECHNICIAN
+  SUPPORT
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  INVITED
+  DELETED
+}
+
+enum ProviderStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+  OTHER
+}
+
+enum AnimalCategory {
+  PET
+  LIVESTOCK
+  OTHER
+}
+
+enum AnimalType {
+  CATTLE
+  GOAT
+  POULTRY
+  DOG
+  CAT
+  OTHER
+}
+
+/// Reproductive status for applicable animals (e.g. livestock).
+enum PregnancyStatus {
+  UNKNOWN
+  NOT_APPLICABLE
+  NOT_PREGNANT
+  PREGNANT
+}
+
+enum ServiceRequestType {
+  DOCTOR_HOME_VISIT
+  EMERGENCY_DOCTOR
+  AI_SERVICE
+  ONLINE_CONSULTATION_LATER
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  ACCEPTED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum RequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  EMERGENCY
+}
+
+enum ServiceRequestEventType {
+  CREATED
+  ASSIGNED
+  REASSIGNED
+  ACCEPTED
+  REJECTED
+  STARTED
+  NOTE_ADDED
+  CASE_OPENED
+  CASE_UPDATED
+  COMPLETED
+  CANCELLED
+}
+
+enum LeadSource {
+  AI_CHAT
+  PHONE
+  WEBSITE
+  REFERRAL
+  SOCIAL_MEDIA
+  WALK_IN
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONSULTATION_SCHEDULED
+  CONVERTED
+  LOST
+  FOLLOW_UP
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum LeadActivityType {
+  CREATED
+  CALLED
+  MESSAGED
+  STATUS_CHANGED
+  ASSIGNED
+  NOTE_ADDED
+  CONVERTED
+}
+
+enum TreatmentCaseStatus {
+  DRAFT
+  FINALIZED
+  CANCELLED
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  VOIDED
+}
+
+enum BillingStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOIDED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  CANCELLED
+  /// MVP billing settlement (invoice-level); additive — gateway statuses above remain for PaymentRecord.
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum PaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  CARD
+  BANK_TRANSFER
+  OTHER
+  /// MVP additions (Bangladesh mobile wallets / bank). Keep CARD/BANK_TRANSFER for legacy PaymentRecord rows.
+  ROCKET
+  BANK
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+enum NotificationType {
+  REQUEST_UPDATE
+  PAYMENT
+  CHAT
+  SYSTEM
+  MARKETING
+  COMPLAINT
+  REVIEW
+}
+
+/// Knowledge Hub / tutorial posts — editorial workflow (replaces legacy `ContentStatus` on `ContentPost`).
+enum ContentApprovalStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+/// AI technician onboarding / marketplace lifecycle (distinct from legacy `ProviderStatus`).
+enum AiTechnicianStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_CORRECTION
+  APPROVED
+  PUBLISHED
+  REJECTED
+  SUSPENDED
+}
+
+enum AiTechnicianDocumentType {
+  NID_FRONT
+  NID_BACK
+  PROFILE_PHOTO
+  TRAINING_CERTIFICATE
+  AI_CERTIFICATE
+  COMPANY_ID
+  EXPERIENCE_PROOF
+  OTHER
+  /// Optional banner / background on technician profile card.
+  COVER_IMAGE
+}
+
+enum AiTechnicianDocumentReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+/// Published technician service / gig row (distinct from `ServiceCategory` catalog).
+enum AiTechnicianServiceStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+/// Farmer AI booking lifecycle (separate table from legacy `ServiceRequest`).
+enum AiServiceRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  ON_THE_WAY
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// Native AI module reviews (1:1 completed `AiServiceRequest`). Distinct from legacy `Review`.
+enum AiTechnicianReviewVisibility {
+  VISIBLE
+  HIDDEN
+}
+
+enum AiTechnicianComplaintStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+/// Settlement for AI-specific request/record rows (distinct from invoice `PaymentStatus`).
+enum AiPaymentStatus {
+  UNPAID
+  CASH_PAID
+  MANUAL_PAID
+  DUE
+  REFUNDED
+}
+
+/// Mobile multipart upload `purpose` (universal upload pipeline; COMMAND 03).
+enum MobileUploadPurpose {
+  AI_TECHNICIAN_NID_FRONT
+  AI_TECHNICIAN_NID_BACK
+  AI_TECHNICIAN_PROFILE_PHOTO
+  AI_TECHNICIAN_TRAINING_CERTIFICATE
+  AI_TECHNICIAN_AI_CERTIFICATE
+  AI_TECHNICIAN_OTHER
+  /// Customer account — avatar shown in app (GET /api/mobile/uploads/[id] is public for this purpose).
+  CUSTOMER_PROFILE_PHOTO
+  /// Customer account — cover / background (GET … public for this purpose).
+  CUSTOMER_COVER_IMAGE
+  /// Admin panel — semen provider logo (owner = admin user).
+  ADMIN_SEMEN_PROVIDER_LOGO
+  /// Admin panel — semen service template cover image.
+  ADMIN_SEMEN_TEMPLATE_COVER
+  /// Admin panel — semen service template gallery image.
+  ADMIN_SEMEN_TEMPLATE_GALLERY
+  /// Technician profile banner / background (images only).
+  AI_TECHNICIAN_COVER_IMAGE
+  /// Admin panel — semen service template uploaded video (`SemenTemplateMediaKind.VIDEO_UPLOAD`).
+  ADMIN_SEMEN_TEMPLATE_VIDEO
+  /// AI technician — enterprise service instance listing cover image.
+  AI_SERVICE_INSTANCE_COVER
+  /// AI technician — enterprise service instance gallery image.
+  AI_SERVICE_INSTANCE_GALLERY
+  /// AI technician — enterprise service instance video upload.
+  AI_SERVICE_INSTANCE_VIDEO
+  /// AI technician — enterprise service instance supporting document (PDF).
+  AI_SERVICE_INSTANCE_DOCUMENT
+}
+
+/// Enterprise moderation lifecycle for template-backed worker service submissions.
+enum ServiceInstanceStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_CORRECTION
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ServiceInstanceMediaKind {
+  COVER
+  GALLERY
+  VIDEO_UPLOAD
+  VIDEO_URL
+  DOCUMENT
+}
+
+enum ServiceInstanceMediaModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ServiceInstanceReviewDecision {
+  APPROVE
+  REJECT
+  REQUEST_CORRECTION
+  COMMENT
+}
+
+enum ServiceInstanceReviewVisibility {
+  INTERNAL
+  WORKER_VISIBLE
+}
+
+enum ServiceInstancePublishAction {
+  PUBLISH
+  UNPUBLISH
+  ROLLBACK
+}
+
+enum ServiceInstanceAuditAction {
+  CREATE
+  EDIT
+  SUBMIT
+  REVIEW
+  APPROVE
+  REJECT
+  PUBLISH
+  ARCHIVE
+  ROLLBACK
+  STATUS_CHANGE
+}
+
+/// Phase 1 identity — authentication audit trail (additive).
+enum AuthAuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  OTP_REQUEST
+  OTP_VERIFY_SUCCESS
+  OTP_VERIFY_FAILURE
+  REFRESH_SUCCESS
+  REFRESH_FAILURE
+  PERMISSION_DENIED
+  SESSION_REVOKED
+  DEVICE_REGISTERED
+  DEVICE_REVOKED
+}
+
+/// P1-06 — session channel (panel + mobile).
+enum AuthChannel {
+  MOBILE
+  ADMIN_PANEL
+  DOCTOR_PANEL
+  TECHNICIAN_PANEL
+}
+
+/// P1-06 — server-side session lifecycle.
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+/// Semen product classification for templates (admin-controlled).
+enum SemenProductKind {
+  NORMAL
+  SEXED
+  PREMIUM
+  IMPORTED
+  LOCAL
+  OTHER
+}
+
+/// Partner / verification tier for semen companies (future official partner flags).
+enum SemenProviderVerificationStatus {
+  UNVERIFIED
+  PARTNER
+  OFFICIAL
+}
+
+/// Editorial workflow for `SemenServiceTemplate`.
+enum SemenTemplateApprovalStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum SemenTemplateMediaKind {
+  COVER
+  GALLERY
+  VIDEO_UPLOAD
+  VIDEO_URL
+}
+
+enum UploadedFileStatus {
+  ACTIVE
+  DELETED
+}
+
+/// Administrative level for the unified `Area` tree (Bangladesh geography + optional service leaf).
+enum AreaType {
+  DIVISION
+  DISTRICT
+  UPAZILA
+  UNION
+  VILLAGE
+  SERVICE_AREA
+}

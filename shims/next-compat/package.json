@@ -1,0 +1,10 @@
+{
+  "name": "next",
+  "version": "0.0.0-compat",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./headers": "./headers.js",
+    "./server": "./server.js"
+  }
+}

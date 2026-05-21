@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"],
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "src/legacy/**",
+    "src/modules/auth/_archived_foundation/**",
+    "src/modules/auth/legacy-web/**",
+    "src/modules/auth/compat/**",
+    "src/modules/media/_archived_foundation/**"
+  ]
+}
