@@ -39,6 +39,12 @@ model User {
   refreshTokens                     RefreshToken[]
   userDevices                       UserDevice[]
   userSessions                      UserSession[]
+  aiAssistantSessions               AiAssistantSession[]
+  voiceSessions                     VoiceSession[]
+  offlineSyncSessions               OfflineSyncSession[]
+  offlineSyncItems                  OfflineSyncItem[]
+  offlineLeadDrafts                 OfflineLeadDraft[]
+  offlineConflictRecords            OfflineConflictRecord[]
 
   @@index([role])
   @@index([status])
@@ -156,6 +162,10 @@ model DoctorProfile {
   reviews                        Review[]
   assignedRequests               ServiceRequest[]
   treatmentCases                 TreatmentCase[]
+  treatmentWorkflows             TreatmentWorkflow[]
+  treatmentConsultations         TreatmentConsultation[]
+  treatmentFollowups             TreatmentFollowup[]
+  treatmentNotesAuthored         TreatmentNote[]        @relation("TreatmentNoteAuthor")
 
   @@index([providerStatus])
 }
@@ -974,6 +984,12 @@ model ServiceRequest {
   village                Village?             @relation(fields: [villageId], references: [id], onDelete: Restrict)
   crmLead                Lead?                @relation("LeadServiceRequest", fields: [leadId], references: [id])
   treatmentCases         TreatmentCase[]
+  treatmentWorkflow      TreatmentWorkflow?
+  treatmentConsultations TreatmentConsultation[]
+  treatmentFollowups     TreatmentFollowup[]
+  treatmentNotes         TreatmentNote[]
+  aiAssistantSessions    AiAssistantSession[]
+  voiceSessions          VoiceSession[]
 
   @@index([status])
   @@index([priority])
@@ -1009,12 +1025,358 @@ model TreatmentCase {
   animal           AnimalProfile        @relation(fields: [animalId], references: [id])
   doctor           DoctorProfile?       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   serviceRequest   ServiceRequest       @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  workflow         TreatmentWorkflow?
 
   @@index([serviceRequestId])
   @@index([doctorId])
   @@index([aiTechnicianId])
   @@index([status])
   @@map("TreatmentRecord")
+}
+
+/// P5 — treatment workflow state machine (one per service request).
+model TreatmentWorkflow {
+  id               String                  @id @default(cuid())
+  serviceRequestId String                  @unique
+  doctorId         String
+  status           TreatmentWorkflowStatus @default(ASSIGNED)
+  treatmentCaseId  String?                 @unique
+  closedAt         DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  doctor           DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  serviceRequest   ServiceRequest          @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  treatmentCase    TreatmentCase?          @relation(fields: [treatmentCaseId], references: [id], onDelete: SetNull)
+  consultations    TreatmentConsultation[]
+  followups        TreatmentFollowup[]
+  notes            TreatmentNote[]
+
+  @@index([doctorId])
+  @@index([status])
+}
+
+/// P5 — consultation record (observations, attachment refs).
+model TreatmentConsultation {
+  id               String            @id @default(cuid())
+  serviceRequestId String
+  workflowId       String
+  doctorId         String
+  observations     String?
+  diagnosisSummary String?
+  attachmentRefs   Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  doctor           DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  serviceRequest   ServiceRequest    @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  workflow         TreatmentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRequestId])
+  @@index([workflowId])
+  @@index([doctorId])
+}
+
+/// P5 — followup scheduling (no notification dispatch).
+model TreatmentFollowup {
+  id               String                  @id @default(cuid())
+  serviceRequestId String
+  workflowId       String
+  doctorId         String
+  scheduledAt      DateTime
+  reminderNote     String?
+  status           TreatmentFollowupStatus @default(PENDING)
+  completedAt      DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  doctor           DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  serviceRequest   ServiceRequest          @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  workflow         TreatmentWorkflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRequestId])
+  @@index([workflowId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+/// P5 — clinical notes (private / shared / audit).
+model TreatmentNote {
+  id               String            @id @default(cuid())
+  serviceRequestId String
+  workflowId       String
+  authorDoctorId   String
+  noteType         TreatmentNoteType
+  content          String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  author           DoctorProfile     @relation("TreatmentNoteAuthor", fields: [authorDoctorId], references: [id], onDelete: Restrict)
+  serviceRequest   ServiceRequest    @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  workflow         TreatmentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRequestId])
+  @@index([workflowId])
+  @@index([authorDoctorId])
+  @@index([noteType])
+}
+
+/// P6 — AI assistant session (farmer chat, no autonomous diagnosis).
+model AiAssistantSession {
+  id               String               @id @default(cuid())
+  userId           String
+  caseId           String?
+  locale           String               @default("bn")
+  status           AiAssistantStatus    @default(ACTIVE)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceRequest   ServiceRequest?      @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  messages         AiAssistantMessage[]
+  memories         AiAssistantMemory[]
+  triageRecords    AiTriageRecord[]
+  escalations      AiEscalationRecord[]
+  auditLogs        AiSafetyAuditLog[]
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([status])
+}
+
+model AiAssistantMessage {
+  id         String             @id @default(cuid())
+  sessionId  String
+  role       AiMessageRole
+  content    String
+  locale     String?
+  inputJson  Json?
+  outputJson Json?
+  refused    Boolean            @default(false)
+  createdAt  DateTime           @default(now())
+  session    AiAssistantSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+/// P6 — explicit memory (no diagnosis / hidden decision storage).
+model AiAssistantMemory {
+  id        String             @id @default(cuid())
+  sessionId String?
+  userId    String
+  kind      AiMemoryKind
+  key       String
+  valueJson Json
+  expiresAt DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  session   AiAssistantSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, kind, key])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AiTriageRecord {
+  id                  String              @id @default(cuid())
+  sessionId           String?
+  userId              String
+  caseId              String?
+  riskBucket          AiRiskBucket
+  urgencyLevel        Int
+  recommendation      String
+  escalationRequired  Boolean             @default(false)
+  symptomsJson        Json?
+  mediaMetadataJson   Json?
+  createdAt           DateTime            @default(now())
+  session             AiAssistantSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([riskBucket])
+}
+
+model AiEscalationRecord {
+  id          String               @id @default(cuid())
+  sessionId   String?
+  userId      String
+  caseId      String?
+  reason      AiEscalationReason
+  status      AiEscalationStatus   @default(PENDING_REVIEW)
+  handoffNote String?
+  flaggedAt   DateTime             @default(now())
+  resolvedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  session     AiAssistantSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([status])
+}
+
+model AiSafetyAuditLog {
+  id         String              @id @default(cuid())
+  sessionId  String?
+  userId     String?
+  action     String
+  detailJson Json?
+  createdAt  DateTime            @default(now())
+  session    AiAssistantSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([action])
+}
+
+/// P7 — Bangla voice assistant session (transcript metadata; no raw audio by default).
+model VoiceSession {
+  id             String              @id @default(cuid())
+  userId         String
+  aiSessionId    String?
+  caseId         String?
+  locale         String              @default("bn")
+  bandwidthMode  VoiceBandwidthMode  @default(FULL)
+  status         VoiceSessionStatus  @default(ACTIVE)
+  interruptedAt  DateTime?
+  retryCount     Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceRequest ServiceRequest?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  transcripts    VoiceTranscript[]
+  navEvents      VoiceNavigationEvent[]
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([status])
+}
+
+model VoiceTranscript {
+  id              String        @id @default(cuid())
+  sessionId       String
+  normalizedText  String
+  rawHint         String?
+  confidence      Float
+  sttMode         VoiceSttMode
+  partial         Boolean       @default(false)
+  locale          String        @default("bn")
+  durationMs      Int?
+  audioSizeBytes  Int?
+  codec           String?
+  retainAudio     Boolean       @default(false)
+  retrySuggested  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  session         VoiceSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model VoiceNavigationEvent {
+  id           String       @id @default(cuid())
+  sessionId    String
+  utterance    String
+  aliasMatched String?
+  action       String
+  success      Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  session      VoiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([action])
+}
+
+/// P8 — Offline sync session (connectivity + queue counters).
+model OfflineSyncSession {
+  id                   String                  @id @default(cuid())
+  userId               String
+  deviceId             String?
+  connectivityMode     OfflineConnectivityMode @default(ONLINE)
+  manualOverride       Boolean                 @default(false)
+  lastSyncAt           DateTime?
+  lastClientSnapshotAt DateTime?
+  pendingCount         Int                     @default(0)
+  deadCount            Int                     @default(0)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items                OfflineSyncItem[]
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+}
+
+/// P8 — Idempotent offline sync queue item.
+model OfflineSyncItem {
+  id               String                  @id @default(cuid())
+  userId           String
+  sessionId        String?
+  idempotencyKey   String
+  entityType       OfflineSyncEntityType
+  operation        OfflineSyncOperation    @default(UPSERT)
+  payloadHash      String
+  payloadJson      Json
+  conflictStrategy OfflineConflictStrategy
+  status           OfflineSyncItemStatus   @default(PENDING)
+  attemptCount     Int                     @default(0)
+  maxAttempts      Int                     @default(5)
+  lastError        String?
+  lastAttemptAt    DateTime?
+  nextRetryAt      DateTime?
+  clientSequence   Int
+  batchId          String?
+  serverEntityId   String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session          OfflineSyncSession?     @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  leadDraft        OfflineLeadDraft?
+  conflicts        OfflineConflictRecord[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, status])
+  @@index([userId, clientSequence])
+  @@index([nextRetryAt])
+  @@index([sessionId])
+}
+
+/// P8 — Offline lead draft (no assignment until online sync).
+model OfflineLeadDraft {
+  id                String                 @id @default(cuid())
+  userId            String
+  syncItemId        String?                @unique
+  clientLeadId      String
+  phone             String
+  name              String?
+  concern           String?
+  animalType        String?
+  villageId         String?
+  mediaMetadataJson Json?
+  status            OfflineLeadQueueStatus @default(QUEUED)
+  serverLeadId      String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncItem          OfflineSyncItem?       @relation(fields: [syncItemId], references: [id], onDelete: SetNull)
+  serverLead        Lead?                  @relation(fields: [serverLeadId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, clientLeadId])
+  @@index([userId, status])
+}
+
+/// P8 — Conflict audit (no silent overwrite).
+model OfflineConflictRecord {
+  id               String                  @id @default(cuid())
+  userId           String
+  syncItemId       String
+  entityType       OfflineSyncEntityType
+  entityId         String?
+  resolution       OfflineConflictStrategy
+  serverVersion    String?
+  clientVersion    String?
+  mergePayloadJson Json?
+  resolvedAt       DateTime?
+  createdAt        DateTime                @default(now())
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncItem         OfflineSyncItem         @relation(fields: [syncItemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([syncItemId])
 }
 
 /// P3 — append-only audit trail for service requests.
@@ -1052,6 +1414,7 @@ model Lead {
   updatedAt        DateTime       @updatedAt
   activities       LeadActivity[]
   serviceRequest   ServiceRequest? @relation("LeadServiceRequest")
+  offlineDrafts    OfflineLeadDraft[]
 
   @@index([phone])
   @@index([status])
@@ -1562,6 +1925,126 @@ enum TreatmentCaseStatus {
   DRAFT
   FINALIZED
   CANCELLED
+}
+
+enum TreatmentWorkflowStatus {
+  ASSIGNED
+  CONSULTATION_STARTED
+  DIAGNOSED
+  PRESCRIBED
+  FOLLOWUP_PENDING
+  CLOSED
+}
+
+enum TreatmentFollowupStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum TreatmentNoteType {
+  PRIVATE
+  SHARED
+  AUDIT
+}
+
+enum AiAssistantStatus {
+  ACTIVE
+  CLOSED
+  ESCALATED
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum AiMemoryKind {
+  CONVERSATION
+  CASE_CONTEXT
+  PREFERENCE
+}
+
+enum AiRiskBucket {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AiEscalationReason {
+  HIGH_RISK
+  EMERGENCY_SYMPTOM
+  LOW_CONFIDENCE
+  DOCTOR_REQUEST
+  POLICY_REFUSAL
+}
+
+enum AiEscalationStatus {
+  PENDING_REVIEW
+  QUEUED
+  HANDED_OFF
+  DISMISSED
+}
+
+enum VoiceSessionStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+  INTERRUPTED
+}
+
+enum VoiceSttMode {
+  STREAMING
+  UPLOAD
+}
+
+enum VoiceBandwidthMode {
+  FULL
+  LOW
+  TRANSCRIPT_ONLY
+}
+
+enum OfflineConnectivityMode {
+  ONLINE
+  DEGRADED
+  OFFLINE
+}
+
+enum OfflineSyncEntityType {
+  AUTH_SNAPSHOT
+  AREA_DATA
+  CASE_DRAFT
+  VOICE_DRAFT
+  PROFILE
+  OFFLINE_LEAD
+}
+
+enum OfflineSyncOperation {
+  UPSERT
+  DELETE
+}
+
+enum OfflineConflictStrategy {
+  SERVER_WINS
+  LOCAL_WINS
+  MERGE_REQUIRED
+}
+
+enum OfflineSyncItemStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  FAILED
+  DEAD
+  CONFLICT
+}
+
+enum OfflineLeadQueueStatus {
+  QUEUED
+  UPLOADING
+  SYNCED
+  FAILED
 }
 
 enum PrescriptionStatus {

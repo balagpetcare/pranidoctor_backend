@@ -44,7 +44,7 @@ export function createHealthRouter(config: AppConfig): Router {
   });
 
   router.get('/health/redis', async (_req: Request, res: Response) => {
-    const body = granular(await checkRedisHealth());
+    const body = granular(await checkRedisHealth(config));
     res.status(statusCodeFor(body.check)).json(body);
   });
 
@@ -61,7 +61,7 @@ export function createHealthRouter(config: AppConfig): Router {
   router.post('/health', healthHandler);
 
   router.get('/ready', async (_req: Request, res: Response) => {
-    const readiness = await getReadinessStatus();
+    const readiness = await getReadinessStatus(config);
     const statusCode = readiness.ready ? 200 : 503;
     res.status(statusCode).json(readiness);
   });
@@ -72,7 +72,7 @@ export function createHealthRouter(config: AppConfig): Router {
   });
 
   router.get('/health/dependencies', async (_req: Request, res: Response) => {
-    const dependencies = await getDependencyStatus();
+    const dependencies = await getDependencyStatus(config);
     res.status(200).json({
       success: true,
       data: dependencies,

@@ -84,6 +84,14 @@ export async function checkRedisConnection(): Promise<{
   latency: number;
   error?: string;
 }> {
+  if (!isRedisInitialized()) {
+    return {
+      healthy: false,
+      latency: 0,
+      error: 'Redis client not initialized',
+    };
+  }
+
   const redis = getRedis();
   const start = Date.now();
 

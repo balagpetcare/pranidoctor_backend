@@ -1,7 +1,8 @@
+import { UserStatus } from '../../generated/prisma/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 
 import type { UserRepositoryInterface } from './user.repository.js';
-import type { CustomerUserRow, FindOrCreateCustomerResult } from './user.types.js';
+import type { CustomerUserRow, FindOrCreateCustomerResult, UserActivationResult } from './user.types.js';
 
 export interface UserServiceInterface extends ModuleService {
   findById(id: string): Promise<CustomerUserRow | null>;
@@ -11,6 +12,9 @@ export interface UserServiceInterface extends ModuleService {
     phone: string,
     displayNameHint?: string,
   ): Promise<FindOrCreateCustomerResult>;
+  activateCustomer(userId: string): Promise<UserActivationResult | null>;
+  suspendCustomer(userId: string): Promise<UserActivationResult | null>;
+  isCustomerActive(userId: string): Promise<boolean>;
 }
 
 export class UserService implements UserServiceInterface {
@@ -35,6 +39,18 @@ export class UserService implements UserServiceInterface {
     displayNameHint?: string,
   ): Promise<FindOrCreateCustomerResult> {
     return this.repository.findOrCreateCustomerByPhone(phone, displayNameHint);
+  }
+
+  activateCustomer(userId: string): Promise<UserActivationResult | null> {
+    return this.repository.setCustomerStatus(userId, UserStatus.ACTIVE);
+  }
+
+  suspendCustomer(userId: string): Promise<UserActivationResult | null> {
+    return this.repository.setCustomerStatus(userId, UserStatus.SUSPENDED);
+  }
+
+  isCustomerActive(userId: string): Promise<boolean> {
+    return this.repository.isCustomerActive(userId);
   }
 }
 

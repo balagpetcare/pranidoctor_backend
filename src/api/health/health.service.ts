@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../shared/config/config.schema.js';
+import { isRedisEnabled } from '../../shared/config/infra.flags.js';
 import { checkDatabaseConnection } from '../../shared/database/prisma.js';
 import { logWarn } from '../../shared/logger/logger.js';
 import { checkRedisConnection } from '../../infra/redis/redis.client.js';
@@ -44,8 +45,8 @@ export async function checkDatabaseHealth(): Promise<HealthCheckResult> {
   return checkDatabase();
 }
 
-export async function checkRedisHealth(): Promise<HealthCheckResult> {
-  return checkRedis();
+export async function checkRedisHealth(config?: AppConfig): Promise<HealthCheckResult> {
+  return checkRedis(config);
 }
 
 export async function checkStorageHealth(config: AppConfig): Promise<HealthCheckResult> {
@@ -98,13 +99,29 @@ export function getModulesHealth(): ModulesHealthResponse {
   };
 }
 
-async function checkRedis(): Promise<HealthCheckResult> {
+async function checkRedis(config?: AppConfig): Promise<HealthCheckResult> {
   const start = Date.now();
-  try {
-    const result = await checkRedisConnection();
+
+  if (config && !isRedisEnabled(config)) {
     return {
       name: 'redis',
-      status: result.healthy ? 'healthy' : 'unhealthy',
+      status: 'degraded',
+      latency: 0,
+      message: 'Redis disabled (REDIS_ENABLED=false)',
+    };
+  }
+
+  try {
+    const result = await checkRedisConnection();
+    const status = result.healthy
+      ? 'healthy'
+      : result.error?.includes('not initialized')
+        ? 'degraded'
+        : 'unhealthy';
+
+    return {
+      name: 'redis',
+      status,
       latency: result.latency,
       ...(result.error && { message: result.error }),
     };
@@ -244,18 +261,22 @@ export async function getHealthStatus(config: AppConfig): Promise<HealthResponse
   };
 }
 
-export async function getReadinessStatus(): Promise<ReadinessResponse> {
+export async function getReadinessStatus(config: AppConfig): Promise<ReadinessResponse> {
   const checks: HealthCheckResult[] = [];
 
   const [dbResult, redisResult] = await Promise.all([
     checkDatabase(),
-    checkRedis(),
+    checkRedis(config),
   ]);
 
   checks.push(dbResult);
   checks.push(redisResult);
 
-  const ready = checks.every((c) => c.status === 'healthy');
+  const requiredChecks = isRedisEnabled(config)
+    ? checks
+    : checks.filter((c) => c.name !== 'redis');
+
+  const ready = requiredChecks.every((c) => c.status === 'healthy');
 
   if (!ready) {
     logWarn('Readiness check failed', {
@@ -281,10 +302,10 @@ export function getLivenessStatus(): { alive: boolean; timestamp: string } {
   };
 }
 
-export async function getDependencyStatus(): Promise<DependencyStatus[]> {
+export async function getDependencyStatus(config: AppConfig): Promise<DependencyStatus[]> {
   const [dbResult, redisResult, queueResult] = await Promise.all([
     checkDatabase(),
-    checkRedis(),
+    checkRedis(config),
     checkQueues(),
   ]);
 

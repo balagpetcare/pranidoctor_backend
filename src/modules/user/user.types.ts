@@ -18,3 +18,9 @@ export type FindOrCreateCustomerResult = {
   userId: string;
   isNew: boolean;
 };
+
+export type UserActivationResult = {
+  userId: string;
+  status: PrismaUserStatus;
+  changed: boolean;
+};

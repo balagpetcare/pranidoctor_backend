@@ -15,6 +15,7 @@ import {
 } from '../src/generated/prisma/index.js';
 import { disconnectPrisma, prisma } from '../src/lib/prisma.js';
 import { seedBdReferenceLocations } from "./seed-data/bd-locations";
+import { applyAreaEngineSeed } from "../scripts/area-seed-lib.js";
 import {
   upsertDistrictByTrimmedCode,
   upsertUnionByTrimmedCode,
@@ -564,7 +565,7 @@ async function main(): Promise<void> {
     code: "3026334701",
   });
 
-  await seedBdReferenceLocations(prisma);
+  await applyAreaEngineSeed(prisma);
   await seedSemenReferenceMasters();
 
   await prisma.setting.upsert({

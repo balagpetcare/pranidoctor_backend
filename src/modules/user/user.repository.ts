@@ -5,13 +5,15 @@ import { UserRole, UserStatus } from '../../generated/prisma/index.js';
 import { getPrisma } from '../../shared/database/prisma.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 
-import type { CustomerUserRow, FindOrCreateCustomerResult } from './user.types.js';
+import type { CustomerUserRow, FindOrCreateCustomerResult, UserActivationResult } from './user.types.js';
 
 export interface UserRepositoryInterface extends ModuleService {
   findById(id: string): Promise<CustomerUserRow | null>;
   findByPhone(phone: string): Promise<CustomerUserRow | null>;
   findByEmail(email: string): Promise<CustomerUserRow | null>;
   findOrCreateCustomerByPhone(phone: string, displayNameHint?: string): Promise<FindOrCreateCustomerResult>;
+  setCustomerStatus(userId: string, status: UserStatus): Promise<UserActivationResult | null>;
+  isCustomerActive(userId: string): Promise<boolean>;
 }
 
 export class UserRepository implements UserRepositoryInterface {
@@ -81,5 +83,34 @@ export class UserRepository implements UserRepositoryInterface {
     });
 
     return { userId: created.id, isNew: true };
+  }
+
+  async setCustomerStatus(
+    userId: string,
+    status: UserStatus,
+  ): Promise<UserActivationResult | null> {
+    const row = await getPrisma().user.findUnique({ where: { id: userId } });
+    if (!row || row.role !== UserRole.CUSTOMER) {
+      return null;
+    }
+
+    if (row.status === status) {
+      return { userId, status, changed: false };
+    }
+
+    const updated = await getPrisma().user.update({
+      where: { id: userId },
+      data: { status },
+    });
+
+    return { userId, status: updated.status, changed: true };
+  }
+
+  async isCustomerActive(userId: string): Promise<boolean> {
+    const row = await getPrisma().user.findUnique({
+      where: { id: userId },
+      select: { role: true, status: true },
+    });
+    return row?.role === UserRole.CUSTOMER && row.status === UserStatus.ACTIVE;
   }
 }
