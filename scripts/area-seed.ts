@@ -1,17 +1,12 @@
-import { loadEnvironment } from '../src/shared/config/load-env.js';
-
-loadEnvironment();
-
-import { createPrismaClient, disconnectPrisma, getPrisma } from '../src/shared/database/prisma.js';
-import { loadConfig } from '../src/shared/config/index.js';
 import { getAreaCacheService } from '../src/modules/area-engine/cache/area-cache.service.js';
 import { applyAreaEngineSeed, getAreaSeedVersion } from './area-seed-lib.js';
+import { importLocationSheet } from './location/lib/import-location-sheet.js';
+import { bootstrapScriptRuntime, shutdownScriptRuntime } from './seed-runtime.js';
 
 async function main(): Promise<void> {
-  const config = loadConfig();
-  createPrismaClient({ config });
-  const prisma = getPrisma();
+  const { logger, prisma } = bootstrapScriptRuntime();
 
+  await importLocationSheet(prisma);
   const result = await applyAreaEngineSeed(prisma);
   const recorded = await getAreaSeedVersion(prisma);
 
@@ -21,13 +16,22 @@ async function main(): Promise<void> {
     // optional
   }
 
-  console.log('[area:seed] applied', result);
-  console.log('[area:seed] recorded', recorded);
+  logger.info({ msg: 'Area seed applied', result });
+  logger.info({ msg: 'Area seed version recorded', recorded });
 
-  await disconnectPrisma();
+  await shutdownScriptRuntime();
 }
 
-main().catch((error) => {
-  console.error('[area:seed] failed', error);
+main().catch(async (error) => {
+  try {
+    const { getLogger } = await import('../src/shared/logger/logger.js');
+    getLogger().error({
+      msg: 'Area seed failed',
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } catch {
+    console.error('[area:seed] failed', error);
+  }
+  await shutdownScriptRuntime().catch(() => undefined);
   process.exit(1);
 });

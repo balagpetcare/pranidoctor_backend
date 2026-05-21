@@ -6,7 +6,6 @@ import bcrypt from 'bcryptjs';
 
 import {
   AnimalType,
-  AreaType,
   ContentApprovalStatus,
   ProviderStatus,
   SemenProviderVerificationStatus,
@@ -14,14 +13,11 @@ import {
   UserStatus,
 } from '../src/generated/prisma/index.js';
 import { disconnectPrisma, prisma } from '../src/lib/prisma.js';
-import { seedBdReferenceLocations } from "./seed-data/bd-locations";
 import { applyAreaEngineSeed } from "../scripts/area-seed-lib.js";
 import {
-  upsertDistrictByTrimmedCode,
-  upsertUnionByTrimmedCode,
-  upsertUpazilaByTrimmedCode,
-  upsertVillageByTrimmedCode,
-} from "./seed-data/location-trim-upserts";
+  runFullLocationSeed,
+  runImportLocationOnly,
+} from "./seed-location.js";
 
 const DEFAULT_DEV_DOCTOR_EMAIL = "doctor@pranidoctor.local";
 const DEFAULT_DEV_DOCTOR_PASSWORD = "ChangeMe!Doctor123";
@@ -266,8 +262,23 @@ async function seedKnowledgeHubCategories(): Promise<void> {
   }
 }
 
+async function seedLocationFromEnv(): Promise<void> {
+  const mode = (process.env.PRANI_SEED_LOCATION ?? "").trim().toLowerCase();
+  if (mode === "full") {
+    await runFullLocationSeed();
+    await applyAreaEngineSeed(prisma);
+    return;
+  }
+  if (mode === "import" || mode === "true" || mode === "1") {
+    await runImportLocationOnly();
+    await applyAreaEngineSeed(prisma);
+  }
+}
+
 async function main(): Promise<void> {
   const panelAdmin = await seedPanelAdminFromEnv();
+
+  await seedLocationFromEnv();
 
   await seedKnowledgeHubCategories();
 
@@ -329,243 +340,6 @@ async function main(): Promise<void> {
     });
   }
 
-  await prisma.area.upsert({
-    where: { slug: "bangladesh" },
-    create: {
-      name: "Bangladesh (legacy root)",
-      slug: "bangladesh",
-      type: AreaType.DIVISION,
-      isActive: false,
-      sortOrder: -100,
-      metadataJson: { note: "Legacy placeholder — prefer Dhaka Division tree" },
-    },
-    update: {
-      name: "Bangladesh (legacy root)",
-      type: AreaType.DIVISION,
-      isActive: false,
-      sortOrder: -100,
-      parentId: null,
-    },
-  });
-
-  const areaDhakaDivision = await prisma.area.upsert({
-    where: { slug: "dhaka-division" },
-    create: {
-      name: "Dhaka Division",
-      nameBn: "ঢাকা বিভাগ",
-      slug: "dhaka-division",
-      code: "30",
-      type: AreaType.DIVISION,
-      parentId: null,
-      sortOrder: 0,
-      isActive: true,
-      metadataJson: { bbsDivisionCode: "30" },
-    },
-    update: {
-      name: "Dhaka Division",
-      nameBn: "ঢাকা বিভাগ",
-      code: "30",
-      type: AreaType.DIVISION,
-      parentId: null,
-      sortOrder: 0,
-      isActive: true,
-    },
-  });
-
-  const areaDhakaDistrict = await prisma.area.upsert({
-    where: { slug: "dhaka-district-area" },
-    create: {
-      name: "Dhaka District",
-      nameBn: "ঢাকা জেলা",
-      slug: "dhaka-district-area",
-      code: "3026",
-      type: AreaType.DISTRICT,
-      parentId: areaDhakaDivision.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-    update: {
-      name: "Dhaka District",
-      nameBn: "ঢাকা জেলা",
-      code: "3026",
-      type: AreaType.DISTRICT,
-      parentId: areaDhakaDivision.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const areaGazipurDistrict = await prisma.area.upsert({
-    where: { slug: "gazipur-district-area" },
-    create: {
-      name: "Gazipur District",
-      nameBn: "গাজীপুর জেলা",
-      slug: "gazipur-district-area",
-      code: "3033",
-      type: AreaType.DISTRICT,
-      parentId: areaDhakaDivision.id,
-      sortOrder: 2,
-      isActive: true,
-    },
-    update: {
-      name: "Gazipur District",
-      nameBn: "গাজীপুর জেলা",
-      code: "3033",
-      type: AreaType.DISTRICT,
-      parentId: areaDhakaDivision.id,
-      sortOrder: 2,
-      isActive: true,
-    },
-  });
-
-  const areaSavarUpazila = await prisma.area.upsert({
-    where: { slug: "savar-upazila-area" },
-    create: {
-      name: "Savar Upazila",
-      nameBn: "সাভার উপজেলা",
-      slug: "savar-upazila-area",
-      code: "302633",
-      type: AreaType.UPAZILA,
-      parentId: areaDhakaDistrict.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-    update: {
-      name: "Savar Upazila",
-      nameBn: "সাভার উপজেলা",
-      code: "302633",
-      type: AreaType.UPAZILA,
-      parentId: areaDhakaDistrict.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const areaGazipurSadarUpazila = await prisma.area.upsert({
-    where: { slug: "gazipur-sadar-upazila-area" },
-    create: {
-      name: "Gazipur Sadar Upazila",
-      nameBn: "গাজীপুর সদর উপজেলা",
-      slug: "gazipur-sadar-upazila-area",
-      code: "303318",
-      type: AreaType.UPAZILA,
-      parentId: areaGazipurDistrict.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-    update: {
-      name: "Gazipur Sadar Upazila",
-      nameBn: "গাজীপুর সদর উপজেলা",
-      code: "303318",
-      type: AreaType.UPAZILA,
-      parentId: areaGazipurDistrict.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const areaAshuliaUnion = await prisma.area.upsert({
-    where: { slug: "ashulia-union-area" },
-    create: {
-      name: "Ashulia Union",
-      nameBn: "আশুলিয়া ইউনিয়ন",
-      slug: "ashulia-union-area",
-      type: AreaType.UNION,
-      parentId: areaSavarUpazila.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-    update: {
-      name: "Ashulia Union",
-      nameBn: "আশুলিয়া ইউনিয়ন",
-      type: AreaType.UNION,
-      parentId: areaSavarUpazila.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  await prisma.area.upsert({
-    where: { slug: "konabari-union-area" },
-    create: {
-      name: "Konabari Union",
-      nameBn: "কোনাবাড়ী ইউনিয়ন",
-      slug: "konabari-union-area",
-      type: AreaType.UNION,
-      parentId: areaGazipurSadarUpazila.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-    update: {
-      name: "Konabari Union",
-      nameBn: "কোনাবাড়ী ইউনিয়ন",
-      type: AreaType.UNION,
-      parentId: areaGazipurSadarUpazila.id,
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const division = await prisma.division.upsert({
-    where: { slug: "dhaka-division-geo" },
-    create: {
-      name: "Dhaka Division",
-      slug: "dhaka-division-geo",
-      code: "30",
-    },
-    update: { name: "Dhaka Division", code: "30" },
-  });
-
-  const districtDhaka = await upsertDistrictByTrimmedCode(prisma, {
-    divisionId: division.id,
-    slug: "dhaka-district",
-    name: "Dhaka District",
-    code: "3026",
-  });
-
-  const districtGazipur = await upsertDistrictByTrimmedCode(prisma, {
-    divisionId: division.id,
-    slug: "gazipur-district",
-    name: "Gazipur District",
-    code: "3033",
-  });
-
-  const upazilaSavar = await upsertUpazilaByTrimmedCode(prisma, {
-    districtId: districtDhaka.id,
-    slug: "savar-upazila",
-    name: "Savar Upazila",
-    code: "302633",
-  });
-
-  const upazilaGazipurSadar = await upsertUpazilaByTrimmedCode(prisma, {
-    districtId: districtGazipur.id,
-    slug: "gazipur-sadar-upazila",
-    name: "Gazipur Sadar Upazila",
-    code: "303318",
-  });
-
-  const unionAshulia = await upsertUnionByTrimmedCode(prisma, {
-    upazilaId: upazilaSavar.id,
-    slug: "ashulia-union",
-    name: "Ashulia Union",
-    code: "30263347",
-  });
-
-  await upsertUnionByTrimmedCode(prisma, {
-    upazilaId: upazilaGazipurSadar.id,
-    slug: "konabari-union",
-    name: "Konabari Union",
-    code: "30331863",
-  });
-
-  const village = await upsertVillageByTrimmedCode(prisma, {
-    unionId: unionAshulia.id,
-    slug: "sample-service-village-001",
-    name: "Ashulia (demo service village)",
-    code: "3026334701",
-  });
-
-  await applyAreaEngineSeed(prisma);
   await seedSemenReferenceMasters();
 
   await prisma.setting.upsert({
@@ -638,35 +412,31 @@ async function main(): Promise<void> {
       },
     });
 
-    await prisma.doctorServiceArea.upsert({
-      where: {
-        doctorId_villageId: {
-          doctorId: doctorProfile.id,
-          villageId: village.id,
-        },
-      },
-      create: {
-        doctorId: doctorProfile.id,
-        villageId: village.id,
-        priority: 1,
-      },
-      update: { priority: 1 },
-    });
+    const demoVillageSlug = process.env.PRANI_SEED_DEMO_VILLAGE_SLUG?.trim();
+    const demoVillage = demoVillageSlug
+      ? await prisma.village.findFirst({ where: { slug: demoVillageSlug } })
+      : await prisma.village.findFirst({ where: { isActive: true } });
 
-    await prisma.doctorProfileArea.upsert({
-      where: {
-        doctorId_areaId: {
-          doctorId: doctorProfile.id,
-          areaId: areaAshuliaUnion.id,
+    if (demoVillage) {
+      await prisma.doctorServiceArea.upsert({
+        where: {
+          doctorId_villageId: {
+            doctorId: doctorProfile.id,
+            villageId: demoVillage.id,
+          },
         },
-      },
-      create: {
-        doctorId: doctorProfile.id,
-        areaId: areaAshuliaUnion.id,
-        priority: 1,
-      },
-      update: { priority: 1 },
-    });
+        create: {
+          doctorId: doctorProfile.id,
+          villageId: demoVillage.id,
+          priority: 1,
+        },
+        update: { priority: 1 },
+      });
+    } else {
+      console.warn(
+        "[seed] Demo doctor service area skipped: no village in DB. Run PRANI_SEED_LOCATION=import or seed:full-location first.",
+      );
+    }
 
     const doctorVisitCategory = await prisma.serviceCategory.findUnique({
       where: { slug: "doctor-visit" },
@@ -734,35 +504,22 @@ async function main(): Promise<void> {
       },
     });
 
-    await prisma.aiTechnicianServiceArea.upsert({
-      where: {
-        aiTechnicianId_villageId: {
-          aiTechnicianId: aiProfile.id,
-          villageId: village.id,
+    if (demoVillage) {
+      await prisma.aiTechnicianServiceArea.upsert({
+        where: {
+          aiTechnicianId_villageId: {
+            aiTechnicianId: aiProfile.id,
+            villageId: demoVillage.id,
+          },
         },
-      },
-      create: {
-        aiTechnicianId: aiProfile.id,
-        villageId: village.id,
-        priority: 1,
-      },
-      update: { priority: 1 },
-    });
-
-    await prisma.aiTechnicianProfileArea.upsert({
-      where: {
-        aiTechnicianId_areaId: {
+        create: {
           aiTechnicianId: aiProfile.id,
-          areaId: areaAshuliaUnion.id,
+          villageId: demoVillage.id,
+          priority: 1,
         },
-      },
-      create: {
-        aiTechnicianId: aiProfile.id,
-        areaId: areaAshuliaUnion.id,
-        priority: 1,
-      },
-      update: { priority: 1 },
-    });
+        update: { priority: 1 },
+      });
+    }
 
     const aiServiceCategory = await prisma.serviceCategory.findUnique({
       where: { slug: "ai-service" },

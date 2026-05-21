@@ -17,6 +17,7 @@ model User {
   createdAt                         DateTime                    @default(now())
   updatedAt                         DateTime                    @updatedAt
   adminProfile                      AdminProfile?
+  aiAssistantSessions               AiAssistantSession[]
   customerAiServiceRecords          AiServiceRecord[]           @relation("AiServiceRecordCustomer")
   customerAiServiceRequests         AiServiceRequest[]          @relation("AiServiceRequestCustomer")
   aiTechnicianModuleComplaintsFiled AiTechnicianComplaint[]     @relation("AiTechnicianComplaintAuthor")
@@ -29,6 +30,10 @@ model User {
   customerProfile                   CustomerProfile?
   doctorProfile                     DoctorProfile?
   notifications                     Notification[]
+  offlineConflictRecords            OfflineConflictRecord[]
+  offlineLeadDrafts                 OfflineLeadDraft[]
+  offlineSyncItems                  OfflineSyncItem[]
+  offlineSyncSessions               OfflineSyncSession[]
   semenTemplatesApproved            SemenServiceTemplate[]      @relation("SemenTemplateApprovedBy")
   serviceInstancesLastReviewed      ServiceInstance[]           @relation("ServiceInstanceLastReviewedBy")
   serviceInstanceAuditEvents        ServiceInstanceAuditEvent[]
@@ -36,15 +41,10 @@ model User {
   serviceInstanceReviews            ServiceInstanceReview[]
   serviceInstanceStatusLogs         ServiceInstanceStatusLog[]
   uploadedFiles                     UploadedFile[]
+  voiceSessions                     VoiceSession[]
   refreshTokens                     RefreshToken[]
   userDevices                       UserDevice[]
   userSessions                      UserSession[]
-  aiAssistantSessions               AiAssistantSession[]
-  voiceSessions                     VoiceSession[]
-  offlineSyncSessions               OfflineSyncSession[]
-  offlineSyncItems                  OfflineSyncItem[]
-  offlineLeadDrafts                 OfflineLeadDraft[]
-  offlineConflictRecords            OfflineConflictRecord[]
 
   @@index([role])
   @@index([status])
@@ -161,11 +161,11 @@ model DoctorProfile {
   prescriptions                  Prescription[]
   reviews                        Review[]
   assignedRequests               ServiceRequest[]
-  treatmentCases                 TreatmentCase[]
-  treatmentWorkflows             TreatmentWorkflow[]
   treatmentConsultations         TreatmentConsultation[]
   treatmentFollowups             TreatmentFollowup[]
-  treatmentNotesAuthored         TreatmentNote[]        @relation("TreatmentNoteAuthor")
+  treatmentNotesAuthored         TreatmentNote[]                @relation("TreatmentNoteAuthor")
+  treatmentCases                 TreatmentCase[]
+  treatmentWorkflows             TreatmentWorkflow[]
 
   @@index([providerStatus])
 }
@@ -249,14 +249,14 @@ model CustomerProfile {
   displayName        String
   locale             String?          @default("bn-BD")
   addressJson        Json?
-  /// P2 — denormalized village FK for service matching (optional).
-  primaryVillageId   String?
-  profileCompletedAt DateTime?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
   /// HTTPS URL to display asset (same-origin `/api/mobile/uploads/:id` redirect or CDN).
   profilePhotoUrl    String?
   coverPhotoUrl      String?
+  /// P2 — denormalized village FK for service matching (optional).
+  primaryVillageId   String?
+  profileCompletedAt DateTime?
   animals            AnimalProfile[]
   billingRecords     BillingRecord[]
   complaints         Complaint[]
@@ -931,64 +931,64 @@ model AnimalProfile {
 }
 
 model ServiceRequest {
-  id                     String               @id @default(cuid())
+  id                     String                        @id @default(cuid())
   customerId             String
   animalId               String
   /// Legacy link — prefer `villageId` for new records.
   areaId                 String?
   serviceCategoryId      String
   assignedDoctorId       String?
-  status                 ServiceRequestStatus @default(PENDING)
+  status                 ServiceRequestStatus          @default(PENDING)
   urgency                String?
   /// Stored as `symptoms` in PostgreSQL.
-  problemOrSymptom       String?              @map("symptoms")
+  problemOrSymptom       String?                       @map("symptoms")
   /// Stored as `preferredWindow` in PostgreSQL.
-  preferredTime          String?              @map("preferredWindow")
+  preferredTime          String?                       @map("preferredWindow")
   /// Stored as `locationNotes` in PostgreSQL.
-  locationText           String?              @map("locationNotes")
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  locationText           String?                       @map("locationNotes")
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
   completedAt            DateTime?
   /// Stored as `assignedAiTechnicianId` in PostgreSQL (historic column name).
-  assignedTechnicianId   String?              @map("assignedAiTechnicianId")
+  assignedTechnicianId   String?                       @map("assignedAiTechnicianId")
   assignedAt             DateTime?
   cancelledAt            DateTime?
   emergencyNotes         String?
-  isEmergency            Boolean              @default(false)
+  isEmergency            Boolean                       @default(false)
   /// Stored as `requestType` in PostgreSQL (historic column name).
-  serviceType            ServiceRequestType   @default(DOCTOR_HOME_VISIT) @map("requestType")
+  serviceType            ServiceRequestType            @default(DOCTOR_HOME_VISIT) @map("requestType")
   scheduledEnd           DateTime?
   scheduledStart         DateTime?
   startedAt              DateTime?
-  submittedAt            DateTime             @default(now())
+  submittedAt            DateTime                      @default(now())
   villageId              String?
   description            String?
   cancelReason           String?
-  /// P3 — formal priority (maps from isEmergency / urgency).
-  priority               RequestPriority        @default(NORMAL)
   adminNote              String?
-  leadId                 String?                @unique
+  leadId                 String?                       @unique
+  /// P3 — formal priority (maps from isEmergency / urgency).
+  priority               RequestPriority               @default(NORMAL)
+  aiAssistantSessions    AiAssistantSession[]
   linkedAiServiceRequest AiServiceRequest?
-  timelineEvents         ServiceRequestTimelineEvent[]
   billingRecords         BillingRecord[]
   complaints             Complaint[]
   paymentRecords         PaymentRecord[]
   prescriptions          Prescription[]
   reviews                Review[]
-  animal                 AnimalProfile        @relation(fields: [animalId], references: [id])
-  area                   Area?                @relation(fields: [areaId], references: [id], onDelete: Restrict)
-  assignedTechnician     AiTechnicianProfile? @relation(fields: [assignedTechnicianId], references: [id])
-  assignedDoctor         DoctorProfile?       @relation(fields: [assignedDoctorId], references: [id])
-  customer               CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  serviceCategory        ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
-  village                Village?             @relation(fields: [villageId], references: [id], onDelete: Restrict)
-  crmLead                Lead?                @relation("LeadServiceRequest", fields: [leadId], references: [id])
-  treatmentCases         TreatmentCase[]
-  treatmentWorkflow      TreatmentWorkflow?
+  animal                 AnimalProfile                 @relation(fields: [animalId], references: [id])
+  area                   Area?                         @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  assignedTechnician     AiTechnicianProfile?          @relation(fields: [assignedTechnicianId], references: [id])
+  assignedDoctor         DoctorProfile?                @relation(fields: [assignedDoctorId], references: [id])
+  customer               CustomerProfile               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  crmLead                Lead?                         @relation("LeadServiceRequest", fields: [leadId], references: [id])
+  serviceCategory        ServiceCategory               @relation(fields: [serviceCategoryId], references: [id])
+  village                Village?                      @relation(fields: [villageId], references: [id], onDelete: Restrict)
+  timelineEvents         ServiceRequestTimelineEvent[]
   treatmentConsultations TreatmentConsultation[]
   treatmentFollowups     TreatmentFollowup[]
   treatmentNotes         TreatmentNote[]
-  aiAssistantSessions    AiAssistantSession[]
+  treatmentCases         TreatmentCase[]
+  treatmentWorkflow      TreatmentWorkflow?
   voiceSessions          VoiceSession[]
 
   @@index([status])
@@ -1044,12 +1044,12 @@ model TreatmentWorkflow {
   closedAt         DateTime?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
-  doctor           DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  serviceRequest   ServiceRequest          @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
-  treatmentCase    TreatmentCase?          @relation(fields: [treatmentCaseId], references: [id], onDelete: SetNull)
   consultations    TreatmentConsultation[]
   followups        TreatmentFollowup[]
   notes            TreatmentNote[]
+  doctor           DoctorProfile           @relation(fields: [doctorId], references: [id])
+  serviceRequest   ServiceRequest          @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  treatmentCase    TreatmentCase?          @relation(fields: [treatmentCaseId], references: [id])
 
   @@index([doctorId])
   @@index([status])
@@ -1066,7 +1066,7 @@ model TreatmentConsultation {
   attachmentRefs   Json?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  doctor           DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  doctor           DoctorProfile     @relation(fields: [doctorId], references: [id])
   serviceRequest   ServiceRequest    @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
   workflow         TreatmentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
@@ -1087,7 +1087,7 @@ model TreatmentFollowup {
   completedAt      DateTime?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
-  doctor           DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  doctor           DoctorProfile           @relation(fields: [doctorId], references: [id])
   serviceRequest   ServiceRequest          @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
   workflow         TreatmentWorkflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
@@ -1107,7 +1107,7 @@ model TreatmentNote {
   content          String
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  author           DoctorProfile     @relation("TreatmentNoteAuthor", fields: [authorDoctorId], references: [id], onDelete: Restrict)
+  author           DoctorProfile     @relation("TreatmentNoteAuthor", fields: [authorDoctorId], references: [id])
   serviceRequest   ServiceRequest    @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
   workflow         TreatmentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
@@ -1119,20 +1119,20 @@ model TreatmentNote {
 
 /// P6 — AI assistant session (farmer chat, no autonomous diagnosis).
 model AiAssistantSession {
-  id               String               @id @default(cuid())
-  userId           String
-  caseId           String?
-  locale           String               @default("bn")
-  status           AiAssistantStatus    @default(ACTIVE)
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceRequest   ServiceRequest?      @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  messages         AiAssistantMessage[]
-  memories         AiAssistantMemory[]
-  triageRecords    AiTriageRecord[]
-  escalations      AiEscalationRecord[]
-  auditLogs        AiSafetyAuditLog[]
+  id             String               @id @default(cuid())
+  userId         String
+  caseId         String?
+  locale         String               @default("bn")
+  status         AiAssistantStatus    @default(ACTIVE)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  memories       AiAssistantMemory[]
+  messages       AiAssistantMessage[]
+  serviceRequest ServiceRequest?      @relation(fields: [caseId], references: [id])
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  escalations    AiEscalationRecord[]
+  auditLogs      AiSafetyAuditLog[]
+  triageRecords  AiTriageRecord[]
 
   @@index([userId])
   @@index([caseId])
@@ -1156,16 +1156,16 @@ model AiAssistantMessage {
 
 /// P6 — explicit memory (no diagnosis / hidden decision storage).
 model AiAssistantMemory {
-  id        String             @id @default(cuid())
+  id        String              @id @default(cuid())
   sessionId String?
   userId    String
   kind      AiMemoryKind
   key       String
   valueJson Json
   expiresAt DateTime?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  session   AiAssistantSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  session   AiAssistantSession? @relation(fields: [sessionId], references: [id])
 
   @@unique([userId, kind, key])
   @@index([userId])
@@ -1173,18 +1173,18 @@ model AiAssistantMemory {
 }
 
 model AiTriageRecord {
-  id                  String              @id @default(cuid())
-  sessionId           String?
-  userId              String
-  caseId              String?
-  riskBucket          AiRiskBucket
-  urgencyLevel        Int
-  recommendation      String
-  escalationRequired  Boolean             @default(false)
-  symptomsJson        Json?
-  mediaMetadataJson   Json?
-  createdAt           DateTime            @default(now())
-  session             AiAssistantSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  id                 String              @id @default(cuid())
+  sessionId          String?
+  userId             String
+  caseId             String?
+  riskBucket         AiRiskBucket
+  urgencyLevel       Int
+  recommendation     String
+  escalationRequired Boolean             @default(false)
+  symptomsJson       Json?
+  mediaMetadataJson  Json?
+  createdAt          DateTime            @default(now())
+  session            AiAssistantSession? @relation(fields: [sessionId], references: [id])
 
   @@index([userId])
   @@index([caseId])
@@ -1192,18 +1192,18 @@ model AiTriageRecord {
 }
 
 model AiEscalationRecord {
-  id          String               @id @default(cuid())
+  id          String              @id @default(cuid())
   sessionId   String?
   userId      String
   caseId      String?
   reason      AiEscalationReason
-  status      AiEscalationStatus   @default(PENDING_REVIEW)
+  status      AiEscalationStatus  @default(PENDING_REVIEW)
   handoffNote String?
-  flaggedAt   DateTime             @default(now())
+  flaggedAt   DateTime            @default(now())
   resolvedAt  DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  session     AiAssistantSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  session     AiAssistantSession? @relation(fields: [sessionId], references: [id])
 
   @@index([userId])
   @@index([caseId])
@@ -1217,7 +1217,7 @@ model AiSafetyAuditLog {
   action     String
   detailJson Json?
   createdAt  DateTime            @default(now())
-  session    AiAssistantSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  session    AiAssistantSession? @relation(fields: [sessionId], references: [id])
 
   @@index([sessionId])
   @@index([userId])
@@ -1226,21 +1226,21 @@ model AiSafetyAuditLog {
 
 /// P7 — Bangla voice assistant session (transcript metadata; no raw audio by default).
 model VoiceSession {
-  id             String              @id @default(cuid())
+  id             String                 @id @default(cuid())
   userId         String
   aiSessionId    String?
   caseId         String?
-  locale         String              @default("bn")
-  bandwidthMode  VoiceBandwidthMode  @default(FULL)
-  status         VoiceSessionStatus  @default(ACTIVE)
+  locale         String                 @default("bn")
+  bandwidthMode  VoiceBandwidthMode     @default(FULL)
+  status         VoiceSessionStatus     @default(ACTIVE)
   interruptedAt  DateTime?
-  retryCount     Int                 @default(0)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceRequest ServiceRequest?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  transcripts    VoiceTranscript[]
+  retryCount     Int                    @default(0)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   navEvents      VoiceNavigationEvent[]
+  serviceRequest ServiceRequest?        @relation(fields: [caseId], references: [id])
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcripts    VoiceTranscript[]
 
   @@index([userId])
   @@index([caseId])
@@ -1248,21 +1248,21 @@ model VoiceSession {
 }
 
 model VoiceTranscript {
-  id              String        @id @default(cuid())
-  sessionId       String
-  normalizedText  String
-  rawHint         String?
-  confidence      Float
-  sttMode         VoiceSttMode
-  partial         Boolean       @default(false)
-  locale          String        @default("bn")
-  durationMs      Int?
-  audioSizeBytes  Int?
-  codec           String?
-  retainAudio     Boolean       @default(false)
-  retrySuggested  Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  session         VoiceSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  sessionId      String
+  normalizedText String
+  rawHint        String?
+  confidence     Float
+  sttMode        VoiceSttMode
+  partial        Boolean      @default(false)
+  locale         String       @default("bn")
+  durationMs     Int?
+  audioSizeBytes Int?
+  codec          String?
+  retainAudio    Boolean      @default(false)
+  retrySuggested Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  session        VoiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
 }
@@ -1294,8 +1294,8 @@ model OfflineSyncSession {
   deadCount            Int                     @default(0)
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
-  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   items                OfflineSyncItem[]
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, deviceId])
   @@index([userId])
@@ -1323,10 +1323,10 @@ model OfflineSyncItem {
   serverEntityId   String?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
-  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session          OfflineSyncSession?     @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  leadDraft        OfflineLeadDraft?
   conflicts        OfflineConflictRecord[]
+  leadDraft        OfflineLeadDraft[]
+  session          OfflineSyncSession?     @relation(fields: [sessionId], references: [id])
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, idempotencyKey])
   @@index([userId, status])
@@ -1339,7 +1339,7 @@ model OfflineSyncItem {
 model OfflineLeadDraft {
   id                String                 @id @default(cuid())
   userId            String
-  syncItemId        String?                @unique
+  syncItemId        String?
   clientLeadId      String
   phone             String
   name              String?
@@ -1351,12 +1351,13 @@ model OfflineLeadDraft {
   serverLeadId      String?
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
+  serverLead        Lead?                  @relation(fields: [serverLeadId], references: [id])
+  syncItem          OfflineSyncItem?       @relation(fields: [syncItemId], references: [id])
   user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  syncItem          OfflineSyncItem?       @relation(fields: [syncItemId], references: [id], onDelete: SetNull)
-  serverLead        Lead?                  @relation(fields: [serverLeadId], references: [id], onDelete: SetNull)
 
   @@unique([userId, clientLeadId])
   @@index([userId, status])
+  @@index([syncItemId])
 }
 
 /// P8 — Conflict audit (no silent overwrite).
@@ -1372,8 +1373,8 @@ model OfflineConflictRecord {
   mergePayloadJson Json?
   resolvedAt       DateTime?
   createdAt        DateTime                @default(now())
-  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   syncItem         OfflineSyncItem         @relation(fields: [syncItemId], references: [id], onDelete: Cascade)
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([syncItemId])
@@ -1381,40 +1382,40 @@ model OfflineConflictRecord {
 
 /// P3 — append-only audit trail for service requests.
 model ServiceRequestTimelineEvent {
-  id               String                    @id @default(cuid())
+  id               String                  @id @default(cuid())
   serviceRequestId String
   eventType        ServiceRequestEventType
   actorUserId      String?
   actorRole        UserRole?
   note             String?
   metadataJson     Json?
-  createdAt        DateTime                  @default(now())
-  serviceRequest   ServiceRequest            @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  createdAt        DateTime                @default(now())
+  serviceRequest   ServiceRequest          @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
 
   @@index([serviceRequestId, createdAt])
 }
 
 /// P3 — CRM lead intake (foundation /api/leads).
 model Lead {
-  id               String         @id @default(cuid())
+  id               String             @id @default(cuid())
   phone            String
   name             String?
-  source           LeadSource     @default(OTHER)
-  status           LeadStatus     @default(NEW)
-  priority         LeadPriority   @default(MEDIUM)
+  source           LeadSource         @default(OTHER)
+  status           LeadStatus         @default(NEW)
+  priority         LeadPriority       @default(MEDIUM)
   assignedAdminId  String?
   animalType       String?
   concern          String?
   notes            String?
   villageId        String?
   convertedUserId  String?
-  serviceRequestId String?        @unique
+  serviceRequestId String?            @unique
   convertedAt      DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   activities       LeadActivity[]
-  serviceRequest   ServiceRequest? @relation("LeadServiceRequest")
   offlineDrafts    OfflineLeadDraft[]
+  serviceRequest   ServiceRequest?    @relation("LeadServiceRequest")
 
   @@index([phone])
   @@index([status])

@@ -1,4 +1,9 @@
 /**
+ * @deprecated Hardcoded geo removed. Use sheet import only:
+ * `npm run seed:full-location` or `PRANI_SEED_LOCATION=import`.
+ * This file is retained for reference; do not call from seed.
+ */
+/**
  * Bangladesh reference geography for `Division` → `District` → `Upazila` → `Union`.
  * Append rows here to grow the dataset without structural changes.
  */
