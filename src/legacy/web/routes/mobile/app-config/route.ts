@@ -8,6 +8,16 @@
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
+function readOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readOptionalBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
 export async function GET() {
   try {
     const raw = process.env.MOBILE_EMERGENCY_PHONE?.trim() ?? "";
@@ -15,6 +25,13 @@ export async function GET() {
 
     let supportPhone: string | null = null;
     let supportWhatsapp: string | null = null;
+    let minimumVersion: string | null = null;
+    let recommendedVersion: string | null = null;
+    let updateUrl: string | null = null;
+    let updateRequired: boolean | null = null;
+    let updateMessage: string | null = null;
+    let maintenanceMode: boolean | null = null;
+    let maintenanceMessage: string | null = null;
 
     try {
       const row = await prisma.setting.findUnique({
@@ -32,6 +49,13 @@ export async function GET() {
         if (typeof sw === "string" && sw.trim().length > 0) {
           supportWhatsapp = sw.trim();
         }
+        minimumVersion = readOptionalString(o.minimumVersion);
+        recommendedVersion = readOptionalString(o.recommendedVersion);
+        updateUrl = readOptionalString(o.updateUrl);
+        updateRequired = readOptionalBoolean(o.updateRequired);
+        updateMessage = readOptionalString(o.updateMessage);
+        maintenanceMode = readOptionalBoolean(o.maintenanceMode);
+        maintenanceMessage = readOptionalString(o.maintenanceMessage);
       }
     } catch {
       /* ignore optional Setting read */
@@ -45,6 +69,13 @@ export async function GET() {
       emergencyPhone,
       supportPhone,
       supportWhatsapp,
+      ...(minimumVersion ? { minimumVersion } : {}),
+      ...(recommendedVersion ? { recommendedVersion } : {}),
+      ...(updateUrl ? { updateUrl } : {}),
+      ...(updateRequired !== null ? { updateRequired } : {}),
+      ...(updateMessage ? { updateMessage } : {}),
+      ...(maintenanceMode !== null ? { maintenanceMode } : {}),
+      ...(maintenanceMessage ? { maintenanceMessage } : {}),
     });
   } catch {
     return jsonError("INTERNAL", "Could not read app config", 500);

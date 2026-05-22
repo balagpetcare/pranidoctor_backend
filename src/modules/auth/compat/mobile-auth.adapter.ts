@@ -8,8 +8,10 @@ import { credentialMessageKey } from '../i18n/index.js';
 import {
   issueCredentialsAfterOtpVerify,
   issueMobileCredentials,
+  logoutAllForUser,
   type MobileDeviceHints,
 } from '../mobile-auth-credentials.service.js';
+import { verifyMobileJwt } from '../tokens/mobile-jwt.js';
 import {
   loginCustomerWithPassword,
   registerCustomerWithPassword,
@@ -362,4 +364,22 @@ export async function handleMobileRegister(request: Request): Promise<Response> 
       messageKey: 'TOKEN_ISSUE_FAILED',
     });
   }
+}
+
+export async function handleMobileLogout(request: Request): Promise<Response> {
+  const header = request.headers.get('authorization')?.trim();
+  const token = header?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (!token) {
+    return authJsonError(request, 'UNAUTHORIZED', 401, {
+      messageKey: 'UNAUTHORIZED_BEARER_REQUIRED',
+    });
+  }
+
+  const payload = await verifyMobileJwt(token);
+  if (!payload?.sub) {
+    return authJsonError(request, 'UNAUTHORIZED', 401, { messageKey: 'UNAUTHORIZED' });
+  }
+
+  await logoutAllForUser(payload.sub, AUTH_CHANNELS.mobile);
+  return jsonOk({ message: 'Logged out successfully' });
 }
