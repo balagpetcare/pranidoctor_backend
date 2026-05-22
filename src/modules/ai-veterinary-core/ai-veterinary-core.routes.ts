@@ -13,6 +13,7 @@ export function configureAiVeterinaryCoreRoutes(
 
   router.post('/chat', ...guard, asyncHandler(controller.chat.bind(controller)));
   router.post('/triage', ...guard, asyncHandler(controller.triage.bind(controller)));
+  router.get('/history', ...guard, asyncHandler(controller.history.bind(controller)));
   router.get('/memory', ...guard, asyncHandler(controller.listMemory.bind(controller)));
   router.delete('/memory', ...guard, asyncHandler(controller.deleteMemory.bind(controller)));
   router.post('/escalate', ...guard, asyncHandler(controller.escalate.bind(controller)));

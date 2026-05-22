@@ -110,4 +110,14 @@ export class AiVeterinaryCoreController {
     });
     sendCreated(res, result);
   }
+
+  async history(req: Request, res: Response): Promise<void> {
+    const raw = req.query.sessionId;
+    const sessionId = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : undefined;
+    const result = await getAiVeterinaryCoreService().getHistory(
+      userId(req),
+      typeof sessionId === 'string' ? sessionId : undefined,
+    );
+    sendSuccess(res, result);
+  }
 }

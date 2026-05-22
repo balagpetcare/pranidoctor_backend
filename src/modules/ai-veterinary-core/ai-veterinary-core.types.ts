@@ -81,6 +81,19 @@ export type AiEscalationDto = {
   flaggedAt: string;
 };
 
+export type AiHistoryMessageDto = {
+  id: string;
+  role: AiMessageRole;
+  content: string;
+  refused: boolean;
+  createdAt: string;
+};
+
+export type AiHistoryResponse = {
+  sessionId: string | null;
+  messages: AiHistoryMessageDto[];
+};
+
 export const AI_DISCLAIMER = {
   bn: 'এটি শিক্ষামূলক সহায়তা মাত্র — চিকিৎসা সিদ্ধান্তের জন্য প্রাণী চিকিৎসকের পরামর্শ নিন।',
   en: 'This is educational guidance only — consult a veterinarian for medical decisions.',

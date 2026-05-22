@@ -58,6 +58,8 @@ function purposeMaxBytes(env: StorageEnv, purpose: MobileUploadPurpose): number 
       return mb("UPLOAD_MAX_SEMEN_TEMPLATE_VIDEO_MB", 80);
     case MobileUploadPurpose.AI_SERVICE_INSTANCE_DOCUMENT:
       return mb("UPLOAD_MAX_AI_TECHNICIAN_DOCUMENT_MB", 8);
+    case MobileUploadPurpose.SUPPORT_ATTACHMENT:
+      return mb("UPLOAD_MAX_SUPPORT_ATTACHMENT_MB", 8);
     default:
       return env.maxImageBytes;
   }
@@ -82,6 +84,7 @@ function allowedMimeForPurpose(env: StorageEnv, purpose: MobileUploadPurpose): S
     MobileUploadPurpose.AI_TECHNICIAN_AI_CERTIFICATE,
     MobileUploadPurpose.AI_TECHNICIAN_OTHER,
     MobileUploadPurpose.AI_SERVICE_INSTANCE_DOCUMENT,
+    MobileUploadPurpose.SUPPORT_ATTACHMENT,
   ];
   return docPurposes.includes(purpose) ? env.allowedDocumentMimes : env.allowedImageMimes;
 }

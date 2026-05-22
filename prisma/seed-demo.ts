@@ -105,6 +105,15 @@ async function seedMobileSettings(): Promise<void> {
       },
     },
     {
+      key: "mobile.legal.config",
+      valueJson: {
+        privacyPolicyUrl: "https://pranidoctor.com/privacy",
+        termsOfServiceUrl: "https://pranidoctor.com/terms",
+        privacyVersion: "2026-05-01",
+        termsVersion: "2026-05-01",
+      },
+    },
+    {
       key: "mobile.feature.flags",
       valueJson: {
         farmVisitBooking: false,

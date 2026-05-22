@@ -12,6 +12,7 @@ import type {
   AiChatResponse,
   AiEscalateRequest,
   AiEscalationDto,
+  AiHistoryResponse,
   AiLocale,
   AiMemoryDeleteQuery,
   AiMemoryEntry,
@@ -295,6 +296,37 @@ export class AiVeterinaryCoreService {
 
     const escalation = await this.createEscalationInternal(userId, input);
     return mapEscalation(escalation);
+  }
+
+  async getHistory(userId: string, sessionId?: string): Promise<AiHistoryResponse> {
+    const repo = getAiVeterinaryRepository();
+    let resolvedSessionId = sessionId ?? null;
+
+    if (resolvedSessionId) {
+      const session = await repo.findSessionForUser(resolvedSessionId, userId);
+      if (!session) {
+        throw new NotFoundError('SESSION_NOT_FOUND', 'AI session not found');
+      }
+    } else {
+      const latest = await repo.findLatestSession(userId);
+      resolvedSessionId = latest?.id ?? null;
+    }
+
+    if (!resolvedSessionId) {
+      return { sessionId: null, messages: [] };
+    }
+
+    const rows = await repo.listMessagesAsc(resolvedSessionId, 100);
+    return {
+      sessionId: resolvedSessionId,
+      messages: rows.map((row) => ({
+        id: row.id,
+        role: row.role,
+        content: row.content,
+        refused: row.refused,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    };
   }
 
   private async createEscalationInternal(userId: string, input: AiEscalateRequest) {

@@ -30,6 +30,8 @@ model User {
   customerProfile                   CustomerProfile?
   doctorProfile                     DoctorProfile?
   notifications                     Notification[]
+  notificationSettings              NotificationSettings?
+  mobileUserSettings                MobileUserSettings?
   offlineConflictRecords            OfflineConflictRecord[]
   offlineLeadDrafts                 OfflineLeadDraft[]
   offlineSyncItems                  OfflineSyncItem[]
@@ -258,6 +260,13 @@ model CustomerProfile {
   primaryVillageId   String?
   profileCompletedAt DateTime?
   animals            AnimalProfile[]
+  milkRecords        MilkRecord[]
+  feedRecords        FeedRecord[]
+  financeRecords     FinanceRecord[]
+  healthEvents       HealthEvent[]
+  vaccineRecords     VaccineRecord[]
+  farmTreatments     FarmTreatment[]
+  supportTickets     SupportTicket[]
   billingRecords     BillingRecord[]
   complaints         Complaint[]
   primaryVillage     Village?         @relation("CustomerPrimaryVillage", fields: [primaryVillageId], references: [id])
@@ -926,6 +935,11 @@ model AnimalProfile {
   prescriptions   Prescription[]
   serviceRequests ServiceRequest[]
   treatmentCases  TreatmentCase[]
+  milkRecords     MilkRecord[]
+  feedRecords     FeedRecord[]
+  healthEvents    HealthEvent[]
+  vaccineRecords  VaccineRecord[]
+  farmTreatments  FarmTreatment[]
 
   @@index([customerId])
 }
@@ -1637,6 +1651,35 @@ model Notification {
   @@index([type])
 }
 
+model NotificationSettings {
+  userId                   String   @id
+  pushEnabled              Boolean  @default(true)
+  marketingEnabled         Boolean  @default(false)
+  treatmentReminderEnabled Boolean  @default(true)
+  vaccineReminderEnabled   Boolean  @default(true)
+  orderServiceEnabled      Boolean  @default(true)
+  updatedAt                DateTime @updatedAt
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum MobileThemePreference {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+model MobileUserSettings {
+  userId                 String                 @id
+  theme                  MobileThemePreference  @default(SYSTEM)
+  locale                 String?                @default("bn-BD")
+  privacyAcceptedVersion String?
+  privacyAcceptedAt      DateTime?
+  termsAcceptedVersion   String?
+  termsAcceptedAt        DateTime?
+  updatedAt              DateTime               @updatedAt
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 /// Enterprise: worker submission of a semen (main) template for admin review → publish → `AiTechnicianService`.
 model ServiceInstance {
   id                             String                      @id @default(cuid())
@@ -1837,6 +1880,280 @@ enum AnimalType {
   DOG
   CAT
   OTHER
+}
+
+enum MilkSession {
+  MORNING
+  EVENING
+}
+
+model MilkRecord {
+  id             String      @id @default(cuid())
+  customerId     String
+  animalId       String
+  farmRef        String?
+  recordedDate   DateTime    @db.Date
+  session        MilkSession
+  quantityLiters Decimal     @db.Decimal(10, 3)
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  customer       CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal         AnimalProfile   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, animalId, recordedDate, session])
+  @@index([customerId, recordedDate])
+  @@index([animalId])
+}
+
+enum FeedType {
+  GRASS
+  STRAW
+  CONCENTRATE
+  MINERAL
+  SILAGE
+  OTHER
+}
+
+enum FeedUnit {
+  KG
+  BAG
+  BUNDLE
+  LITER
+  OTHER
+}
+
+model FeedRecord {
+  id           String    @id @default(cuid())
+  customerId   String
+  farmRef      String?
+  animalId     String?
+  batchId      String?
+  batchName    String?
+  feedType     FeedType
+  amount       Decimal   @db.Decimal(10, 3)
+  unit         FeedUnit
+  costBdt      Decimal?  @db.Decimal(12, 2)
+  recordedDate DateTime  @db.Date
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  customer     CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal       AnimalProfile?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, recordedDate])
+  @@index([animalId])
+  @@index([feedType])
+}
+
+enum FinanceType {
+  EXPENSE
+  INCOME
+}
+
+enum ExpenseCategory {
+  FEED
+  MEDICINE
+  LABOR
+  EQUIPMENT
+  TRANSPORT
+  OTHER
+}
+
+enum IncomeSource {
+  MILK_SALES
+  ANIMAL_SALES
+  SUBSIDY
+  SERVICE
+  OTHER
+}
+
+model FinanceRecord {
+  id           String           @id @default(cuid())
+  customerId   String
+  type         FinanceType
+  amountBdt    Decimal          @db.Decimal(12, 2)
+  recordedDate DateTime         @db.Date
+  category     ExpenseCategory?
+  source       IncomeSource?
+  farmRef      String?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  customer     CustomerProfile  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, type, recordedDate])
+  @@index([category])
+  @@index([source])
+}
+
+enum HealthEventType {
+  SYMPTOM
+  DIAGNOSIS
+  DISEASE
+  CHECKUP
+  TREATMENT_REF
+}
+
+model HealthEvent {
+  id             String          @id @default(cuid())
+  customerId     String
+  animalId       String?
+  farmRef        String?
+  eventType      HealthEventType
+  title          String
+  symptoms       String?
+  diagnosis      String?
+  diseaseName    String?
+  treatmentRefId String?
+  vaccineRefId   String?
+  notes          String?
+  recordedDate   DateTime        @db.Date
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  customer       CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal         AnimalProfile?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, recordedDate])
+  @@index([animalId])
+  @@index([eventType])
+}
+
+enum VaccineStatus {
+  SCHEDULED
+  DUE
+  OVERDUE
+  COMPLETED
+}
+
+model VaccineRecord {
+  id               String          @id @default(cuid())
+  customerId       String
+  animalId         String?
+  farmRef          String?
+  vaccineName      String
+  vaccineType      String?
+  scheduledDate    DateTime        @db.Date
+  administeredDate DateTime?       @db.Date
+  nextDueDate      DateTime?       @db.Date
+  status           VaccineStatus   @default(SCHEDULED)
+  batchNumber      String?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  customer         CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal           AnimalProfile?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, scheduledDate])
+  @@index([customerId, status])
+  @@index([animalId])
+}
+
+enum FarmTreatmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model FarmTreatment {
+  id            String              @id @default(cuid())
+  customerId    String
+  animalId      String?
+  farmRef       String?
+  title         String
+  diagnosis     String?
+  prescription  String?
+  medicinesJson Json?
+  startDate     DateTime            @db.Date
+  endDate       DateTime?           @db.Date
+  status        FarmTreatmentStatus @default(ACTIVE)
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  customer      CustomerProfile     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal        AnimalProfile?      @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, startDate])
+  @@index([customerId, status])
+  @@index([animalId])
+}
+
+enum SupportTicketCategory {
+  ACCOUNT
+  BILLING
+  TECHNICAL
+  ANIMAL_HEALTH
+  APP_USAGE
+  OTHER
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportMessageAuthorType {
+  CUSTOMER
+  SUPPORT
+  SYSTEM
+}
+
+model SupportTicket {
+  id          String                 @id @default(cuid())
+  customerId  String
+  category    SupportTicketCategory
+  subject     String
+  description String
+  priority    SupportTicketPriority  @default(MEDIUM)
+  status      SupportTicketStatus    @default(OPEN)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  closedAt    DateTime?
+  customer    CustomerProfile        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  messages    SupportTicketMessage[]
+  attachments SupportTicketAttachment[]
+
+  @@index([customerId, status, updatedAt])
+  @@index([customerId, createdAt])
+}
+
+model SupportTicketMessage {
+  id          String                    @id @default(cuid())
+  ticketId    String
+  authorType  SupportMessageAuthorType
+  body        String
+  createdAt   DateTime                  @default(now())
+  ticket      SupportTicket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  attachments SupportTicketAttachment[]
+
+  @@index([ticketId, createdAt])
+}
+
+model SupportTicketAttachment {
+  id             String                @id @default(cuid())
+  ticketId       String
+  messageId      String?
+  uploadedFileId String?
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  downloadUrl    String?
+  createdAt      DateTime              @default(now())
+  ticket         SupportTicket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message        SupportTicketMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId])
+  @@index([messageId])
 }
 
 /// Reproductive status for applicable animals (e.g. livestock).
@@ -2224,6 +2541,8 @@ enum MobileUploadPurpose {
   AI_SERVICE_INSTANCE_VIDEO
   /// AI technician — enterprise service instance supporting document (PDF).
   AI_SERVICE_INSTANCE_DOCUMENT
+  /// Customer support ticket attachment (images, PDF, documents).
+  SUPPORT_ATTACHMENT
 }
 
 /// Enterprise moderation lifecycle for template-backed worker service submissions.

@@ -71,3 +71,96 @@ export async function markAllNotificationsRead(userId: string) {
   });
   return { updatedCount: result.count };
 }
+
+export async function getUnreadCountForUser(userId: string) {
+  const count = await prisma.notification.count({
+    where: { userId, readAt: null },
+  });
+  return { count };
+}
+
+export async function deleteNotificationForUser(userId: string, notificationId: string) {
+  const existing = await prisma.notification.findFirst({
+    where: { id: notificationId, userId },
+  });
+  if (!existing) return { ok: "NOT_FOUND" as const };
+  await prisma.notification.delete({ where: { id: notificationId } });
+  return { ok: "DELETED" as const };
+}
+
+export type NotificationSettingsDto = {
+  pushEnabled: boolean;
+  marketingEnabled: boolean;
+  treatmentReminderEnabled: boolean;
+  vaccineReminderEnabled: boolean;
+  orderServiceEnabled: boolean;
+  updatedAt: string;
+};
+
+const defaultSettings = {
+  pushEnabled: true,
+  marketingEnabled: false,
+  treatmentReminderEnabled: true,
+  vaccineReminderEnabled: true,
+  orderServiceEnabled: true,
+};
+
+export async function getNotificationSettingsForUser(
+  userId: string,
+): Promise<NotificationSettingsDto> {
+  const row = await prisma.notificationSettings.findUnique({ where: { userId } });
+  if (!row) {
+    return {
+      ...defaultSettings,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  return {
+    pushEnabled: row.pushEnabled,
+    marketingEnabled: row.marketingEnabled,
+    treatmentReminderEnabled: row.treatmentReminderEnabled,
+    vaccineReminderEnabled: row.vaccineReminderEnabled,
+    orderServiceEnabled: row.orderServiceEnabled,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export async function upsertNotificationSettingsForUser(
+  userId: string,
+  input: Partial<Omit<NotificationSettingsDto, "updatedAt">>,
+): Promise<NotificationSettingsDto> {
+  const row = await prisma.notificationSettings.upsert({
+    where: { userId },
+    create: {
+      userId,
+      pushEnabled: input.pushEnabled ?? defaultSettings.pushEnabled,
+      marketingEnabled: input.marketingEnabled ?? defaultSettings.marketingEnabled,
+      treatmentReminderEnabled:
+        input.treatmentReminderEnabled ?? defaultSettings.treatmentReminderEnabled,
+      vaccineReminderEnabled:
+        input.vaccineReminderEnabled ?? defaultSettings.vaccineReminderEnabled,
+      orderServiceEnabled: input.orderServiceEnabled ?? defaultSettings.orderServiceEnabled,
+    },
+    update: {
+      ...(input.pushEnabled !== undefined ? { pushEnabled: input.pushEnabled } : {}),
+      ...(input.marketingEnabled !== undefined ? { marketingEnabled: input.marketingEnabled } : {}),
+      ...(input.treatmentReminderEnabled !== undefined
+        ? { treatmentReminderEnabled: input.treatmentReminderEnabled }
+        : {}),
+      ...(input.vaccineReminderEnabled !== undefined
+        ? { vaccineReminderEnabled: input.vaccineReminderEnabled }
+        : {}),
+      ...(input.orderServiceEnabled !== undefined
+        ? { orderServiceEnabled: input.orderServiceEnabled }
+        : {}),
+    },
+  });
+  return {
+    pushEnabled: row.pushEnabled,
+    marketingEnabled: row.marketingEnabled,
+    treatmentReminderEnabled: row.treatmentReminderEnabled,
+    vaccineReminderEnabled: row.vaccineReminderEnabled,
+    orderServiceEnabled: row.orderServiceEnabled,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}

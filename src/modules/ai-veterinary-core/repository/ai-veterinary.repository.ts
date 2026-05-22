@@ -65,6 +65,21 @@ export class AiVeterinaryRepository {
     });
   }
 
+  async listMessagesAsc(sessionId: string, take = 100) {
+    return getPrisma().aiAssistantMessage.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+      take,
+    });
+  }
+
+  async findLatestSession(userId: string): Promise<AiAssistantSession | null> {
+    return getPrisma().aiAssistantSession.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   async upsertMemory(params: {
     userId: string;
     kind: AiMemoryKind;
