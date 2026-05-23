@@ -6,6 +6,8 @@ import { createApp, finalizeApp } from './app.js';
 import { createDocsRouter } from './api/docs/docs.routes.js';
 import { createCompatWebRouter } from './modules/compat-web/index.js';
 import { initializeStorage, isStorageEnabled } from './modules/media/storage/index.js';
+import { bootstrapMinioStorage } from './legacy/web/lib/storage/minio-bootstrap.js';
+import { getStorageEnv } from './legacy/web/lib/storage/storage-env.js';
 import { createAllModules } from './modules/index.js';
 import { loadModules, unloadModules } from './shared/module/module-loader.js';
 import { initializeCacheService } from './infra/cache/cache.service.js';
@@ -13,11 +15,16 @@ import { createRedisClient, disconnectRedis } from './infra/redis/redis.client.j
 import { initializeQueueConnection, closeAllQueues } from './infra/queue/queue.service.js';
 import { loadConfig, type AppConfig } from './shared/config/index.js';
 import {
+  formatMobileProfileModuleFailure,
+  validateMobileProfileModules,
+} from './shared/config/mobile-profile-startup.js';
+import {
   formatStartupValidation,
   validateStartup,
 } from './shared/config/startup-validation.js';
 import {
   isRedisEnabled,
+  isMediaStorageRequired,
   shouldSkipStartupValidation,
 } from './shared/config/infra.flags.js';
 import { createPrismaClient, disconnectPrisma } from './shared/database/prisma.js';
@@ -80,9 +87,24 @@ async function bootstrap(): Promise<void> {
   if (isStorageEnabled(config)) {
     try {
       initializeStorage(config);
+      const storageEnv = getStorageEnv();
+      const boot = await bootstrapMinioStorage(storageEnv);
+      if (boot.ok) {
+        delete process.env['STORAGE_RUNTIME_DEGRADED'];
+      } else {
+        if (isMediaStorageRequired()) {
+          logFatal('MinIO bootstrap failed — MEDIA_STORAGE=s3 requires storage', {
+            error: boot.error,
+          });
+          process.exit(1);
+        }
+        logWarn('MinIO bootstrap failed', { error: boot.error });
+      }
       logInfo('Storage initialized', {
         driver: config.storage.driver,
         bucket: config.storage.bucket,
+        endpoint: config.storage.endpoint,
+        bucketCreated: boot.bucketCreated,
       });
     } catch (error) {
       if (config.nodeEnv === 'production') {
@@ -91,6 +113,8 @@ async function bootstrap(): Promise<void> {
       }
       logWarn('Storage initialization skipped', { error: String(error) });
     }
+  } else if (!config.storage.enabled) {
+    logWarn('Storage disabled (STORAGE_ENABLED=false) — file uploads unavailable');
   } else {
     logWarn('Storage disabled or not configured', { driver: config.storage.driver });
   }
@@ -109,6 +133,17 @@ async function bootstrap(): Promise<void> {
   } else {
     logWarn('Startup validation skipped (SKIP_STARTUP_VALIDATION=true)');
   }
+
+  const mobileModules = await validateMobileProfileModules();
+  if (!mobileModules.ok) {
+    console.error(formatMobileProfileModuleFailure(mobileModules));
+    logFatal('Mobile profile module import failed — refusing to start', {
+      error: mobileModules.error,
+      details: mobileModules.details,
+    });
+    process.exit(1);
+  }
+  logInfo('Mobile profile modules verified', mobileModules.details);
 
   const app = createApp(config);
 

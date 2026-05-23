@@ -85,6 +85,14 @@ export default [
       'prefer-const': 'error',
       'no-var': 'error',
       eqeqeq: ['error', 'always'],
+      // Prevent ?? / || mix without parentheses (PROFILE_SETTINGS_405 regression).
+      'no-mixed-operators': [
+        'error',
+        {
+          groups: [['??', '||'], ['??', '&&'], ['||', '??'], ['&&', '??']],
+          allowSamePrecedence: false,
+        },
+      ],
     },
   },
   {

@@ -4,6 +4,7 @@ import {
   getCustomerAddressService,
   type PatchMobileMeInput,
 } from '../customer-address.service.js';
+import { parseMobileMeMultipartPatch } from './mobile-me-multipart.js';
 import { getCustomerProfileService } from '../customer-profile.service.js';
 import { z } from 'zod';
 
@@ -19,6 +20,7 @@ const patchBodySchema = z.object({
       upazilaId: z.string().min(1).optional(),
       unionId: z.string().min(1).optional(),
       villageId: z.string().min(1).optional(),
+      villageName: z.string().trim().min(1).max(120).optional(),
       line1: z.string().trim().max(500).optional(),
       postalCode: z.string().trim().max(20).optional(),
     })
@@ -56,7 +58,31 @@ export async function handleMobileMePatch(
   request: Request,
   userId: string,
   profileLocale: string | undefined,
+  customerProfileId?: string,
 ): Promise<Response> {
+  const contentType = request.headers.get('content-type') ?? '';
+  if (contentType.includes('multipart/form-data')) {
+    if (!customerProfileId) {
+      return authJsonError(request, 'UNAUTHORIZED', 401, {
+        messageKey: 'UNAUTHORIZED',
+        profileLocale: localeOpt(profileLocale),
+      });
+    }
+    const parsedMultipart = await parseMobileMeMultipartPatch(
+      request,
+      userId,
+      customerProfileId,
+    );
+    if (!parsedMultipart.ok) {
+      return authJsonError(request, parsedMultipart.code, parsedMultipart.httpStatus, {
+        messageKey: parsedMultipart.code,
+        details: parsedMultipart.details,
+        profileLocale: localeOpt(profileLocale),
+      });
+    }
+    return applyMobileMePatch(request, userId, profileLocale, parsedMultipart.input);
+  }
+
   let json: unknown;
   try {
     json = await request.json();
@@ -103,24 +129,34 @@ export async function handleMobileMePatch(
     });
   }
 
-  try {
-    const patchInput: PatchMobileMeInput = {};
-    if (name !== undefined) patchInput.name = name;
-    if (email !== undefined) patchInput.email = email;
-    if (area !== undefined) patchInput.area = area;
-    if (locale !== undefined) patchInput.locale = locale;
-    if (address !== undefined) {
-      const addr: NonNullable<PatchMobileMeInput['address']> = {};
-      if (address.divisionId) addr.divisionId = address.divisionId;
-      if (address.districtId) addr.districtId = address.districtId;
-      if (address.upazilaId) addr.upazilaId = address.upazilaId;
-      if (address.unionId) addr.unionId = address.unionId;
-      if (address.villageId) addr.villageId = address.villageId;
-      if (address.line1) addr.line1 = address.line1;
-      if (address.postalCode) addr.postalCode = address.postalCode;
-      patchInput.address = addr;
-    }
+  const patchInput: PatchMobileMeInput = {};
+  if (name !== undefined) patchInput.name = name;
+  if (email !== undefined) patchInput.email = email;
+  if (area !== undefined) patchInput.area = area;
+  if (locale !== undefined) patchInput.locale = locale;
+  if (address !== undefined) {
+    const addr: NonNullable<PatchMobileMeInput['address']> = {};
+    if (address.divisionId) addr.divisionId = address.divisionId;
+    if (address.districtId) addr.districtId = address.districtId;
+    if (address.upazilaId) addr.upazilaId = address.upazilaId;
+    if (address.unionId) addr.unionId = address.unionId;
+    if (address.villageId) addr.villageId = address.villageId;
+    if (address.villageName) addr.villageName = address.villageName;
+    if (address.line1) addr.line1 = address.line1;
+    if (address.postalCode) addr.postalCode = address.postalCode;
+    patchInput.address = addr;
+  }
 
+  return applyMobileMePatch(request, userId, profileLocale, patchInput);
+}
+
+async function applyMobileMePatch(
+  request: Request,
+  userId: string,
+  profileLocale: string | undefined,
+  patchInput: PatchMobileMeInput,
+): Promise<Response> {
+  try {
     const result = await getCustomerAddressService().patchMobileMe(userId, patchInput);
 
     if (!result.ok) {

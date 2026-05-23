@@ -254,8 +254,10 @@ model CustomerProfile {
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
   /// HTTPS URL to display asset (same-origin `/api/mobile/uploads/:id` redirect or CDN).
-  profilePhotoUrl    String?
-  coverPhotoUrl      String?
+  profilePhotoUrl       String?
+  profilePhotoThumbUrl  String?
+  coverPhotoUrl         String?
+  coverPhotoThumbUrl    String?
   /// P2 — denormalized village FK for service matching (optional).
   primaryVillageId   String?
   profileCompletedAt DateTime?
@@ -2523,6 +2525,8 @@ enum MobileUploadPurpose {
   CUSTOMER_PROFILE_PHOTO
   /// Customer account — cover / background (GET … public for this purpose).
   CUSTOMER_COVER_IMAGE
+  /// Customer animal photo (stored on AnimalProfile.photoUrl only).
+  ANIMAL_PHOTO
   /// Admin panel — semen provider logo (owner = admin user).
   ADMIN_SEMEN_PROVIDER_LOGO
   /// Admin panel — semen service template cover image.

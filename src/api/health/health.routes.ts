@@ -4,6 +4,10 @@ import type { AppConfig } from '../../shared/config/config.schema.js';
 import { isProduction } from '../../shared/config/config.loader.js';
 
 import {
+  getMobileHealthStatus,
+  isMobileHealthOk,
+} from './mobile-health.service.js';
+import {
   checkDatabaseHealth,
   checkRedisHealth,
   checkStorageHealth,
@@ -55,6 +59,12 @@ export function createHealthRouter(config: AppConfig): Router {
 
   router.get('/health/modules', (_req: Request, res: Response) => {
     res.status(200).json(getModulesHealth());
+  });
+
+  router.get('/health/mobile', async (_req: Request, res: Response) => {
+    const status = await getMobileHealthStatus();
+    const code = isMobileHealthOk(status) ? 200 : 500;
+    res.status(code).json(status);
   });
 
   router.get('/health', healthHandler);

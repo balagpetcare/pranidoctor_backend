@@ -1,13 +1,14 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-import { logDebug, logError } from '../../../../../shared/logger/logger.js';
+import { logDebug, logWarn } from '../../../../../shared/logger/logger.js';
 
 import type {
   IStorageProvider,
@@ -139,19 +140,17 @@ export class S3StorageAdapter implements IStorageProvider {
     const start = Date.now();
     try {
       const client = this.getClient();
-      await client.send(
-        new HeadObjectCommand({
-          Bucket: this.config.bucket,
-          Key: '__health_check__',
-        })
-      );
+      await client.send(new HeadBucketCommand({ Bucket: this.config.bucket }));
       return { healthy: true, latency: Date.now() - start };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      if (message.includes('NotFound') || message.includes('404')) {
-        return { healthy: true, latency: Date.now() - start };
+      const isConnectionRefused =
+        message.includes('ECONNREFUSED') || message.includes('ENOTFOUND');
+      if (isConnectionRefused) {
+        logWarn('Storage endpoint unreachable', { error: message });
+      } else {
+        logWarn('Storage health check failed', { error: message });
       }
-      logError('Storage health check failed', error);
       return {
         healthy: false,
         latency: Date.now() - start,

@@ -34,6 +34,8 @@ function purposeMaxBytes(env: StorageEnv, purpose: MobileUploadPurpose): number 
       return mb("UPLOAD_MAX_CUSTOMER_PROFILE_MB", 3);
     case MobileUploadPurpose.CUSTOMER_COVER_IMAGE:
       return mb("UPLOAD_MAX_CUSTOMER_COVER_MB", 5);
+    case MobileUploadPurpose.ANIMAL_PHOTO:
+      return mb("UPLOAD_MAX_IMAGE_MB", 5);
     case MobileUploadPurpose.AI_TECHNICIAN_PROFILE_PHOTO:
       return mb("UPLOAD_MAX_AI_TECHNICIAN_PROFILE_MB", 3);
     case MobileUploadPurpose.AI_TECHNICIAN_COVER_IMAGE:

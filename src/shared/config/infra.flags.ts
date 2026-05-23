@@ -14,9 +14,16 @@ export function isRedisRequired(config: AppConfig): boolean {
   return config.nodeEnv === 'production' || config.nodeEnv === 'staging';
 }
 
-/** Object storage must pass health checks before boot (production default). */
+/** True when MEDIA_STORAGE=s3 — storage must be reachable at boot. */
+export function isMediaStorageRequired(): boolean {
+  return (process.env['MEDIA_STORAGE'] ?? '').trim().toLowerCase() === 's3';
+}
+
+/** Object storage must pass health checks before boot (production or MEDIA_STORAGE=s3). */
 export function isStorageRequired(config: AppConfig): boolean {
+  if (!config.storage.enabled) return false;
   if (config.storage.driver === 'disabled') return false;
+  if (isMediaStorageRequired()) return true;
   return config.nodeEnv === 'production' || config.nodeEnv === 'staging';
 }
 

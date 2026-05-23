@@ -1,7 +1,7 @@
 import type { Router } from 'express';
 
 import { asyncHandler } from '../../shared/middleware/async-handler.js';
-import { authMobile } from '../../shared/security/middleware/auth.middleware.js';
+import { authenticateMobileCustomer } from '../auth/mobile-express.middleware.js';
 
 import type { VoiceAssistantController } from './voice-assistant.controller.js';
 
@@ -9,7 +9,7 @@ export function configureVoiceAssistantRoutes(
   router: Router,
   controller: VoiceAssistantController,
 ): void {
-  const guard = [authMobile] as const;
+  const guard = [authenticateMobileCustomer] as const;
 
   router.post('/stt', ...guard, asyncHandler(controller.stt.bind(controller)));
   router.post('/chat', ...guard, asyncHandler(controller.chat.bind(controller)));

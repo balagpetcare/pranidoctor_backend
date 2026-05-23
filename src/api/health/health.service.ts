@@ -1,12 +1,14 @@
 import type { AppConfig } from '../../shared/config/config.schema.js';
-import { isRedisEnabled } from '../../shared/config/infra.flags.js';
+import { isRedisEnabled, isStorageRequired } from '../../shared/config/infra.flags.js';
 import { checkDatabaseConnection } from '../../shared/database/prisma.js';
 import { logWarn } from '../../shared/logger/logger.js';
 import { checkRedisConnection } from '../../infra/redis/redis.client.js';
 import { getQueue, QueueNames } from '../../infra/queue/index.js';
 import {
   getStorage,
+  getStorageRuntimeDegradeReason,
   isStorageEnabled,
+  isStorageRuntimeDegraded,
 } from '../../modules/media/storage/storage.factory.js';
 import { listRegisteredPaths } from '../../modules/compat-web/route-registry.js';
 import { moduleRegistry } from '../../shared/module/module-registry.js';
@@ -50,33 +52,72 @@ export async function checkRedisHealth(config?: AppConfig): Promise<HealthCheckR
 }
 
 export async function checkStorageHealth(config: AppConfig): Promise<HealthCheckResult> {
+  const storageDetails = {
+    driver: config.storage.driver,
+    bucket: config.storage.bucket,
+    endpoint: config.storage.endpoint,
+    enabled: config.storage.enabled,
+    operational: isStorageEnabled(config) && !isStorageRuntimeDegraded(),
+  };
+
+  if (!config.storage.enabled) {
+    return {
+      name: 'storage',
+      status: 'degraded',
+      latency: 0,
+      message: 'Storage disabled (STORAGE_ENABLED=false)',
+      details: storageDetails,
+    };
+  }
+
   if (!isStorageEnabled(config)) {
     return {
       name: 'storage',
       status: 'degraded',
       latency: 0,
       message: `Storage disabled (driver=${config.storage.driver})`,
+      details: storageDetails,
+    };
+  }
+
+  if (isStorageRuntimeDegraded()) {
+    return {
+      name: 'storage',
+      status: 'degraded',
+      latency: 0,
+      message:
+        getStorageRuntimeDegradeReason() ??
+        'Storage unavailable — uploads disabled until MinIO/S3 is reachable',
+      details: storageDetails,
     };
   }
 
   const start = Date.now();
+  const required = isStorageRequired(config);
+
   try {
     const storage = getStorage();
     const health = await storage.checkHealth();
+    const status = health.healthy
+      ? 'healthy'
+      : required
+        ? 'unhealthy'
+        : 'degraded';
+
     return {
       name: 'storage',
-      status: health.healthy ? 'healthy' : 'unhealthy',
+      status,
       latency: health.latency ?? Date.now() - start,
       ...(health.error && { message: health.error }),
-      details: { driver: config.storage.driver },
+      details: storageDetails,
     };
   } catch (error) {
     return {
       name: 'storage',
-      status: 'unhealthy',
+      status: required ? 'unhealthy' : 'degraded',
       latency: Date.now() - start,
       message: error instanceof Error ? error.message : 'Unknown error',
-      details: { driver: config.storage.driver },
+      details: storageDetails,
     };
   }
 }
@@ -217,7 +258,7 @@ export async function getHealthStatus(config: AppConfig): Promise<HealthResponse
 
   const [dbResult, redisResult, queueResult, storageResult] = await Promise.all([
     checkDatabase(),
-    checkRedis(),
+    checkRedis(config),
     checkQueues(),
     checkStorageHealth(config),
   ]);
@@ -303,10 +344,11 @@ export function getLivenessStatus(): { alive: boolean; timestamp: string } {
 }
 
 export async function getDependencyStatus(config: AppConfig): Promise<DependencyStatus[]> {
-  const [dbResult, redisResult, queueResult] = await Promise.all([
+  const [dbResult, redisResult, queueResult, storageResult] = await Promise.all([
     checkDatabase(),
     checkRedis(config),
     checkQueues(),
+    checkStorageHealth(config),
   ]);
 
   return [
@@ -322,7 +364,8 @@ export async function getDependencyStatus(config: AppConfig): Promise<Dependency
       type: 'cache',
       status: redisResult.status,
       latency: redisResult.latency,
-      required: true,
+      required: isRedisEnabled(config),
+      ...(redisResult.message && { message: redisResult.message }),
     },
     {
       name: 'BullMQ',
@@ -330,6 +373,14 @@ export async function getDependencyStatus(config: AppConfig): Promise<Dependency
       status: queueResult.status,
       latency: queueResult.latency,
       required: false,
+    },
+    {
+      name: 'Object Storage',
+      type: 'external',
+      status: storageResult.status,
+      latency: storageResult.latency,
+      required: isStorageRequired(config),
+      ...(storageResult.message && { message: storageResult.message }),
     },
   ];
 }

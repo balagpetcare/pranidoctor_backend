@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const PUBLIC_DOWNLOAD_PURPOSES: MobileUploadPurpose[] = [
   MobileUploadPurpose.CUSTOMER_PROFILE_PHOTO,
   MobileUploadPurpose.CUSTOMER_COVER_IMAGE,
+  MobileUploadPurpose.ANIMAL_PHOTO,
   MobileUploadPurpose.AI_TECHNICIAN_PROFILE_PHOTO,
   MobileUploadPurpose.AI_TECHNICIAN_COVER_IMAGE,
   MobileUploadPurpose.AI_TECHNICIAN_NID_FRONT,

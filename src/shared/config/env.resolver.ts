@@ -49,18 +49,33 @@ export function resolveRedisUrl(env: NodeJS.ProcessEnv = process.env): string {
   return `redis://${host}:${port}`;
 }
 
+function resolveStorageSsl(env: NodeJS.ProcessEnv): boolean {
+  return (env['S3_USE_SSL'] ?? env['MINIO_USE_SSL'] ?? 'false').toLowerCase() === 'true';
+}
+
+function buildMinioUrl(host: string, port: string, useSsl: boolean): string {
+  const protocol = useSsl ? 'https' : 'http';
+  return `${protocol}://${host}:${port}`;
+}
+
 export function resolveMinioUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const explicit = env['MINIO_URL']?.trim() ?? env['S3_ENDPOINT']?.trim();
-  if (explicit && !hasUnresolvedInterpolation(explicit)) {
-    return explicit.replace(/\/$/, '');
+  const minioUrl = env['MINIO_URL']?.trim();
+  if (minioUrl && !hasUnresolvedInterpolation(minioUrl)) {
+    return minioUrl.replace(/\/$/, '');
+  }
+
+  const endpoint = env['S3_ENDPOINT']?.trim();
+  if (endpoint && !hasUnresolvedInterpolation(endpoint)) {
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint.replace(/\/$/, '');
+    }
+    const port = env['S3_PORT'] ?? env['MINIO_PORT'] ?? '9000';
+    return buildMinioUrl(endpoint, port, resolveStorageSsl(env));
   }
 
   const host = env['MINIO_HOST'] ?? env['S3_HOST'] ?? '127.0.0.1';
   const port = env['MINIO_PORT'] ?? env['S3_PORT'] ?? '9000';
-  const useSsl = (env['MINIO_USE_SSL'] ?? 'false').toLowerCase() === 'true';
-  const protocol = useSsl ? 'https' : 'http';
-
-  return `${protocol}://${host}:${port}`;
+  return buildMinioUrl(host, port, resolveStorageSsl(env));
 }
 
 export function resolveEnvUrls(env: NodeJS.ProcessEnv = process.env): ResolvedEnvUrls {
@@ -81,7 +96,12 @@ export function applyResolvedEnv(env: NodeJS.ProcessEnv = process.env): Resolved
   env['REDIS_URL'] = resolved.redisUrl;
   env['MINIO_URL'] = resolved.minioUrl;
 
-  if (!env['S3_ENDPOINT'] || hasUnresolvedInterpolation(env['S3_ENDPOINT'])) {
+  const endpoint = env['S3_ENDPOINT']?.trim();
+  if (
+    !endpoint ||
+    hasUnresolvedInterpolation(endpoint) ||
+    (!endpoint.startsWith('http://') && !endpoint.startsWith('https://'))
+  ) {
     env['S3_ENDPOINT'] = resolved.minioUrl;
   }
 

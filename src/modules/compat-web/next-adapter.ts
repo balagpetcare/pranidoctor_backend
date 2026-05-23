@@ -7,7 +7,23 @@ type WebRouteHandler = (
   context?: { params: Promise<Record<string, string>> },
 ) => Promise<globalThis.Response> | globalThis.Response;
 
-export function expressToWebRequest(req: Request): globalThis.Request {
+function readRawBody(req: Request): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+function contentTypeOf(req: Request): string {
+  const value = req.headers['content-type'];
+  if (Array.isArray(value)) return value[0] ?? '';
+  return value ?? '';
+}
+
+/** Builds a Fetch `Request` from Express, preserving multipart raw bytes. */
+export async function expressToWebRequest(req: Request): Promise<globalThis.Request> {
   const host = req.get('host') ?? 'localhost';
   const protocol = req.protocol ?? 'http';
   const url = `${protocol}://${host}${req.originalUrl}`;
@@ -27,16 +43,24 @@ export function expressToWebRequest(req: Request): globalThis.Request {
     headers,
   };
 
-  if (req.method !== 'GET' && req.method !== 'HEAD' && req.body !== undefined) {
-    const body =
-      typeof req.body === 'string'
-        ? req.body
-        : Buffer.isBuffer(req.body)
+  const contentType = contentTypeOf(req);
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    if (contentType.includes('multipart/form-data')) {
+      const raw = await readRawBody(req);
+      if (raw.length > 0) {
+        init.body = raw;
+      }
+    } else if (req.body !== undefined) {
+      const body =
+        typeof req.body === 'string'
           ? req.body
-          : JSON.stringify(req.body);
-    init.body = body;
-    if (!headers.has('content-type')) {
-      headers.set('content-type', 'application/json');
+          : Buffer.isBuffer(req.body)
+            ? req.body
+            : JSON.stringify(req.body);
+      init.body = body;
+      if (!headers.has('content-type')) {
+        headers.set('content-type', 'application/json');
+      }
     }
   }
 
@@ -63,7 +87,7 @@ export async function sendWebResponse(
 export function wrapNextHandler(handler: WebRouteHandler) {
   return async (req: Request, res: ExpressResponse, next: NextFunction): Promise<void> => {
     try {
-      const webReq = expressToWebRequest(req);
+      const webReq = await expressToWebRequest(req);
       const params: Record<string, string> = {};
       for (const [key, value] of Object.entries(req.params)) {
         if (typeof value === 'string') params[key] = value;

@@ -17,7 +17,8 @@ function parseMbToBytes(value: string | undefined, fallbackMb: number): number {
 function parseStorageDriver(
   value: string | undefined
 ): 's3' | 'minio' | 'local' | 'disabled' {
-  const driver = (value ?? 'disabled').trim().toLowerCase();
+  const media = process.env['MEDIA_STORAGE']?.trim().toLowerCase();
+  const driver = (value ?? media ?? 'disabled').trim().toLowerCase();
   if (driver === 's3' || driver === 'minio' || driver === 'local' || driver === 'disabled') {
     return driver;
   }
@@ -89,6 +90,9 @@ function loadRawConfig(): Record<string, unknown> {
     },
 
     storage: {
+      enabled:
+        parseBooleanEnv(env['STORAGE_ENABLED'], true) &&
+        parseBooleanEnv(env['MINIO_ENABLED'], true),
       driver: parseStorageDriver(env['STORAGE_DRIVER']),
       endpoint: env['S3_ENDPOINT'],
       region: env['S3_REGION'],

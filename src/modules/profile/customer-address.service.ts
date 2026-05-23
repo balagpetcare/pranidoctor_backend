@@ -23,6 +23,7 @@ export type PatchMobileMeInput = {
     upazilaId?: string;
     unionId?: string;
     villageId?: string;
+    villageName?: string;
     line1?: string;
     postalCode?: string;
   };
@@ -104,11 +105,29 @@ export class CustomerAddressService {
         return { ok: false, httpStatus: 422, code: resolved.code };
       }
 
+      const customVillageName = parsedAddr.data.villageName?.trim();
+      const hierarchyParts = [
+        resolved.resolved.villageNameBn,
+        resolved.resolved.unionNameBn,
+        resolved.resolved.upazilaNameBn,
+      ].filter((part): part is string => typeof part === 'string' && part.length > 0);
+      const hierarchyJoined = hierarchyParts.join(', ');
+      const hierarchyAreaLabel =
+        resolved.resolved.areaLabel ??
+        (hierarchyJoined.length > 0 ? hierarchyJoined : undefined);
+
       nextAddress = customerAddressJsonSchema.parse({
         ...existingJson,
         ...(nextAddress ?? {}),
         ...resolved.resolved,
-        areaLabel: resolved.resolved.areaLabel ?? readAreaLabel(existingJson) ?? undefined,
+        ...(customVillageName
+          ? { villageNameBn: customVillageName, areaLabel: customVillageName }
+          : {}),
+        areaLabel:
+          customVillageName ??
+          hierarchyAreaLabel ??
+          readAreaLabel(existingJson) ??
+          undefined,
         line1: parsedAddr.data.line1 ?? (existingJson.line1 as string | undefined),
         postalCode:
           parsedAddr.data.postalCode ?? (existingJson.postalCode as string | undefined),

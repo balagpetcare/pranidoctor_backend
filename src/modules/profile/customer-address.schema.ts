@@ -29,6 +29,7 @@ export const patchAddressBodySchema = z
     upazilaId: z.string().min(1).optional(),
     unionId: z.string().min(1).optional(),
     villageId: z.string().min(1).optional(),
+    villageName: z.string().trim().min(1).max(120).optional(),
     line1: z.string().trim().max(500).optional(),
     postalCode: z.string().trim().max(20).optional(),
   })

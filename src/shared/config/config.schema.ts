@@ -69,6 +69,7 @@ export const configSchema = z
     }),
 
     storage: z.object({
+      enabled: z.coerce.boolean().default(true),
       driver: storageDriverSchema.default('disabled'),
       endpoint: z.string().optional(),
       region: z.string().default('us-east-1'),

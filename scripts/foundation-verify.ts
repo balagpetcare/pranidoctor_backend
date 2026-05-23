@@ -98,6 +98,20 @@ function verifyRedisHealthGraceful(): void {
   );
 }
 
+function verifyStorageHealthGraceful(): void {
+  push(
+    'storage',
+    'runtime degrade helper exists',
+    fileContains('src/modules/media/storage/storage.factory.ts', 'degradeStorageRuntime'),
+  );
+
+  push(
+    'health',
+    'storage health returns degraded when optional',
+    fileContains('src/api/health/health.service.ts', 'isStorageRuntimeDegraded'),
+  );
+}
+
 function runUnitTests(): void {
   const result = spawnSync('npm', ['run', 'test', '--', '--run', 'src/shared', 'src/infra/redis'], {
     cwd: ROOT,
@@ -119,6 +133,7 @@ function main(): void {
   verifyStaticStructure();
   verifyFreezeBoundaries();
   verifyRedisHealthGraceful();
+  verifyStorageHealthGraceful();
   runUnitTests();
 
   const failed = checks.filter((c) => !c.ok);

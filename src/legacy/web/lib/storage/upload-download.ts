@@ -1,6 +1,7 @@
 import { UploadedFileStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
+import { deleteObjectBytes } from "./s3-client";
 import { getSignedGetObjectUrl } from "./s3-client";
 import { getStorageEnv, isS3Configured } from "./storage-env";
 
@@ -26,4 +27,28 @@ export async function getSignedDownloadUrlForUploadedFile(
     expiresIn: expiresInSeconds,
   });
   return { url };
+}
+
+export async function deleteUploadedFileById(
+  id: string,
+  ownerUserId: string,
+): Promise<"OK" | "NOT_FOUND" | "NOT_CONFIGURED" | "DELETE_FAILED"> {
+  const row = await prisma.uploadedFile.findFirst({
+    where: { id, ownerUserId, status: UploadedFileStatus.ACTIVE },
+  });
+  if (!row) return "NOT_FOUND";
+
+  const env = getStorageEnv();
+  if (!isS3Configured(env)) return "NOT_CONFIGURED";
+
+  try {
+    await deleteObjectBytes({ env, key: row.storageKey });
+    await prisma.uploadedFile.update({
+      where: { id: row.id },
+      data: { status: UploadedFileStatus.DELETED },
+    });
+    return "OK";
+  } catch {
+    return "DELETE_FAILED";
+  }
 }

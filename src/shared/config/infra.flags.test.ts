@@ -50,10 +50,21 @@ describe('infra.flags', () => {
       isStorageRequired(
         baseConfig({
           nodeEnv: 'production',
-          storage: { driver: 's3', bucket: 'b', region: 'us-east-1' },
+          storage: { driver: 's3', bucket: 'b', region: 'us-east-1', enabled: true },
         })
       )
     ).toBe(true);
+  });
+
+  it('does not require storage when STORAGE_ENABLED=false', () => {
+    expect(
+      isStorageRequired(
+        baseConfig({
+          nodeEnv: 'production',
+          storage: { driver: 's3', bucket: 'b', region: 'us-east-1', enabled: false },
+        })
+      )
+    ).toBe(false);
   });
 
   it('detects strict startup mode', () => {

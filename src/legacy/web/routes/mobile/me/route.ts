@@ -18,5 +18,10 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await requireMobileCustomer(request);
   if (!auth.ok) return auth.response;
-  return handleMobileMePatch(request, auth.ctx.userId, auth.ctx.profileLocale);
+  return handleMobileMePatch(
+    request,
+    auth.ctx.userId,
+    auth.ctx.profileLocale,
+    auth.ctx.customerProfileId,
+  );
 }

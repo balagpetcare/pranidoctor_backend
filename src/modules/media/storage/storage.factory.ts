@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../../shared/config/config.schema.js';
+import { logWarn } from '../../../shared/logger/logger.js';
 
 import { DisabledStorageAdapter } from './adapters/disabled/disabled.adapter.js';
 import { LocalStorageAdapter } from './adapters/local/local.adapter.js';
@@ -7,6 +8,8 @@ import { S3StorageAdapter } from './adapters/s3/s3.adapter.js';
 import type { IStorageProvider, StorageConfig } from './interfaces/storage-provider.interface.js';
 
 let storageInstance: IStorageProvider | null = null;
+let runtimeDegraded = false;
+let runtimeDegradeReason: string | undefined;
 
 export function buildStorageConfig(config: AppConfig): StorageConfig {
   return config.storage;
@@ -44,11 +47,44 @@ export function getStorage(): IStorageProvider {
 }
 
 export function isStorageEnabled(config: AppConfig): boolean {
+  if (!config.storage.enabled) return false;
   if (config.storage.driver === 'disabled') return false;
   if (config.storage.driver === 'local') return true;
   return Boolean(config.storage.accessKeyId && config.storage.secretAccessKey);
 }
 
+export function isStorageOperational(config: AppConfig): boolean {
+  return isStorageEnabled(config) && !runtimeDegraded;
+}
+
+export function isStorageRuntimeDegraded(): boolean {
+  return runtimeDegraded;
+}
+
+export function getStorageRuntimeDegradeReason(): string | undefined {
+  return runtimeDegradeReason;
+}
+
+/**
+ * Swap to a disabled adapter when remote storage is unreachable in development.
+ * Upload routes should treat this the same as STORAGE_ENABLED=false.
+ */
+export function degradeStorageRuntime(reason: string): void {
+  if (runtimeDegraded) return;
+
+  runtimeDegraded = true;
+  runtimeDegradeReason = reason;
+  storageInstance = new DisabledStorageAdapter();
+  process.env['STORAGE_RUNTIME_DEGRADED'] = 'true';
+
+  logWarn('Storage degraded at runtime — uploads disabled until storage is reachable', {
+    reason,
+  });
+}
+
 export function resetStorage(): void {
   storageInstance = null;
+  runtimeDegraded = false;
+  runtimeDegradeReason = undefined;
+  delete process.env['STORAGE_RUNTIME_DEGRADED'];
 }

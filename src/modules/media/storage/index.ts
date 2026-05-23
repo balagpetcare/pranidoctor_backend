@@ -19,5 +19,9 @@ export {
   initializeStorage,
   getStorage,
   isStorageEnabled,
+  isStorageOperational,
+  isStorageRuntimeDegraded,
+  getStorageRuntimeDegradeReason,
+  degradeStorageRuntime,
   resetStorage,
 } from './storage.factory.js';

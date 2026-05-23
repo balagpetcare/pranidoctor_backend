@@ -12,6 +12,10 @@ const infrastructureEnvSchema = z.object({
     .string()
     .optional()
     .transform((v) => v !== 'false' && v !== '0'),
+  STORAGE_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false' && v !== '0'),
   STORAGE_DRIVER: storageDriverSchema.default('disabled'),
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
@@ -80,6 +84,7 @@ export function validateInfrastructureEnv(
     DATABASE_URL: databaseUrl,
     REDIS_URL: rawEnv['REDIS_URL'],
     REDIS_ENABLED: rawEnv['REDIS_ENABLED'],
+    STORAGE_ENABLED: rawEnv['STORAGE_ENABLED'],
     STORAGE_DRIVER: (rawEnv['STORAGE_DRIVER'] ?? 'disabled').toLowerCase(),
     S3_ENDPOINT: rawEnv['S3_ENDPOINT'] || rawEnv['MINIO_URL'] || undefined,
     S3_BUCKET: rawEnv['S3_BUCKET'],
@@ -139,6 +144,10 @@ export function validateInfrastructureEnv(
 
   if (env.NODE_ENV === 'development' && !env.REDIS_ENABLED) {
     warnings.push('REDIS_ENABLED=false — OTP, sessions, and queues will not work until Redis is available');
+  }
+
+  if (env.NODE_ENV === 'development' && !env.STORAGE_ENABLED) {
+    warnings.push('STORAGE_ENABLED=false — file uploads are disabled until storage is enabled');
   }
 
   if (env.SKIP_STARTUP_VALIDATION && env.NODE_ENV === 'production') {

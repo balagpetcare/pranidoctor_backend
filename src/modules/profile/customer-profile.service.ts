@@ -5,16 +5,59 @@ import { isProfileComplete, readAreaLabel } from './customer-address.schema.js';
 
 const SUPPORTED_LOCALES = new Set(['bn-BD', 'en-US']);
 
+function serializeAddress(
+  addressJson: unknown,
+  primaryVillageId?: string | null,
+): MobileMeAddressDto | null {
+  if (addressJson == null || typeof addressJson !== 'object' || Array.isArray(addressJson)) {
+    if (primaryVillageId) {
+      return { villageId: primaryVillageId };
+    }
+    return null;
+  }
+  const o = addressJson as Record<string, unknown>;
+  const address: MobileMeAddressDto = {};
+  if (typeof o.divisionId === 'string') address.divisionId = o.divisionId;
+  if (typeof o.districtId === 'string') address.districtId = o.districtId;
+  if (typeof o.upazilaId === 'string') address.upazilaId = o.upazilaId;
+  if (typeof o.unionId === 'string') address.unionId = o.unionId;
+  if (typeof o.villageId === 'string') address.villageId = o.villageId;
+  if (!address.villageId && primaryVillageId) {
+    address.villageId = primaryVillageId;
+  }
+  const villageName = o.villageNameBn ?? o.villageName;
+  if (typeof villageName === 'string' && villageName.trim()) {
+    address.villageName = villageName.trim();
+  }
+  if (typeof o.line1 === 'string') address.line1 = o.line1;
+  if (typeof o.postalCode === 'string') address.postalCode = o.postalCode;
+  return Object.keys(address).length > 0 ? address : null;
+}
+
+export type MobileMeAddressDto = {
+  divisionId?: string;
+  districtId?: string;
+  upazilaId?: string;
+  unionId?: string;
+  villageId?: string;
+  villageName?: string;
+  line1?: string;
+  postalCode?: string;
+};
+
 export type MobileMeDto = {
   id: string;
   name: string;
   phone: string;
   email: string;
   area: string | null;
+  address?: MobileMeAddressDto | null;
   locale: string;
   role: 'customer';
   profilePhotoUrl: string | null;
+  profilePhotoThumbUrl: string | null;
   coverPhotoUrl: string | null;
+  coverPhotoThumbUrl: string | null;
   profileComplete?: boolean;
 };
 
@@ -63,7 +106,9 @@ export class CustomerProfileService {
       locale: string | null;
       addressJson: Prisma.JsonValue | null;
       profilePhotoUrl: string | null;
+      profilePhotoThumbUrl: string | null;
       coverPhotoUrl: string | null;
+      coverPhotoThumbUrl: string | null;
       primaryVillageId?: string | null;
     };
   }): MobileMeDto {
@@ -83,11 +128,32 @@ export class CustomerProfileService {
       phone: user.phone ?? '',
       email: user.email,
       area,
+      address: serializeAddress(cp.addressJson, cp.primaryVillageId ?? null),
       locale,
       role: 'customer',
       profilePhotoUrl: cp.profilePhotoUrl,
+      profilePhotoThumbUrl: cp.profilePhotoThumbUrl,
       coverPhotoUrl: cp.coverPhotoUrl,
+      coverPhotoThumbUrl: cp.coverPhotoThumbUrl,
       profileComplete,
+      // Backward-compatible aliases for mobile clients
+      avatarUrl: cp.profilePhotoUrl,
+      avatarThumbUrl: cp.profilePhotoThumbUrl,
+      coverUrl: cp.coverPhotoUrl,
+      coverThumbUrl: cp.coverPhotoThumbUrl,
+      profileImageUrl: cp.profilePhotoUrl,
+      profileImageThumbUrl: cp.profilePhotoThumbUrl,
+      coverImageUrl: cp.coverPhotoUrl,
+      coverImageThumbUrl: cp.coverPhotoThumbUrl,
+    } as MobileMeDto & {
+      avatarUrl: string | null;
+      avatarThumbUrl: string | null;
+      coverUrl: string | null;
+      coverThumbUrl: string | null;
+      profileImageUrl: string | null;
+      profileImageThumbUrl: string | null;
+      coverImageUrl: string | null;
+      coverImageThumbUrl: string | null;
     };
   }
 

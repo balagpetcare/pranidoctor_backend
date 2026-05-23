@@ -1,10 +1,16 @@
 import { getRedis, isRedisInitialized } from '../../infra/redis/redis.client.js';
-import { getStorage, isStorageEnabled } from '../../modules/media/storage/storage.factory.js';
+import {
+  degradeStorageRuntime,
+  getStorage,
+  isStorageEnabled,
+  isStorageRuntimeDegraded,
+} from '../../modules/media/storage/storage.factory.js';
 import { checkDatabaseConnection } from '../database/prisma.js';
 
 import { omitUndefined } from '../types/object.utils.js';
 
 import type { AppConfig } from './config.schema.js';
+import { validateMobileProfileModulesCheck } from './mobile-profile-startup.js';
 import { resolveEnvUrls } from './env.resolver.js';
 import {
   isRedisEnabled,
@@ -114,7 +120,15 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
     warnings.push('Redis disabled — auth OTP and background jobs require Redis when enabled');
   }
 
-  if (isStorageEnabled(config)) {
+  if (!config.storage.enabled) {
+    checks.push({
+      name: 'storage',
+      healthy: true,
+      optional: true,
+      error: 'Storage disabled (STORAGE_ENABLED=false)',
+    });
+    warnings.push('STORAGE_ENABLED=false — file uploads are disabled');
+  } else if (isStorageEnabled(config)) {
     const storageStart = Date.now();
     const storageLabel =
       config.storage.driver === 'local' ? 'local-storage' : config.storage.driver;
@@ -133,20 +147,36 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
         })
       );
       if (!health.healthy && !required) {
+        degradeStorageRuntime(health.error ?? 'Storage unavailable');
         warnings.push(
-          `Storage (${config.storage.driver}) unavailable — media uploads may fail until configured`
+          `Storage (${config.storage.driver}) unavailable at ${resolvedUrls.minioUrl} — uploads disabled until MinIO/S3 is up`
+        );
+      } else if (!health.healthy && required) {
+        warnings.push(
+          `Storage (${config.storage.driver}) required but unavailable at ${resolvedUrls.minioUrl}`
         );
       }
     } catch (error) {
       const required = isStorageRequired(config);
+      const message = error instanceof Error ? error.message : String(error);
       checks.push({
         name: storageLabel,
         healthy: false,
         latencyMs: Date.now() - storageStart,
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
         optional: !required,
         warning: !required,
       });
+      if (!required) {
+        degradeStorageRuntime(message);
+        warnings.push(
+          `Storage (${config.storage.driver}) unavailable — uploads disabled until storage is reachable`
+        );
+      } else {
+        warnings.push(
+          `Storage (${config.storage.driver}) required but unavailable — ${message}`
+        );
+      }
     }
   } else {
     checks.push({
@@ -160,6 +190,14 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
     } else {
       warnings.push('Storage disabled — set STORAGE_DRIVER=local|minio|s3 when needed');
     }
+  }
+
+  const mobileModules = await validateMobileProfileModulesCheck();
+  checks.push(mobileModules);
+  if (!mobileModules.healthy) {
+    warnings.push(
+      'Mobile profile modules failed import — GET /api/mobile/me will not work until fixed',
+    );
   }
 
   const requiredChecks = checks.filter((c) => !c.optional);
@@ -204,7 +242,9 @@ export function formatStartupValidation(result: StartupValidationResult): string
   lines.push('');
   lines.push(
     result.ok
-      ? 'All required services are healthy.'
+      ? isStorageRuntimeDegraded()
+        ? 'All required services are healthy. Storage is degraded — uploads disabled.'
+        : 'All required services are healthy.'
       : 'One or more required services failed.'
   );
 
