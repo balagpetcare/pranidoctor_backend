@@ -106,6 +106,7 @@ export function validateInfrastructureEnv(
         NODE_ENV: 'development',
         DATABASE_URL: databaseUrl,
         REDIS_ENABLED: true,
+        STORAGE_ENABLED: true,
         STORAGE_DRIVER: 'disabled',
         SKIP_STARTUP_VALIDATION: false,
       },

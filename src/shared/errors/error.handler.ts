@@ -6,6 +6,7 @@ import { logError, logWarn } from '../logger/logger.js';
 
 import { AppError } from './app.error.js';
 import { InternalServerError, ValidationError } from './http.errors.js';
+import { mapPrismaError } from './prisma-error.mapper.js';
 
 interface ErrorResponse {
   success: false;
@@ -32,6 +33,11 @@ export function errorHandler(
 ): void {
   const requestId = getRequestId();
   const elapsed = getElapsedTime();
+
+  const prismaMapped = mapPrismaError(error);
+  if (prismaMapped instanceof AppError) {
+    error = prismaMapped;
+  }
 
   if (error instanceof AppError) {
     if (error.statusCode >= 500) {

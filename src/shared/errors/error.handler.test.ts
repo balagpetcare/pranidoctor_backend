@@ -10,7 +10,9 @@ vi.mock('../logger/logger.js', () => ({
 import { runWithContext, createRequestContext } from '../context/request-context.js';
 
 import { AppError } from './app.error.js';
-import { NotFoundError, ValidationError } from './http.errors.js';
+import { ConflictError, NotFoundError, ValidationError } from './http.errors.js';
+import { mapPrismaError } from './prisma-error.mapper.js';
+import { Prisma } from '../../generated/prisma/index.js';
 import { errorHandler } from './error.handler.js';
 
 function createMockRes() {
@@ -95,6 +97,23 @@ describe('errorHandler', () => {
         code: 'CUSTOM',
         details: { field: 'x' },
       },
+    });
+  });
+
+  it('maps Prisma unique constraint to 409', () => {
+    const { res, json, status } = createMockRes();
+    const prismaErr = new Prisma.PrismaClientKnownRequestError('Unique', {
+      code: 'P2002',
+      clientVersion: 'test',
+      meta: { target: ['email'] },
+    });
+    const mapped = mapPrismaError(prismaErr);
+    expect(mapped).toBeInstanceOf(ConflictError);
+    errorHandler(mapped as ConflictError, req, res, next);
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json.mock.calls[0]?.[0]).toMatchObject({
+      success: false,
+      error: { code: 'UNIQUE_CONSTRAINT' },
     });
   });
 

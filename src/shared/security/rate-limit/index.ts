@@ -16,3 +16,9 @@ export {
   rateLimitExport,
   type RateLimitResult,
 } from './rate-limit.service.js';
+export {
+  whenRateLimitAvailable,
+  isRateLimitingAvailable,
+  createCompatAuthRateLimitMiddleware,
+  whenRateLimitUnavailableWarn,
+} from './safe-rate-limit.js';

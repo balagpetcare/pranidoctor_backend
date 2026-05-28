@@ -69,3 +69,5 @@ export class ServiceUnavailableError extends AppError {
     super(message, code, 503, details);
   }
 }
+
+export { NotImplementedError, throwFoundationNotImplemented } from './not-implemented.error.js';

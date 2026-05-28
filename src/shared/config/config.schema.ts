@@ -114,6 +114,20 @@ export const configSchema = z
       message: 'All JWT secrets must be changed from defaults in production',
       path: ['jwt'],
     }
+  )
+  .refine(
+    (data) => data.nodeEnv !== 'production' || data.redis.enabled,
+    {
+      message: 'REDIS_ENABLED must be true in production (OTP, sessions, rate limits)',
+      path: ['redis', 'enabled'],
+    }
+  )
+  .refine(
+    (data) => data.nodeEnv !== 'production' || !data.skipStartupValidation,
+    {
+      message: 'SKIP_STARTUP_VALIDATION must be false in production',
+      path: ['skipStartupValidation'],
+    }
   );
 
 export type AppConfig = z.infer<typeof configSchema>;
