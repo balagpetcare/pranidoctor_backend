@@ -29,6 +29,7 @@ import {
   shouldSkipStartupValidation,
 } from './shared/config/infra.flags.js';
 import { createPrismaClient, disconnectPrisma } from './shared/database/prisma.js';
+import { warnIfProdDevOtpMode } from './legacy/web/lib/mobile-auth/otp-env.js';
 import { createLogger, logInfo, logError, logFatal, logWarn } from './shared/logger/logger.js';
 
 let isShuttingDown = false;
@@ -44,6 +45,7 @@ async function bootstrap(): Promise<void> {
   }
 
   createLogger(config);
+  warnIfProdDevOtpMode();
   logInfo('Starting server', { env: config.nodeEnv, port: config.port });
 
   try {

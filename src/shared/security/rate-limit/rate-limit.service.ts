@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { getConfig } from '../../config/index.js';
 import { TooManyRequestsError } from '../../errors/http.errors.js';
 import { getRedis } from '../../../infra/redis/redis.client.js';
+import { isRateLimitingAvailable } from './safe-rate-limit.js';
 import { logWarn, logDebug } from '../../logger/logger.js';
 import { getRequestContext } from '../../context/request-context.js';
 
@@ -19,12 +20,22 @@ export async function checkRateLimit(
   key: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
+  const now = Date.now();
+  const resetAt = new Date(now + config.duration * 1000);
+
+  if (!isRateLimitingAvailable()) {
+    return {
+      allowed: true,
+      remaining: config.points,
+      resetAt,
+    };
+  }
+
   const appConfig = getConfig();
   const redis = getRedis();
   const prefix = appConfig.redis.prefix;
 
   const fullKey = `${prefix}${config.keyPrefix}${key}`;
-  const now = Date.now();
   const windowStart = now - config.duration * 1000;
 
   const pipeline = redis.pipeline();
@@ -37,7 +48,6 @@ export async function checkRateLimit(
   const count = (results?.[2]?.[1] as number) ?? 0;
 
   const remaining = Math.max(0, config.points - count);
-  const resetAt = new Date(now + config.duration * 1000);
 
   if (count > config.points) {
     const retryAfter = config.blockDuration ?? config.duration;
@@ -68,12 +78,18 @@ export async function getRateLimitStatus(
   key: string,
   config: RateLimitConfig
 ): Promise<{ count: number; remaining: number; resetAt: Date }> {
+  const now = Date.now();
+  const resetAt = new Date(now + config.duration * 1000);
+
+  if (!isRateLimitingAvailable()) {
+    return { count: 0, remaining: config.points, resetAt };
+  }
+
   const appConfig = getConfig();
   const redis = getRedis();
   const prefix = appConfig.redis.prefix;
 
   const fullKey = `${prefix}${config.keyPrefix}${key}`;
-  const now = Date.now();
   const windowStart = now - config.duration * 1000;
 
   await redis.zremrangebyscore(fullKey, 0, windowStart);
