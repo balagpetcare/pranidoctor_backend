@@ -1,3 +1,4 @@
+import { throwFoundationNotImplemented } from '../../shared/errors/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 
@@ -21,43 +22,43 @@ export class AiRepository implements AiRepositoryInterface {
   readonly name = 'AiRepository';
 
   async createConversation(_data: StartConversationDto, _sessionId: string): Promise<AiConversation> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async findConversationById(_id: string): Promise<AiConversation | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async findActiveConversation(_userId: string): Promise<AiConversation | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async updateConversation(_id: string, _data: Partial<AiConversation>): Promise<AiConversation> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async endConversation(_id: string): Promise<AiConversation> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async listConversations(_filter: ConversationFilter, _page: number, _pageSize: number): Promise<PaginatedResult<AiConversation>> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async addMessage(_conversationId: string, _role: 'USER' | 'ASSISTANT' | 'SYSTEM', _content: string): Promise<AiMessage> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async getMessages(_conversationId: string): Promise<AiMessage[]> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async recordUsage(_usage: Omit<AiUsageRecord, 'id' | 'createdAt'>): Promise<AiUsageRecord> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 
   async updateEmergencyLevel(_conversationId: string, _level: EmergencyLevel): Promise<void> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('AI conversations foundation API');
   }
 }
 

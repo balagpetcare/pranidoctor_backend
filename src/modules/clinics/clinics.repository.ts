@@ -1,3 +1,4 @@
+import { throwFoundationNotImplemented } from '../../shared/errors/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 
@@ -23,51 +24,51 @@ export class ClinicsRepository implements ClinicsRepositoryInterface {
   readonly name = 'ClinicsRepository';
 
   async create(_data: CreateClinicDto): Promise<Clinic> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async findById(_id: string): Promise<Clinic | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async findBySlug(_slug: string): Promise<Clinic | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async findByOwner(_ownerId: string): Promise<Clinic[]> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async update(_id: string, _data: UpdateClinicDto): Promise<Clinic> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async list(_filter: ClinicFilter, _page: number, _pageSize: number): Promise<PaginatedResult<Clinic>> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async getServices(_clinicId: string): Promise<ClinicService[]> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async addService(_data: CreateClinicServiceDto): Promise<ClinicService> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async removeService(_serviceId: string): Promise<void> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async getStaff(_clinicId: string): Promise<ClinicStaff[]> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async addStaff(_data: AddStaffDto): Promise<ClinicStaff> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 
   async removeStaff(_staffId: string): Promise<void> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Clinics foundation API');
   }
 }
 

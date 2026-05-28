@@ -1,16 +1,9 @@
-import type { Request, Response, NextFunction } from 'express';
 import type { ZodSchema } from 'zod';
+import type { RequestHandler } from 'express';
 
-export function createValidationMiddleware(schema: ZodSchema) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.body);
+import { validateBody } from '../../shared/validation/validate.middleware.js';
 
-    if (!result.success) {
-      next(result.error);
-      return;
-    }
-
-    req.body = result.data;
-    next();
-  };
+/** @deprecated Use `validateBody` from `@shared/validation` — kept for existing route files. */
+export function createValidationMiddleware(schema: ZodSchema): RequestHandler {
+  return validateBody(schema);
 }

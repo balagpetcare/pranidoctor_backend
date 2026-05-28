@@ -9,6 +9,7 @@ import { initializeStorage, isStorageEnabled } from './modules/media/storage/ind
 import { bootstrapMinioStorage } from './legacy/web/lib/storage/minio-bootstrap.js';
 import { getStorageEnv } from './legacy/web/lib/storage/storage-env.js';
 import { createAllModules } from './modules/index.js';
+import { shouldMountStubFoundationModules } from './shared/config/foundation-modules.config.js';
 import { loadModules, unloadModules } from './shared/module/module-loader.js';
 import { initializeCacheService } from './infra/cache/cache.service.js';
 import { createRedisClient, disconnectRedis } from './infra/redis/redis.client.js';
@@ -162,8 +163,12 @@ async function bootstrap(): Promise<void> {
   }
 
   try {
-    await loadModules(app, createAllModules(), { apiPrefix: '/api' });
-    logInfo('API modules mounted');
+    const modules = createAllModules();
+    await loadModules(app, modules, { apiPrefix: '/api' });
+    logInfo('API modules mounted', {
+      count: modules.length,
+      stubModulesMounted: shouldMountStubFoundationModules(),
+    });
   } catch (error) {
     logFatal('Failed to load modules', error);
     process.exit(1);

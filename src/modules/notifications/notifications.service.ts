@@ -1,3 +1,4 @@
+import { NotImplementedError } from '../../shared/errors/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 
@@ -81,14 +82,17 @@ export class NotificationsService implements NotificationsServiceInterface {
   }
 
   async sendSms(_data: SendSmsDto): Promise<void> {
-    // TODO: Implement SMS sending via provider in Phase 2
-    // For now, this is a placeholder
-    throw new Error('SMS sending not implemented - awaiting provider integration');
+    throw new NotImplementedError(
+      'SMS_NOT_IMPLEMENTED',
+      'SMS delivery is not configured. Use in-app notifications via compat routes.',
+    );
   }
 
   async sendPush(_data: SendPushDto): Promise<void> {
-    // TODO: Implement push notification via FCM/APNS in Phase 2
-    throw new Error('Push notifications not implemented - awaiting provider integration');
+    throw new NotImplementedError(
+      'PUSH_NOT_IMPLEMENTED',
+      'Push delivery is not configured. Use in-app notifications via compat routes.',
+    );
   }
 
   async markAsRead(ids: string[]): Promise<void> {

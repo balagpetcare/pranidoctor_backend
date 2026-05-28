@@ -28,9 +28,10 @@ import { createTreatmentWorkflowModule } from './treatment-workflow/index.js';
 import { createVoiceAssistantModule } from './voice-assistant/index.js';
 import { createSyncModule, createOfflineModule } from './offline-architecture/index.js';
 import type { ModuleDefinition } from '../shared/module/module.types.js';
+import { filterFoundationModules } from '../shared/config/foundation-modules.config.js';
 
 export function createAllModules(): ModuleDefinition[] {
-  return [
+  const modules: ModuleDefinition[] = [
     createAuthModule(),
     createIdentityModule(),
     createAreaEngineModule(),
@@ -47,4 +48,6 @@ export function createAllModules(): ModuleDefinition[] {
     createAiVeterinaryCoreModule(),
     createMediaModule(),
   ];
+
+  return filterFoundationModules(modules);
 }

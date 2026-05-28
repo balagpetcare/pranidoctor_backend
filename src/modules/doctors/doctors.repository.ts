@@ -1,3 +1,4 @@
+import { throwFoundationNotImplemented } from '../../shared/errors/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 import { createPaginationMeta } from '../../shared/utils/pagination.js';
@@ -74,7 +75,7 @@ export class DoctorsRepository implements DoctorsRepositoryInterface {
   private readonly p2 = getDoctorService();
 
   async create(_data: CreateDoctorDto): Promise<Doctor> {
-    throw new Error('Not implemented - use admin legacy routes');
+    throwFoundationNotImplemented('Doctor registration');
   }
 
   async findById(id: string): Promise<Doctor | null> {

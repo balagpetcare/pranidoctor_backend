@@ -90,7 +90,10 @@ function lazyLegacyHandler(routeFile: string, method: (typeof METHODS)[number]) 
 
 /** Registers legacy paths; handlers load on first request (faster/safer startup). */
 export async function registerLegacyWebRoutes(router: Router): Promise<number> {
-  const files = walkRouteFiles(ROUTES_ROOT);
+  const files = walkRouteFiles(ROUTES_ROOT).sort((a, b) => {
+    const depth = (p: string) => fileToExpressPath(p).split('/').filter(Boolean).length;
+    return depth(b) - depth(a);
+  });
   let count = 0;
 
   for (const file of files) {

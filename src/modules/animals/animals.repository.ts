@@ -1,3 +1,4 @@
+import { throwFoundationNotImplemented } from '../../shared/errors/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 
@@ -19,35 +20,35 @@ export class AnimalsRepository implements AnimalsRepositoryInterface {
   readonly name = 'AnimalsRepository';
 
   async create(_data: CreateAnimalDto): Promise<Animal> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async findById(_id: string): Promise<Animal | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async findByOwner(_ownerId: string): Promise<Animal[]> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async update(_id: string, _data: UpdateAnimalDto): Promise<Animal> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async delete(_id: string): Promise<void> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async list(_filter: AnimalFilter, _page: number, _pageSize: number): Promise<PaginatedResult<Animal>> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async getMedicalRecords(_animalId: string): Promise<AnimalMedicalRecord[]> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 
   async addMedicalRecord(_data: CreateMedicalRecordDto): Promise<AnimalMedicalRecord> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Animals foundation API');
   }
 }
 

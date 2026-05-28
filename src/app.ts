@@ -8,6 +8,8 @@ import type { AppConfig } from './shared/config/config.schema.js';
 import { errorHandler, notFoundHandler } from './shared/errors/error.handler.js';
 import { getLogger } from './shared/logger/logger.js';
 import { contextMiddleware, createLoggerMiddleware } from './shared/middleware/index.js';
+import { rateLimitApi } from './shared/security/rate-limit/rate-limit.service.js';
+import { whenRateLimitAvailable } from './shared/security/rate-limit/safe-rate-limit.js';
 
 export function createApp(config: AppConfig): Express {
   const app = express();
@@ -34,6 +36,7 @@ export function createApp(config: AppConfig): Express {
 
   app.use(contextMiddleware);
   app.use(createLoggerMiddleware(logger, config));
+  app.use(whenRateLimitAvailable(rateLimitApi));
 
   app.use((_req, res, next) => {
     res.setHeader('X-API-Version', 'v1');

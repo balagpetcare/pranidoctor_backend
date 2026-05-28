@@ -19,7 +19,21 @@ export function createUploadMiddleware(config: AppConfig) {
       fileSize: maxBytes,
       files: 1,
     },
-    fileFilter: (_req, _file, cb) => {
+    fileFilter: (_req, file, cb) => {
+      const allowed = new Set([
+        ...config.storage.allowedImageMimes,
+        ...config.storage.allowedDocumentMimes,
+        ...config.storage.allowedVideoMimes,
+      ]);
+      if (!allowed.has(file.mimetype)) {
+        cb(
+          new BadRequestError('UPLOAD_INVALID_TYPE', 'File type is not allowed', {
+            mimetype: file.mimetype,
+            allowed: [...allowed],
+          }),
+        );
+        return;
+      }
       cb(null, true);
     },
   });

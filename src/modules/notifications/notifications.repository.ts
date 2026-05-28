@@ -1,3 +1,4 @@
+import { throwFoundationNotImplemented } from '../../shared/errors/index.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 
@@ -19,35 +20,35 @@ export class NotificationsRepository implements NotificationsRepositoryInterface
   readonly name = 'NotificationsRepository';
 
   async create(_data: CreateNotificationDto): Promise<Notification> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async findById(_id: string): Promise<Notification | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async updateStatus(_id: string , _status: Notification['status']): Promise<Notification> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async markAsRead(_ids: string[]): Promise<void> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async markAllAsRead(_userId: string): Promise<void> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async list(_filter: NotificationFilter, _page: number, _pageSize: number): Promise<PaginatedResult<Notification>> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async getUnreadCount(_userId: string): Promise<number> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 
   async getTemplate(_type: NotificationType, _channel: NotificationChannel): Promise<NotificationTemplate | null> {
-    throw new Error('Not implemented - awaiting database migration');
+    throwFoundationNotImplemented('Notifications foundation API');
   }
 }
 

@@ -3,7 +3,7 @@ import type { Router } from 'express';
 import type { AppConfig } from '../../shared/config/config.schema.js';
 import { asyncHandler } from '../../shared/middleware/async-handler.js';
 import { validateBody, validateParams, validateQuery } from '../../shared/validation/validate.middleware.js';
-import { optionalAuthMobile, rateLimitUpload } from '../../shared/security/index.js';
+import { optionalAuthMobile, rateLimitUpload, whenRateLimitAvailable } from '../../shared/security/index.js';
 
 import type { MediaController } from './media.controller.js';
 import { createUploadMiddleware } from './media.upload.middleware.js';
@@ -23,7 +23,7 @@ export function configureMediaRoutes(
 
   router.post(
     '/upload',
-    rateLimitUpload,
+    whenRateLimitAvailable(rateLimitUpload),
     optionalAuthMobile,
     uploadMiddleware.single('file'),
     validateBody(uploadMediaSchema),
@@ -32,7 +32,7 @@ export function configureMediaRoutes(
 
   router.post(
     '/presign',
-    rateLimitUpload,
+    whenRateLimitAvailable(rateLimitUpload),
     optionalAuthMobile,
     validateBody(presignUploadSchema),
     asyncHandler(controller.presign)
