@@ -268,6 +268,25 @@ model CustomerProfile {
   healthEvents       HealthEvent[]
   vaccineRecords     VaccineRecord[]
   farmTreatments     FarmTreatment[]
+  fatteningBatches   FatteningBatch[]
+  fatteningBatchRois FatteningBatchRoi[]
+  weightRecords      WeightRecord[]
+  batchFeedPlans     BatchFeedPlan[]
+  inventoryItems     InventoryItem[]
+  inventoryTransactions InventoryTransaction[]
+  inventoryAuditLogs InventoryAuditLog[]
+  livestockRecords   Livestock[]
+  livestockExpenses  LivestockExpense[]
+  feedInventories    FeedInventory[]
+  feedPurchases      FeedPurchase[]
+  feedConsumptions   FeedConsumption[]
+  feedRecommendationLogs FeedRecommendationLog[]
+  feedAnalyticsCaches FeedAnalyticsCache[]
+  livestockAuditLogs LivestockAuditLog[]
+  smartRecommendations SmartRecommendation[]
+  dewormingRecords   DewormingRecord[]
+  farmRiskSnapshots  FarmRiskSnapshot[]
+  aiSmartAlerts      AiSmartAlert[]
   supportTickets     SupportTicket[]
   billingRecords     BillingRecord[]
   complaints         Complaint[]
@@ -941,7 +960,128 @@ model AnimalProfile {
   feedRecords     FeedRecord[]
   healthEvents    HealthEvent[]
   vaccineRecords  VaccineRecord[]
-  farmTreatments  FarmTreatment[]
+  farmTreatments           FarmTreatment[]
+  fatteningBatchMemberships FatteningBatchAnimal[]
+  weightRecords             WeightRecord[]
+
+  @@index([customerId])
+}
+
+enum FatteningBatchStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum FatteningBatchGoalType {
+  NORMAL
+  QURBANI
+}
+
+model FatteningBatch {
+  id         String               @id @default(cuid())
+  customerId String
+  farmId     String
+  name       String
+  goalType   FatteningBatchGoalType @default(NORMAL)
+  goal       String?
+  startDate  DateTime?            @db.Date
+  targetDate DateTime?            @db.Date
+  status     FatteningBatchStatus @default(DRAFT)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  customer       CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animals        FatteningBatchAnimal[]
+  weightRecords  WeightRecord[]
+  feedPlan       BatchFeedPlan?
+  feedRecords    FeedRecord[]
+  roi            FatteningBatchRoi?
+  financeRecords FinanceRecord[]
+
+  @@index([customerId, farmId, status])
+  @@index([customerId, status, updatedAt])
+}
+
+enum BatchFeedPlanMode {
+  NORMAL
+  FATTENING
+}
+
+model BatchFeedPlan {
+  id            String            @id @default(cuid())
+  customerId    String
+  batchId       String            @unique
+  mode          BatchFeedPlanMode @default(FATTENING)
+  dailyAmountKg Decimal?          @db.Decimal(10, 3)
+  dailyCostBdt  Decimal?          @db.Decimal(12, 2)
+  feedType      FeedType?
+  unit          FeedUnit?         @default(KG)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  customer      CustomerProfile   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  batch         FatteningBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+enum WeightRecordMethod {
+  SCALE
+  TAPE
+  ESTIMATE
+  OTHER
+}
+
+model WeightRecord {
+  id         String             @id @default(cuid())
+  customerId String
+  animalId   String
+  batchId    String
+  weightKg   Decimal            @db.Decimal(10, 3)
+  recordedAt DateTime
+  recordedOn DateTime           @db.Date
+  method     WeightRecordMethod @default(SCALE)
+  note       String?
+  photoUrl   String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  customer   CustomerProfile    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal     AnimalProfile      @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  batch      FatteningBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, animalId, recordedOn])
+  @@index([customerId, batchId, recordedOn])
+  @@index([animalId, batchId, recordedAt])
+}
+
+model FatteningBatchAnimal {
+  id        String    @id @default(cuid())
+  batchId   String
+  animalId  String
+  joinedAt  DateTime  @default(now())
+  removedAt DateTime?
+
+  batch  FatteningBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  animal AnimalProfile  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, animalId])
+  @@index([batchId])
+  @@index([animalId])
+}
+
+/// Per-batch ROI targets and manual cost overrides (Phase 4).
+model FatteningBatchRoi {
+  id               String   @id @default(cuid())
+  customerId       String
+  batchId          String   @unique
+  purchaseCostBdt  Decimal? @db.Decimal(12, 2)
+  projectedSaleBdt Decimal? @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  customer         CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  batch            FatteningBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
 }
@@ -1650,6 +1790,7 @@ model Notification {
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt])
+  @@index([userId, createdAt])
   @@index([type])
 }
 
@@ -1925,27 +2066,189 @@ enum FeedUnit {
   OTHER
 }
 
+/// Bangladesh cattle feed master categories (platform catalog — not farmer stock).
+enum FeedCategory {
+  ROUGHAGE
+  GREEN
+  CONCENTRATE
+  SUPPLEMENT
+  MINERAL
+  SILAGE
+  CUSTOM
+}
+
+/// Global feed master catalog. Admin-managed; farmers link via optional InventoryItem.feedCatalogId.
+model FeedCatalog {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  nameBn            String
+  nameEn            String
+  category          FeedCategory
+  defaultUnit       FeedUnit
+  approxPriceBdt    Decimal?     @db.Decimal(12, 2)
+  nutritionJson     Json?
+  availabilityScore Int?
+  isSeeded          Boolean      @default(false)
+  isActive          Boolean      @default(true)
+  sortOrder         Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  inventoryItems    InventoryItem[]
+
+  @@index([category, isActive])
+  @@index([isActive, sortOrder])
+}
+
 model FeedRecord {
-  id           String    @id @default(cuid())
-  customerId   String
-  farmRef      String?
-  animalId     String?
-  batchId      String?
-  batchName    String?
-  feedType     FeedType
-  amount       Decimal   @db.Decimal(10, 3)
-  unit         FeedUnit
-  costBdt      Decimal?  @db.Decimal(12, 2)
-  recordedDate DateTime  @db.Date
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  customer     CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  animal       AnimalProfile?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  id                    String          @id @default(cuid())
+  customerId            String
+  farmRef               String?
+  animalId              String?
+  /// Legacy free-text / local group batch key.
+  batchId               String?
+  batchName             String?
+  /// FK to fattening batch when logged from cattle fattening flow.
+  fatteningBatchId      String?
+  /// Optional link to farm feed inventory (V1).
+  inventoryItemId       String?
+  inventoryTransactionId String?        @unique
+  deductStock           Boolean         @default(false)
+  feedType              FeedType
+  amount                Decimal         @db.Decimal(10, 3)
+  unit                  FeedUnit
+  costBdt               Decimal?        @db.Decimal(12, 2)
+  recordedDate          DateTime        @db.Date
+  notes                 String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  customer              CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal                AnimalProfile?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  fatteningBatch        FatteningBatch? @relation(fields: [fatteningBatchId], references: [id], onDelete: SetNull)
+  inventoryItem         InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  inventoryTransaction  InventoryTransaction? @relation("FeedInventoryTransaction", fields: [inventoryTransactionId], references: [id], onDelete: SetNull)
 
   @@index([customerId, recordedDate])
   @@index([animalId])
   @@index([feedType])
+  @@index([fatteningBatchId, recordedDate])
+  @@index([inventoryItemId])
+}
+
+/// Farm inventory catalog (feed + medicine).
+enum InventoryType {
+  FEED
+  MEDICINE
+}
+
+enum MedicineUnit {
+  TABLET
+  CAPSULE
+  ML
+  LITER
+  VIAL
+  SACHET
+  TUBE
+  OTHER
+}
+
+enum InventoryTransactionType {
+  RECEIPT
+  CONSUMPTION
+  ADJUSTMENT
+  RESERVE
+  RELEASE_RESERVE
+  VOID
+}
+
+enum InventoryTransactionSourceType {
+  MANUAL
+  FEED_RECORD
+  FARM_TREATMENT
+  PRESCRIPTION_ITEM
+  TREATMENT_CASE
+  AI_PLAN
+}
+
+model InventoryItem {
+  id                 String         @id @default(cuid())
+  customerId         String
+  farmRef            String
+  inventoryType      InventoryType
+  displayName        String
+  /// Optional link to platform feed master (null = farmer custom feed).
+  feedCatalogId      String?
+  feedType           FeedType?
+  feedUnit           FeedUnit?
+  medicineUnit       MedicineUnit?
+  lowStockThreshold  Decimal?       @db.Decimal(10, 3)
+  allowNegativeStock Boolean        @default(false)
+  isActive           Boolean        @default(true)
+  deletedAt          DateTime?
+  notes              String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  customer           CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  feedCatalog        FeedCatalog?   @relation(fields: [feedCatalogId], references: [id], onDelete: SetNull)
+  balance            InventoryBalance?
+  transactions       InventoryTransaction[]
+  feedRecords        FeedRecord[]
+  auditLogs          InventoryAuditLog[]
+
+  @@unique([customerId, farmRef, inventoryType, displayName])
+  @@index([customerId, farmRef, inventoryType, isActive])
+  @@index([customerId, farmRef, deletedAt])
+  @@index([feedCatalogId])
+}
+
+model InventoryBalance {
+  id                String        @id @default(cuid())
+  inventoryItemId   String        @unique
+  quantityOnHand    Decimal       @db.Decimal(12, 3)
+  quantityReserved  Decimal       @default(0) @db.Decimal(12, 3)
+  updatedAt         DateTime      @updatedAt
+  item              InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+}
+
+model InventoryTransaction {
+  id                String                       @id @default(cuid())
+  customerId        String
+  inventoryItemId   String
+  farmRef           String
+  inventoryType     InventoryType
+  transactionType   InventoryTransactionType
+  quantityDelta     Decimal                      @db.Decimal(12, 3)
+  unitSnapshot      String
+  sourceType        InventoryTransactionSourceType
+  sourceId          String?
+  idempotencyKey    String?
+  reason            String?
+  authorizedBy      String?
+  voidsTransactionId String?
+  recordedAt        DateTime                     @default(now())
+  createdAt         DateTime                     @default(now())
+  customer          CustomerProfile              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  item              InventoryItem                @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  feedRecord        FeedRecord?                  @relation("FeedInventoryTransaction")
+
+  @@unique([customerId, idempotencyKey])
+  @@index([inventoryItemId, recordedAt])
+  @@index([customerId, farmRef, inventoryType])
+  @@index([sourceType, sourceId])
+}
+
+model InventoryAuditLog {
+  id              String          @id @default(cuid())
+  customerId      String
+  inventoryItemId String?
+  action          String
+  payload         Json?
+  actorUserId     String?
+  createdAt       DateTime        @default(now())
+  customer        CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  item            InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+  @@index([inventoryItemId, createdAt])
 }
 
 enum FinanceType {
@@ -1971,22 +2274,26 @@ enum IncomeSource {
 }
 
 model FinanceRecord {
-  id           String           @id @default(cuid())
-  customerId   String
-  type         FinanceType
-  amountBdt    Decimal          @db.Decimal(12, 2)
-  recordedDate DateTime         @db.Date
-  category     ExpenseCategory?
-  source       IncomeSource?
-  farmRef      String?
-  notes        String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  customer     CustomerProfile  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  id               String           @id @default(cuid())
+  customerId       String
+  type             FinanceType
+  amountBdt        Decimal          @db.Decimal(12, 2)
+  recordedDate     DateTime         @db.Date
+  category         ExpenseCategory?
+  source           IncomeSource?
+  farmRef          String?
+  /// Links expense/income to a fattening batch for ROI (Phase 4).
+  fatteningBatchId String?
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  customer         CustomerProfile  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fatteningBatch   FatteningBatch?  @relation(fields: [fatteningBatchId], references: [id], onDelete: SetNull)
 
   @@index([customerId, type, recordedDate])
   @@index([category])
   @@index([source])
+  @@index([fatteningBatchId, recordedDate])
 }
 
 enum HealthEventType {
@@ -2682,4 +2989,713 @@ enum AreaType {
   UNION
   VILLAGE
   SERVICE_AREA
+}
+
+// ─── Phase 4: Livestock Feed Ecosystem ───────────────────────────────────────
+
+enum LivestockSpecies {
+  COW
+  GOAT
+  SHEEP
+  CHICKEN
+  DUCK
+  PIGEON
+  BUFFALO
+  HORSE
+  CUSTOM
+  OTHER
+}
+
+enum LivestockGender {
+  MALE
+  FEMALE
+  UNKNOWN
+  OTHER
+}
+
+enum LivestockLifecycleStatus {
+  ACTIVE
+  SOLD
+  DECEASED
+  MISSING
+  TRANSFERRED
+  INACTIVE
+}
+
+enum LivestockPurpose {
+  DAIRY
+  MEAT
+  BREEDING
+  DRAFT
+  PET
+  MIXED
+  OTHER
+}
+
+enum LivestockHealthStatus {
+  HEALTHY
+  SICK
+  RECOVERING
+  UNDER_OBSERVATION
+  UNKNOWN
+}
+
+enum FeedMoistureType {
+  DRY
+  WET
+  FRESH
+}
+
+enum LivestockHealthRecordType {
+  SYMPTOM
+  DIAGNOSIS
+  DISEASE
+  CHECKUP
+  TREATMENT
+  NOTE
+}
+
+enum LivestockVaccinationStatus {
+  SCHEDULED
+  DUE
+  OVERDUE
+  COMPLETED
+  SKIPPED
+}
+
+enum FeedVendorVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum LivestockAuditAction {
+  LIVESTOCK_CREATED
+  LIVESTOCK_UPDATED
+  LIVESTOCK_DELETED
+  HEALTH_RECORD_CREATED
+  VACCINATION_CREATED
+  FEED_INVENTORY_UPDATED
+  FEED_CONSUMPTION_CREATED
+  EXPENSE_CREATED
+}
+
+/// Phase 4 primary livestock registry (parallel to legacy AnimalProfile during migration).
+model Livestock {
+  id                    String                   @id @default(cuid())
+  customerId            String
+  farmRef               String
+  deploymentBranch      String?
+  legacyAnimalProfileId String?                  @unique
+  name                  String
+  species               LivestockSpecies
+  customSpeciesLabel    String?
+  breedId               String?
+  breedName             String?
+  gender                LivestockGender
+  purpose               LivestockPurpose?        @default(MIXED)
+  lifecycleStatus       LivestockLifecycleStatus @default(ACTIVE)
+  healthStatus          LivestockHealthStatus    @default(HEALTHY)
+  dateOfBirth           DateTime?                @db.Date
+  weightKg              Decimal?                 @db.Decimal(10, 3)
+  lastWeightAt          DateTime?
+  earTagNumber          String?
+  qrCodePayload         String?
+  pregnancyStatus       PregnancyStatus?
+  lactationNumber       Int?
+  lastCalvingDate       DateTime?                @db.Date
+  photoUrl              String?
+  purchaseDate          DateTime?                @db.Date
+  purchasePriceBdt      Decimal?                 @db.Decimal(12, 2)
+  saleDate              DateTime?                @db.Date
+  salePriceBdt          Decimal?                 @db.Decimal(12, 2)
+  notes                 String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  deletedAt             DateTime?
+  customer              CustomerProfile          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  images                LivestockImage[]
+  healthRecords         LivestockHealthRecord[]
+  vaccinations          LivestockVaccination[]
+  consumptions          FeedConsumption[]
+  expenses              LivestockExpense[]
+  recommendationLogs    FeedRecommendationLog[]
+
+  @@unique([customerId, earTagNumber])
+  @@index([customerId, farmRef, lifecycleStatus])
+  @@index([customerId, species])
+  @@index([customerId, updatedAt])
+  @@index([deploymentBranch])
+  @@index([deletedAt])
+}
+
+model LivestockImage {
+  id             String    @id @default(cuid())
+  livestockId    String
+  url            String
+  uploadedFileId String?
+  caption        String?
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  livestock      Livestock @relation(fields: [livestockId], references: [id], onDelete: Cascade)
+
+  @@index([livestockId, sortOrder])
+}
+
+model LivestockHealthRecord {
+  id           String                    @id @default(cuid())
+  customerId   String
+  livestockId  String
+  farmRef      String?
+  recordType   LivestockHealthRecordType
+  title        String
+  symptoms     String?
+  diagnosis    String?
+  diseaseName  String?
+  treatmentRef String?
+  notes        String?
+  recordedDate DateTime                  @db.Date
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  livestock    Livestock                 @relation(fields: [livestockId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, recordedDate])
+  @@index([livestockId, recordedDate])
+  @@index([recordType])
+}
+
+model LivestockVaccination {
+  id               String                     @id @default(cuid())
+  customerId       String
+  livestockId      String
+  farmRef          String?
+  vaccineName      String
+  vaccineType      String?
+  scheduledDate    DateTime                   @db.Date
+  administeredDate DateTime?                  @db.Date
+  nextDueDate      DateTime?                  @db.Date
+  status           LivestockVaccinationStatus @default(SCHEDULED)
+  batchNumber      String?
+  notes            String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  livestock        Livestock                  @relation(fields: [livestockId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, scheduledDate])
+  @@index([customerId, status])
+  @@index([livestockId])
+}
+
+/// Platform feed master item (Phase 4 catalog; coexists with FeedCatalog).
+model FeedItem {
+  id              String           @id @default(cuid())
+  code            String           @unique
+  category        FeedCategory
+  nameBn          String
+  nameEn          String
+  defaultUnit     FeedUnit
+  approxPriceBdt  Decimal?         @db.Decimal(12, 2)
+  moistureType    FeedMoistureType @default(DRY)
+  isSeasonal      Boolean          @default(false)
+  seasonNotesBn   String?
+  seasonNotesEn   String?
+  restrictionJson Json?
+  suitabilityJson Json?
+  isSeeded        Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  nutrition       FeedNutrition?
+  inventories     FeedInventory[]
+  purchases       FeedPurchase[]
+  consumptions    FeedConsumption[]
+  vendorProducts  FeedVendorProduct[]
+
+  @@index([category, isActive])
+  @@index([isActive, sortOrder])
+}
+
+model FeedNutrition {
+  id          String   @id @default(cuid())
+  feedItemId  String   @unique
+  cpPercent   Decimal? @db.Decimal(6, 2)
+  tdnPercent  Decimal? @db.Decimal(6, 2)
+  cfPercent   Decimal? @db.Decimal(6, 2)
+  eePercent   Decimal? @db.Decimal(6, 2)
+  caPercent   Decimal? @db.Decimal(6, 2)
+  pPercent    Decimal? @db.Decimal(6, 2)
+  dmPercent   Decimal? @db.Decimal(6, 2)
+  source      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  feedItem    FeedItem @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+}
+
+/// Per-farm feed stock (Phase 4).
+model FeedInventory {
+  id                 String           @id @default(cuid())
+  customerId         String
+  farmRef            String
+  deploymentBranch   String?
+  feedItemId         String?
+  displayName        String
+  unit               FeedUnit         @default(KG)
+  quantityOnHand     Decimal          @default(0) @db.Decimal(12, 3)
+  lowStockThreshold  Decimal?         @db.Decimal(12, 3)
+  defaultBagWeightKg Decimal?         @db.Decimal(10, 3)
+  allowNegativeStock Boolean          @default(false)
+  isActive           Boolean          @default(true)
+  deletedAt          DateTime?
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  customer           CustomerProfile  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  feedItem           FeedItem?        @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+  purchases          FeedPurchase[]
+  consumptions       FeedConsumption[]
+
+  @@unique([customerId, farmRef, displayName])
+  @@index([customerId, farmRef, isActive])
+  @@index([feedItemId])
+  @@index([deploymentBranch])
+}
+
+model FeedPurchase {
+  id              String          @id @default(cuid())
+  customerId      String
+  farmRef         String
+  feedInventoryId String
+  feedItemId      String?
+  quantity        Decimal         @db.Decimal(12, 3)
+  unit            FeedUnit
+  unitCostBdt     Decimal?        @db.Decimal(12, 2)
+  totalCostBdt    Decimal?        @db.Decimal(12, 2)
+  supplierName    String?
+  supplierPhone   String?
+  purchasedAt     DateTime        @db.Date
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  customer        CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  feedInventory   FeedInventory   @relation(fields: [feedInventoryId], references: [id], onDelete: Cascade)
+  feedItem        FeedItem?       @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, farmRef, purchasedAt])
+  @@index([feedInventoryId])
+}
+
+model FeedConsumption {
+  id              String          @id @default(cuid())
+  customerId      String
+  farmRef         String
+  livestockId     String?
+  feedInventoryId String?
+  feedItemId      String?
+  amount          Decimal         @db.Decimal(12, 3)
+  unit            FeedUnit
+  costBdt         Decimal?        @db.Decimal(12, 2)
+  deductStock     Boolean         @default(false)
+  recordedDate    DateTime        @db.Date
+  notes           String?
+  idempotencyKey  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  customer        CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  livestock       Livestock?      @relation(fields: [livestockId], references: [id], onDelete: SetNull)
+  feedInventory   FeedInventory?  @relation(fields: [feedInventoryId], references: [id], onDelete: SetNull)
+  feedItem        FeedItem?       @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+
+  @@unique([customerId, idempotencyKey])
+  @@index([customerId, recordedDate])
+  @@index([livestockId])
+  @@index([feedInventoryId])
+  @@index([feedItemId])
+}
+
+model FeedVendor {
+  id                 String                       @id @default(cuid())
+  name               String
+  nameBn             String?
+  phone              String?
+  districtId         String?
+  address            String?
+  verificationStatus FeedVendorVerificationStatus @default(PENDING)
+  isActive           Boolean                      @default(true)
+  notes              String?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  products           FeedVendorProduct[]
+
+  @@index([verificationStatus, isActive])
+  @@index([districtId])
+}
+
+model FeedVendorProduct {
+  id           String                 @id @default(cuid())
+  vendorId     String
+  feedItemId   String?
+  displayName  String
+  unit         FeedUnit
+  unitWeightKg Decimal?               @db.Decimal(10, 3)
+  priceBdt     Decimal?               @db.Decimal(12, 2)
+  isActive     Boolean                @default(true)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  vendor       FeedVendor             @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  feedItem     FeedItem?              @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+
+  @@index([vendorId, isActive])
+  @@index([feedItemId])
+}
+
+model FeedRecommendationLog {
+  id           String          @id @default(cuid())
+  customerId   String
+  livestockId  String
+  planDate     DateTime        @db.Date
+  ruleVersion  String
+  itemsJson    Json
+  totalsJson   Json
+  warningsJson Json?
+  accepted     Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  customer     CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  livestock    Livestock       @relation(fields: [livestockId], references: [id], onDelete: Cascade)
+
+  @@index([livestockId, planDate])
+  @@index([customerId, planDate])
+}
+
+model LivestockExpense {
+  id           String          @id @default(cuid())
+  customerId   String
+  livestockId  String?
+  farmRef      String?
+  category     ExpenseCategory
+  amountBdt    Decimal         @db.Decimal(12, 2)
+  recordedDate DateTime        @db.Date
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  customer     CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  livestock    Livestock?      @relation(fields: [livestockId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, recordedDate])
+  @@index([livestockId])
+  @@index([category])
+}
+
+model FeedAnalyticsCache {
+  id           String          @id @default(cuid())
+  customerId   String
+  farmRef      String
+  cacheKey     String
+  periodStart  DateTime        @db.Date
+  periodEnd    DateTime        @db.Date
+  metricsJson  Json
+  expiresAt    DateTime
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  customer     CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, farmRef, cacheKey])
+  @@index([expiresAt])
+}
+
+model LivestockAuditLog {
+  id          String               @id @default(cuid())
+  customerId  String
+  action      LivestockAuditAction
+  entityType  String
+  entityId    String?
+  actorUserId String?
+  payload     Json?
+  createdAt   DateTime             @default(now())
+  customer    CustomerProfile      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ─── Phase 8 — AI & Smart Ecosystem ─────────────────────────────────────────
+
+enum AiKnowledgeContentType {
+  DISEASE
+  MEDICINE
+  VACCINE
+  FEED
+  FARM_MGMT
+  EMERGENCY
+}
+
+enum AiKnowledgeAudience {
+  FARMER
+  DOCTOR
+  BOTH
+}
+
+enum AiKnowledgeStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  DEPRECATED
+}
+
+enum SmartRecommendationType {
+  VACCINE
+  DEWORM
+  FEED
+  PREGNANCY
+  FARM
+  HEALTH
+  INVENTORY
+}
+
+enum SmartRecommendationStatus {
+  PENDING
+  DISMISSED
+  COMPLETED
+  SNOOZED
+}
+
+enum AiPromptStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum AiAlertPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AiAlertStatus {
+  PENDING
+  DELIVERED
+  DISMISSED
+  SNOOZED
+}
+
+model AiKnowledgeEntry {
+  id           String                 @id @default(cuid())
+  contentType  AiKnowledgeContentType
+  slug         String                 @unique
+  audience     AiKnowledgeAudience    @default(FARMER)
+  titleBn      String
+  titleEn      String
+  bodyBn       String                 @db.Text
+  bodyEn       String                 @db.Text
+  species      LivestockSpecies[]
+  status       AiKnowledgeStatus      @default(DRAFT)
+  version      Int                    @default(1)
+  publishedAt  DateTime?
+  createdById  String?
+  reviewedById String?
+  metadataJson Json?
+  searchText   String?                @db.Text
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  symptomLinks AiSymptomDiseaseLink[]
+
+  @@index([contentType, status])
+  @@index([status])
+}
+
+model AiSymptomNode {
+  id         String                 @id @default(cuid())
+  code       String                 @unique
+  species    LivestockSpecies[]
+  bodySystem String
+  labelBn    String
+  labelEn    String
+  redFlag    Boolean                @default(false)
+  weight     Float                  @default(0.5)
+  parentId   String?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  diseaseLinks AiSymptomDiseaseLink[]
+
+  @@index([bodySystem])
+}
+
+model AiSymptomDiseaseLink {
+  symptomNodeId    String
+  knowledgeEntryId String
+  edgeWeight       Float            @default(0.5)
+  symptomNode      AiSymptomNode    @relation(fields: [symptomNodeId], references: [id], onDelete: Cascade)
+  knowledgeEntry   AiKnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@id([symptomNodeId, knowledgeEntryId])
+}
+
+model AiSymptomCheckSession {
+  id                String           @id @default(cuid())
+  userId            String
+  customerId        String?
+  livestockId       String?
+  species           LivestockSpecies
+  symptomsJson      Json
+  symptomCodes      String[]
+  confidence        Float
+  redFlagsJson      Json
+  differentialsJson Json
+  triageBucket      AiRiskBucket
+  urgencyLevel      Int
+  aiSessionId       String?
+  createdAt         DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([customerId])
+}
+
+model SmartRecommendation {
+  id            String                    @id @default(cuid())
+  customerId    String
+  farmRef       String?
+  livestockId   String?
+  type          SmartRecommendationType
+  priority      Int                       @default(2)
+  titleBn       String
+  titleEn       String
+  explanationBn String
+  explanationEn String
+  ruleVersion   String                    @default("smart-v1")
+  confidence    Float                     @default(0.8)
+  dueDate       DateTime?                 @db.Date
+  status        SmartRecommendationStatus @default(PENDING)
+  deepLink      String?
+  metadataJson  Json?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  customer      CustomerProfile           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, status, dueDate])
+  @@index([customerId, farmRef])
+}
+
+model DewormingRecord {
+  id               String          @id @default(cuid())
+  customerId       String
+  livestockId      String
+  productName      String?
+  administeredDate DateTime        @db.Date
+  nextDueDate      DateTime?       @db.Date
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  customer         CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([livestockId])
+  @@index([customerId, nextDueDate])
+}
+
+model FarmRiskSnapshot {
+  id               String          @id @default(cuid())
+  customerId       String
+  farmRef          String
+  herdHealthScore  Int
+  farmRiskScore    Int
+  mortalityRiskAvg Float?
+  computedAt       DateTime        @default(now())
+  factorsJson      Json
+  customer         CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, farmRef, computedAt])
+}
+
+model RegionalOutbreakSignal {
+  id            String   @id @default(cuid())
+  diseaseSlug   String
+  divisionId    String?
+  districtId    String?
+  riskIndex     Int
+  effectiveDate DateTime @db.Date
+  source        String   @default("admin")
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@index([effectiveDate])
+  @@index([diseaseSlug])
+}
+
+model AiUsageRecord {
+  id           String   @id @default(cuid())
+  userId       String?
+  customerId   String?
+  feature      String
+  provider     String
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Decimal? @db.Decimal(10, 6)
+  latencyMs    Int      @default(0)
+  success      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt, feature])
+  @@index([userId])
+}
+
+model AiPromptTemplate {
+  id          String         @id @default(cuid())
+  key         String         @unique
+  name        String
+  description String?
+  systemBn    String         @db.Text
+  systemEn    String         @db.Text
+  userTemplateBn String?     @db.Text
+  userTemplateEn String?     @db.Text
+  status      AiPromptStatus @default(DRAFT)
+  version     Int            @default(1)
+  metadataJson Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status])
+}
+
+model AiSmartAlert {
+  id           String          @id @default(cuid())
+  customerId   String
+  userId       String?
+  type         String
+  priority     AiAlertPriority @default(MEDIUM)
+  titleBn      String
+  titleEn      String
+  bodyBn       String
+  bodyEn       String
+  deepLink     String?
+  status       AiAlertStatus   @default(PENDING)
+  scheduledAt  DateTime?
+  deliveredAt  DateTime?
+  metadataJson Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  customer     CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, status])
+  @@index([scheduledAt])
+}
+
+model AiFollowUpSuggestion {
+  id           String   @id @default(cuid())
+  userId       String
+  customerId   String?
+  livestockId  String?
+  sessionId    String?
+  triageId     String?
+  titleBn      String
+  titleEn      String
+  actionBn     String
+  actionEn     String
+  dueDate      DateTime? @db.Date
+  deepLink     String?
+  dismissed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, dismissed])
+  @@index([customerId])
 }

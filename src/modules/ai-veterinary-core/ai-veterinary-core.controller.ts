@@ -7,18 +7,18 @@ import { sendCreated, sendSuccess } from '../../shared/utils/response.js';
 import { getAiVeterinaryCoreService } from './ai-veterinary-core.service.js';
 
 const chatSchema = z.object({
-  message: z.string().min(1),
-  sessionId: z.string().optional(),
-  caseId: z.string().optional(),
+  message: z.string().min(1).max(4000),
+  sessionId: z.string().max(64).optional(),
+  caseId: z.string().max(64).optional(),
   locale: z.enum(['bn', 'en']).optional(),
 });
 
 const triageSchema = z.object({
-  sessionId: z.string().optional(),
-  caseId: z.string().optional(),
-  symptoms: z.array(z.string().min(1)).min(1),
-  historySummary: z.string().optional(),
-  mediaMetadata: z.array(z.record(z.string(), z.unknown())).optional(),
+  sessionId: z.string().max(64).optional(),
+  caseId: z.string().max(64).optional(),
+  symptoms: z.array(z.string().min(1).max(200)).min(1).max(20),
+  historySummary: z.string().max(2000).optional(),
+  mediaMetadata: z.array(z.record(z.string(), z.unknown())).max(10).optional(),
   locale: z.enum(['bn', 'en']).optional(),
 });
 
@@ -34,8 +34,8 @@ const memoryDeleteSchema = z.object({
 });
 
 const escalateSchema = z.object({
-  sessionId: z.string().optional(),
-  caseId: z.string().optional(),
+  sessionId: z.string().max(64).optional(),
+  caseId: z.string().max(64).optional(),
   reason: z.enum([
     'HIGH_RISK',
     'EMERGENCY_SYMPTOM',
@@ -43,7 +43,7 @@ const escalateSchema = z.object({
     'DOCTOR_REQUEST',
     'POLICY_REFUSAL',
   ]),
-  handoffNote: z.string().optional(),
+  handoffNote: z.string().max(2000).optional(),
 });
 
 function userId(req: Request): string {

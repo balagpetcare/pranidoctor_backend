@@ -14,6 +14,7 @@ export type FinanceRecordJsonDto = {
   category: ExpenseCategory | null;
   source: IncomeSource | null;
   farmRef: string | null;
+  fatteningBatchId: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +30,7 @@ export function toFinanceRecordJsonDto(row: FinanceRecord): FinanceRecordJsonDto
     category: row.category,
     source: row.source,
     farmRef: row.farmRef,
+    fatteningBatchId: row.fatteningBatchId,
     notes: row.notes,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

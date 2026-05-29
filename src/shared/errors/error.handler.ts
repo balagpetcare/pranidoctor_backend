@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 
 import { getRequestId, getElapsedTime } from '../context/request-context.js';
+import { captureException } from '../monitoring/error-tracking.js';
 import { logError, logWarn } from '../logger/logger.js';
 
 import { AppError } from './app.error.js';
@@ -47,6 +48,10 @@ export function errorHandler(
         path: req.path,
         method: req.method,
         elapsed,
+      });
+      captureException(error, {
+        ...(requestId ? { requestId } : {}),
+        route: `${req.method} ${req.path}`,
       });
     } else {
       logWarn('Client error', {
@@ -103,6 +108,10 @@ export function errorHandler(
     path: req.path,
     method: req.method,
     elapsed,
+  });
+  captureException(error, {
+    ...(requestId ? { requestId } : {}),
+    route: `${req.method} ${req.path}`,
   });
 
   const internalError = new InternalServerError();

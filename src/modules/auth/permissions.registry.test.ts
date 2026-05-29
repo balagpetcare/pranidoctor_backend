@@ -41,9 +41,19 @@ describe('permissions.registry', () => {
       return Object.keys(row) as ServiceInstanceAdminCapability[];
     };
     expect(caps(UserRole.SUPER_ADMIN).sort()).toEqual(
-      ['serviceInstance.publish', 'serviceInstance.review', 'serviceInstance.view'].sort(),
+      [
+        'analytics.export',
+        'analytics.view',
+        'serviceInstance.publish',
+        'serviceInstance.review',
+        'serviceInstance.view',
+      ].sort(),
     );
-    expect(caps(UserRole.SUPPORT)).toEqual(['serviceInstance.view']);
+    expect(caps(UserRole.SUPPORT).sort()).toEqual(
+      ['analytics.view', 'serviceInstance.view'].sort(),
+    );
+    expect(adminCan(supportActor, 'analytics.view')).toBe(true);
+    expect(adminCan(supportActor, 'analytics.export')).toBe(false);
     expect(caps(UserRole.DOCTOR)).toEqual([]);
   });
 });

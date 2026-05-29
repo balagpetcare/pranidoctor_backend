@@ -30,12 +30,19 @@ function toLibPrefix(depth, subpath) {
   return '../'.repeat(depth + 1) + subpath;
 }
 
+function toSharedPrefix(depth, subpath) {
+  return '../'.repeat(depth + 3) + 'shared/' + subpath;
+}
+
 function rewrite(content, depth) {
   let out = content;
   out = out.replace(/from ["']@\/generated\/prisma\/client["']/g, `from "${toGeneratedPrefix(depth)}"`);
   out = out.replace(/from ["']@\/generated\/prisma["']/g, `from "${toGeneratedPrefix(depth)}"`);
   out = out.replace(/from ["']@\/lib\/([^"']+)["']/g, (_, libPath) => {
     return `from "${toLibPrefix(depth, libPath)}"`;
+  });
+  out = out.replace(/from ["']@\/shared\/([^"']+)["']/g, (_, sharedPath) => {
+    return `from "${toSharedPrefix(depth, sharedPath)}"`;
   });
   return out;
 }

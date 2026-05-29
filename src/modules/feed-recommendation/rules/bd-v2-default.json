@@ -1,0 +1,152 @@
+{
+  "version": "bd-v2",
+  "disclaimerBn": "এটি সাধারণ নির্দেশিকা মাত্র; পশুচিকিৎসকের পরামর্শের বিকল্প নয়।",
+  "baseDmPercentOfBodyWeight": {
+    "COW": 0.025,
+    "BUFFALO": 0.027,
+    "GOAT": 0.035,
+    "SHEEP": 0.035,
+    "CHICKEN": 0.08,
+    "DUCK": 0.07,
+    "default": 0.03
+  },
+  "defaultWeightKg": {
+    "COW": 250,
+    "BUFFALO": 350,
+    "GOAT": 25,
+    "SHEEP": 30,
+    "CHICKEN": 2,
+    "DUCK": 2.5,
+    "default": 100
+  },
+  "nutritionTargets": {
+    "COW": {
+      "default": { "cpPercent": 12, "tdnPercent": 65 },
+      "DAIRY": { "cpPercent": 16, "tdnPercent": 68 },
+      "MEAT": { "cpPercent": 14, "tdnPercent": 66 },
+      "BREEDING": { "cpPercent": 15, "tdnPercent": 67 }
+    },
+    "BUFFALO": {
+      "default": { "cpPercent": 12, "tdnPercent": 64 },
+      "DAIRY": { "cpPercent": 15, "tdnPercent": 67 }
+    },
+    "GOAT": {
+      "default": { "cpPercent": 14, "tdnPercent": 65 },
+      "MEAT": { "cpPercent": 16, "tdnPercent": 67 }
+    },
+    "SHEEP": {
+      "default": { "cpPercent": 13, "tdnPercent": 64 }
+    },
+    "default": {
+      "default": { "cpPercent": 12, "tdnPercent": 65 }
+    }
+  },
+  "categoryAllocation": {
+    "COW": {
+      "default": { "ROUGHAGE": 0.4, "GREEN": 0.15, "CONCENTRATE": 0.3, "MINERAL": 0.05, "SILAGE": 0.1 },
+      "DAIRY": { "ROUGHAGE": 0.35, "GREEN": 0.1, "CONCENTRATE": 0.4, "MINERAL": 0.05, "SILAGE": 0.1 },
+      "MEAT": { "ROUGHAGE": 0.3, "GREEN": 0.1, "CONCENTRATE": 0.5, "MINERAL": 0.05, "SILAGE": 0.05 },
+      "BREEDING": { "ROUGHAGE": 0.35, "GREEN": 0.12, "CONCENTRATE": 0.38, "MINERAL": 0.05, "SILAGE": 0.1 }
+    },
+    "BUFFALO": {
+      "default": { "ROUGHAGE": 0.38, "GREEN": 0.12, "CONCENTRATE": 0.35, "MINERAL": 0.05, "SILAGE": 0.1 },
+      "DAIRY": { "ROUGHAGE": 0.32, "GREEN": 0.08, "CONCENTRATE": 0.45, "MINERAL": 0.05, "SILAGE": 0.1 }
+    },
+    "GOAT": {
+      "default": { "ROUGHAGE": 0.35, "GREEN": 0.25, "CONCENTRATE": 0.25, "MINERAL": 0.05, "SILAGE": 0.1 },
+      "MEAT": { "ROUGHAGE": 0.3, "GREEN": 0.15, "CONCENTRATE": 0.45, "MINERAL": 0.05, "SILAGE": 0.05 }
+    },
+    "SHEEP": {
+      "default": { "ROUGHAGE": 0.4, "GREEN": 0.2, "CONCENTRATE": 0.25, "MINERAL": 0.05, "SILAGE": 0.1 }
+    },
+    "default": {
+      "default": { "ROUGHAGE": 0.4, "GREEN": 0.2, "CONCENTRATE": 0.25, "MINERAL": 0.05, "SILAGE": 0.1 }
+    }
+  },
+  "scoringWeights": {
+    "nutritionMatch": 0.4,
+    "affordability": 0.3,
+    "seasonalFit": 0.15,
+    "suitability": 0.15
+  },
+  "modifiers": {
+    "healthStatus": {
+      "SICK": { "concentrateMultiplier": 0.5, "warningBn": "অসুস্থ — ক্ষুধাহানিক খাদ্য কমিয়ে দিন" },
+      "RECOVERING": { "concentrateMultiplier": 0.75, "warningBn": "সুস্থ হচ্ছে — ধীরে ধীরে ক্ষুধাহানিক বাড়ান" },
+      "UNDER_OBSERVATION": { "concentrateMultiplier": 0.85, "warningBn": "পর্যবেক্ষণে — খাদ্যে সতর্কতা" }
+    },
+    "pregnancyStatus": {
+      "PREGNANT": {
+        "concentrateBoostPercent": 12,
+        "mineralBoostPercent": 20,
+        "warningBn": "গর্ভকাল — ধাতু মিশ্রণ ও ক্ষুধাহানিক বাড়ান"
+      }
+    },
+    "youngAnimalMonths": 12,
+    "youngAnimalConcentrateBoostPercent": 15
+  },
+  "lactation": {
+    "enabledSpecies": ["COW", "BUFFALO"],
+    "dmPerLiterMilk": 0.4,
+    "defaultDailyMilkLiters": { "COW": 8, "BUFFALO": 6 },
+    "phases": {
+      "early": { "maxDays": 100, "concentrateBoostPercent": 15, "cpBoostPercent": 10 },
+      "mid": { "maxDays": 200, "concentrateBoostPercent": 5, "cpBoostPercent": 5 },
+      "late": { "maxDays": 305, "concentrateBoostPercent": 0, "cpBoostPercent": 0 },
+      "dry": { "concentrateMultiplier": 0.7, "warningBn": "শুকনো সময় — ক্ষুধাহানিক কমান" }
+    }
+  },
+  "seasonal": {
+    "monsoon": {
+      "months": [6, 7, 8, 9, 10],
+      "allocationShift": { "ROUGHAGE": 0.1, "GREEN": -0.08, "SILAGE": 0.02 },
+      "warningBn": "বর্ষাকাল: শুকনো ভুসি/খড় বাড়ান, তাজা ঘাস কমান"
+    },
+    "winter": {
+      "months": [11, 12, 1, 2],
+      "allocationShift": { "CONCENTRATE": 0.05, "ROUGHAGE": 0.05, "GREEN": -0.05 },
+      "warningBn": "শীতকাল: শক্তি সমৃদ্ধ খাদ্য বিবেচনা করুন"
+    },
+    "summer": {
+      "months": [3, 4, 5],
+      "allocationShift": { "GREEN": 0.08, "ROUGHAGE": -0.05 },
+      "warningBn": "গ্রীষ্ম: তাজা ঘাস ও পর্যাপ্ত পানি"
+    }
+  },
+  "diseaseRules": [
+    {
+      "id": "mastitis",
+      "matchKeywords": ["mastitis", "মাস্টাইটিস", "uddar", "উদর"],
+      "concentrateMultiplier": 0.8,
+      "warningBn": "মাস্টাইটিস — ক্ষুধাহানিক ও চর্বি কমিয়ে দিন"
+    },
+    {
+      "id": "bloat",
+      "matchKeywords": ["bloat", "পেট ফোলা", "gas"],
+      "greenMultiplier": 0.5,
+      "warningBn": "পেট ফোলা — তাজা ঘাস সাময়িক কমান"
+    },
+    {
+      "id": "parasite",
+      "matchKeywords": ["parasite", "krimi", "কৃমি", "worm"],
+      "mineralBoostPercent": 15,
+      "warningBn": "কৃমি — খনিজ ও পুষ্টি বাড়ান, পশুচিকিৎসকের পরামর্শ নিন"
+    },
+    {
+      "id": "fever",
+      "matchKeywords": ["fever", "জ্বর", "infection"],
+      "concentrateMultiplier": 0.6,
+      "warningBn": "জ্বর/সংক্রমণ — হালকা খাদ্য, পর্যাপ্ত পানি"
+    }
+  ],
+  "affordability": {
+    "alternativeMinScoreRatio": 0.85,
+    "maxBudgetBdtDefault": null,
+    "lowCostWarningThresholdBdt": 500
+  },
+  "bangladeshContext": {
+    "preferredCodes": ["bd-rice-straw", "bd-wheat-bran", "bd-mustard-oilcake", "bd-green-grass"],
+    "monsoonRoughageCodes": ["bd-rice-straw", "bd-wheat-bran"],
+    "priceCeilingMultiplier": 1.5
+  }
+}

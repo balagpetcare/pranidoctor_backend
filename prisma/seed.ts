@@ -342,6 +342,12 @@ async function main(): Promise<void> {
 
   await seedSemenReferenceMasters();
 
+  const { seedFeedCatalogBangladesh } = await import("./seeds/feed_catalog.seed.js");
+  const feedCatalogResult = await seedFeedCatalogBangladesh();
+  console.log(
+    `[seed] Feed catalog (Bangladesh): created=${feedCatalogResult.created}, updated=${feedCatalogResult.updated}`,
+  );
+
   await prisma.setting.upsert({
     where: { key: "app.name" },
     create: {
@@ -595,6 +601,16 @@ async function main(): Promise<void> {
     console.warn(
       "[seed] PRANI_SEED_DEMO=true ignored in production (no demo doctor/AI/content).",
     );
+  }
+
+  if (!isProduction()) {
+    try {
+      const { seedPhase8AiEcosystem } = await import('./seeds/phase8_ai_ecosystem.seed.js');
+      await seedPhase8AiEcosystem();
+      console.info('[seed] Phase 8 AI ecosystem knowledge + symptom taxonomy seeded.');
+    } catch (err) {
+      console.warn('[seed] Phase 8 AI seed skipped:', err);
+    }
   }
 
   if (!isProduction()) {

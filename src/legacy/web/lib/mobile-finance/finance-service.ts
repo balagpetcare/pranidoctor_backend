@@ -27,6 +27,19 @@ function defaultRange(from?: string, to?: string): { from: Date; to: Date } {
   return { from: fromDate, to: toDate };
 }
 
+async function resolveFatteningBatchId(
+  customerProfileId: string,
+  fatteningBatchId?: string | null,
+): Promise<string | undefined> {
+  if (!fatteningBatchId) return undefined;
+  const batch = await prisma.fatteningBatch.findFirst({
+    where: { id: fatteningBatchId, customerId: customerProfileId },
+    select: { id: true },
+  });
+  if (!batch) throw new Error("BATCH_NOT_FOUND");
+  return batch.id;
+}
+
 function previousRange(from: Date, to: Date): { from: Date; to: Date } {
   const spanMs = to.getTime() - from.getTime();
   const prevTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
@@ -88,6 +101,10 @@ export async function createExpenseForCustomer(
   customerProfileId: string,
   body: CreateExpenseBody,
 ): Promise<FinanceRecordJsonDto> {
+  const batchId = await resolveFatteningBatchId(
+    customerProfileId,
+    body.fatteningBatchId,
+  );
   const row = await prisma.financeRecord.create({
     data: {
       customerId: customerProfileId,
@@ -96,6 +113,7 @@ export async function createExpenseForCustomer(
       category: body.category,
       recordedDate: parseDateOnly(body.recordedDate),
       farmRef: body.farmRef?.trim() || undefined,
+      fatteningBatchId: batchId,
       notes: body.notes?.trim() || undefined,
     },
   });
@@ -106,6 +124,10 @@ export async function createIncomeForCustomer(
   customerProfileId: string,
   body: CreateIncomeBody,
 ): Promise<FinanceRecordJsonDto> {
+  const batchId = await resolveFatteningBatchId(
+    customerProfileId,
+    body.fatteningBatchId,
+  );
   const row = await prisma.financeRecord.create({
     data: {
       customerId: customerProfileId,
@@ -114,6 +136,7 @@ export async function createIncomeForCustomer(
       source: body.source,
       recordedDate: parseDateOnly(body.recordedDate),
       farmRef: body.farmRef?.trim() || undefined,
+      fatteningBatchId: batchId,
       notes: body.notes?.trim() || undefined,
     },
   });
@@ -147,6 +170,17 @@ export async function patchExpenseForCustomer(
   if (body.recordedDate !== undefined) data.recordedDate = parseDateOnly(body.recordedDate);
   if (body.farmRef !== undefined) data.farmRef = body.farmRef;
   if (body.notes !== undefined) data.notes = body.notes;
+  if (body.fatteningBatchId !== undefined) {
+    if (body.fatteningBatchId === null) {
+      data.fatteningBatch = { disconnect: true };
+    } else {
+      const batchId = await resolveFatteningBatchId(
+        customerProfileId,
+        body.fatteningBatchId,
+      );
+      data.fatteningBatch = { connect: { id: batchId! } };
+    }
+  }
 
   const row = await prisma.financeRecord.update({ where: { id }, data });
   return toFinanceRecordJsonDto(row);
@@ -168,6 +202,17 @@ export async function patchIncomeForCustomer(
   if (body.recordedDate !== undefined) data.recordedDate = parseDateOnly(body.recordedDate);
   if (body.farmRef !== undefined) data.farmRef = body.farmRef;
   if (body.notes !== undefined) data.notes = body.notes;
+  if (body.fatteningBatchId !== undefined) {
+    if (body.fatteningBatchId === null) {
+      data.fatteningBatch = { disconnect: true };
+    } else {
+      const batchId = await resolveFatteningBatchId(
+        customerProfileId,
+        body.fatteningBatchId,
+      );
+      data.fatteningBatch = { connect: { id: batchId! } };
+    }
+  }
 
   const row = await prisma.financeRecord.update({ where: { id }, data });
   return toFinanceRecordJsonDto(row);

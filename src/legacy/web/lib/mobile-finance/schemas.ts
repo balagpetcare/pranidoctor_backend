@@ -25,6 +25,7 @@ export const createExpenseBodySchema = z
     category: z.nativeEnum(ExpenseCategory),
     recordedDate: dateStringSchema,
     farmRef: z.string().trim().max(200).optional(),
+    fatteningBatchId: z.string().trim().min(1).optional(),
     notes: z.string().trim().max(2000).optional(),
   })
   .strict();
@@ -35,6 +36,7 @@ export const patchExpenseBodySchema = z
     category: z.nativeEnum(ExpenseCategory).optional(),
     recordedDate: dateStringSchema.optional(),
     farmRef: z.string().trim().max(200).nullable().optional(),
+    fatteningBatchId: z.string().trim().min(1).nullable().optional(),
     notes: z.string().trim().max(2000).nullable().optional(),
   })
   .strict();
@@ -45,6 +47,7 @@ export const createIncomeBodySchema = z
     source: z.nativeEnum(IncomeSource),
     recordedDate: dateStringSchema,
     farmRef: z.string().trim().max(200).optional(),
+    fatteningBatchId: z.string().trim().min(1).optional(),
     notes: z.string().trim().max(2000).optional(),
   })
   .strict();
@@ -55,6 +58,7 @@ export const patchIncomeBodySchema = z
     source: z.nativeEnum(IncomeSource).optional(),
     recordedDate: dateStringSchema.optional(),
     farmRef: z.string().trim().max(200).nullable().optional(),
+    fatteningBatchId: z.string().trim().min(1).nullable().optional(),
     notes: z.string().trim().max(2000).nullable().optional(),
   })
   .strict();

@@ -2,37 +2,77 @@ name: Backend CI
 
 on:
   push:
-    paths:
-      - 'src/**'
-      - 'scripts/**'
-      - 'eslint.config.js'
-      - 'package.json'
-      - '.github/workflows/ci.yml'
+    branches: [main, master, 'feature/**', 'fix/**']
   pull_request:
-    paths:
-      - 'src/**'
-      - 'scripts/**'
-      - 'eslint.config.js'
-      - 'package.json'
-      - '.github/workflows/ci.yml'
+    branches: [main, master]
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  MOBILE_JWT_SECRET: ci-test-mobile-jwt-secret-32chars-minimum
+  AUTH_SECRET: ci-test-mobile-jwt-secret-32chars-minimum
+  ADMIN_JWT_SECRET: ci-test-admin-jwt-secret-32chars-minimum
+  DOCTOR_JWT_SECRET: ci-test-doctor-jwt-secret-32chars-min
+  TECHNICIAN_JWT_SECRET: ci-test-tech-jwt-secret-32chars-min
+  MOBILE_REFRESH_SECRET: ci-test-refresh-secret-32chars-minimum
 
 jobs:
-  validate:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npm run ci:validate
-      - run: npm run ci:validate
-      - run: npm test -- --run src/shared/config/mobile-profile-startup.test.ts src/api/health/mobile-health.service.test.ts src/modules/profile/mobile-me.contract.test.ts
-        env:
-          MOBILE_JWT_SECRET: ci-test-mobile-jwt-secret-32chars-min
-          AUTH_SECRET: ci-test-mobile-jwt-secret-32chars-min
-          NODE_ENV: test
+      - run: npm run lint
+      - run: npm run format:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+        continue-on-error: true
+      - run: npm run env:validate
+        continue-on-error: true

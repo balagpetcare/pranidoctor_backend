@@ -4,7 +4,7 @@
 **Reference:** [pranidoctor-web](https://github.com/balagpetcare/pranidoctor-web) (original Next.js API surface)  
 **Document version:** 1.0  
 **Date:** 2026-05-29  
-**Status:** Phase 1 implemented — see [backend-stabilization-phase-1-implementation-report.md](./backend-stabilization-phase-1-implementation-report.md)
+**Status:** Phase 1 complete — [implementation report](./backend-stabilization-phase-1-implementation-report.md) · [final QA report](./backend-stabilization-final-report.md)
 
 ---
 

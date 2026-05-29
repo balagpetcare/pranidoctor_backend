@@ -14,10 +14,27 @@ export function isRateLimitingAvailable(): boolean {
   }
 }
 
-/** Applies rate limit middleware when Redis is up; otherwise passes through (dev without Redis). */
+function isStrictRateLimitEnv(): boolean {
+  try {
+    const config = getConfig();
+    return config.nodeEnv === 'production' || config.nodeEnv === 'staging';
+  } catch {
+    return process.env['NODE_ENV'] === 'production' || process.env['NODE_ENV'] === 'staging';
+  }
+}
+
+/** Applies rate limit middleware when Redis is up; fail closed in staging/production. */
 export function whenRateLimitAvailable(middleware: RequestHandler): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!isRateLimitingAvailable()) {
+      if (isStrictRateLimitEnv()) {
+        res.status(503).json({
+          success: false,
+          error: 'Service temporarily unavailable',
+          code: 'RATE_LIMIT_UNAVAILABLE',
+        });
+        return;
+      }
       next();
       return;
     }

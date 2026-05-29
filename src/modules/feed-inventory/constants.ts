@@ -1,0 +1,5 @@
+export const FEED_INVENTORY_DEFAULT_PAGE = 1;
+export const FEED_INVENTORY_DEFAULT_LIMIT = 20;
+export const FEED_INVENTORY_MAX_LIMIT = 100;
+
+export const FEED_INVENTORY_ENTITY_TYPE = 'FeedInventory';

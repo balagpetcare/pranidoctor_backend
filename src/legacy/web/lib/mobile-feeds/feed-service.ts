@@ -10,6 +10,7 @@ import {
   toFeedRecordJsonDto,
   type FeedRecordJsonDto,
 } from "./feed-mapper";
+import { consumeInventoryForFeedRecord } from "./adapters/inventory-feed.adapter.js";
 import type {
   CreateFeedBody,
   FeedAnalyticsQuery,
@@ -51,6 +52,9 @@ export async function listFeedsForCustomer(
     recordedDate: { gte: from, lte: to },
     ...(query.animalId ? { animalId: query.animalId } : {}),
     ...(query.batchId ? { batchId: query.batchId } : {}),
+    ...(query.fatteningBatchId
+      ? { fatteningBatchId: query.fatteningBatchId }
+      : {}),
     ...(query.feedType ? { feedType: query.feedType } : {}),
     ...(query.search
       ? {
@@ -83,6 +87,40 @@ export async function listFeedsForCustomer(
   };
 }
 
+async function resolveFatteningBatchFeed(
+  customerProfileId: string,
+  body: { fatteningBatchId?: string; animalId?: string; batchId?: string; batchName?: string },
+): Promise<{ fatteningBatchId?: string; batchId?: string; batchName?: string }> {
+  if (!body.fatteningBatchId) {
+    return {
+      batchId: body.batchId?.trim() || undefined,
+      batchName: body.batchName?.trim() || undefined,
+    };
+  }
+
+  const batch = await prisma.fatteningBatch.findFirst({
+    where: { id: body.fatteningBatchId, customerId: customerProfileId },
+  });
+  if (!batch) throw new Error("BATCH_NOT_FOUND");
+
+  if (body.animalId) {
+    const membership = await prisma.fatteningBatchAnimal.findFirst({
+      where: {
+        batchId: batch.id,
+        animalId: body.animalId,
+        removedAt: null,
+      },
+    });
+    if (!membership) throw new Error("ANIMAL_NOT_IN_BATCH");
+  }
+
+  return {
+    fatteningBatchId: batch.id,
+    batchId: batch.id,
+    batchName: batch.name,
+  };
+}
+
 export async function createFeedForCustomer(
   customerProfileId: string,
   body: CreateFeedBody,
@@ -94,13 +132,64 @@ export async function createFeedForCustomer(
     if (!animal) throw new Error("ANIMAL_NOT_FOUND");
   }
 
+  const batchFields = await resolveFatteningBatchFeed(customerProfileId, body);
+
+  if (body.deductStock && body.inventoryItemId) {
+    const farmRef = body.farmRef?.trim();
+    if (!farmRef) throw new Error("FARM_REF_REQUIRED");
+
+    const feed = await prisma.feedRecord.create({
+      data: {
+        customerId: customerProfileId,
+        farmRef,
+        animalId: body.animalId || undefined,
+        batchId: batchFields.batchId,
+        batchName: batchFields.batchName,
+        fatteningBatchId: batchFields.fatteningBatchId,
+        feedType: body.feedType,
+        amount: new Prisma.Decimal(body.amount.toFixed(3)),
+        unit: body.unit,
+        costBdt:
+          body.costBdt !== undefined
+            ? new Prisma.Decimal(body.costBdt.toFixed(2))
+            : undefined,
+        recordedDate: parseDateOnly(body.recordedDate),
+        notes: body.notes?.trim() || undefined,
+        inventoryItemId: body.inventoryItemId,
+        deductStock: true,
+      },
+      include: feedInclude,
+    });
+
+    try {
+      const stock = await consumeInventoryForFeedRecord({
+        customerId: customerProfileId,
+        farmRef,
+        inventoryItemId: body.inventoryItemId,
+        quantity: body.amount,
+        feedRecordId: feed.id,
+      });
+
+      const row = await prisma.feedRecord.update({
+        where: { id: feed.id },
+        data: { inventoryTransactionId: stock.transactionId },
+        include: feedInclude,
+      });
+      return toFeedRecordJsonDto(row);
+    } catch (e) {
+      await prisma.feedRecord.delete({ where: { id: feed.id } }).catch(() => undefined);
+      throw e;
+    }
+  }
+
   const row = await prisma.feedRecord.create({
     data: {
       customerId: customerProfileId,
       farmRef: body.farmRef?.trim() || undefined,
       animalId: body.animalId || undefined,
-      batchId: body.batchId?.trim() || undefined,
-      batchName: body.batchName?.trim() || undefined,
+      batchId: batchFields.batchId,
+      batchName: batchFields.batchName,
+      fatteningBatchId: batchFields.fatteningBatchId,
       feedType: body.feedType,
       amount: new Prisma.Decimal(body.amount.toFixed(3)),
       unit: body.unit,
@@ -110,6 +199,8 @@ export async function createFeedForCustomer(
           : undefined,
       recordedDate: parseDateOnly(body.recordedDate),
       notes: body.notes?.trim() || undefined,
+      inventoryItemId: body.inventoryItemId,
+      deductStock: body.deductStock ?? false,
     },
     include: feedInclude,
   });
@@ -151,6 +242,19 @@ export async function patchFeedForCustomer(
   }
   if (body.batchId !== undefined) data.batchId = body.batchId;
   if (body.batchName !== undefined) data.batchName = body.batchName;
+  if (body.fatteningBatchId !== undefined) {
+    if (body.fatteningBatchId === null) {
+      data.fatteningBatch = { disconnect: true };
+    } else {
+      const batchFields = await resolveFatteningBatchFeed(customerProfileId, {
+        fatteningBatchId: body.fatteningBatchId,
+        animalId: body.animalId ?? existing.animalId ?? undefined,
+      });
+      data.fatteningBatch = { connect: { id: batchFields.fatteningBatchId! } };
+      data.batchId = batchFields.batchId;
+      data.batchName = batchFields.batchName;
+    }
+  }
   if (body.feedType !== undefined) data.feedType = body.feedType;
   if (body.amount !== undefined) data.amount = new Prisma.Decimal(body.amount.toFixed(3));
   if (body.unit !== undefined) data.unit = body.unit;

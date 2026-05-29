@@ -8,6 +8,7 @@ export type FeedRecordJsonDto = {
   animalName: string | null;
   batchId: string | null;
   batchName: string | null;
+  fatteningBatchId: string | null;
   feedType: FeedType;
   amount: string;
   unit: FeedUnit;
@@ -29,6 +30,7 @@ export function toFeedRecordJsonDto(
     animalName: row.animal?.name ?? null,
     batchId: row.batchId,
     batchName: row.batchName,
+    fatteningBatchId: row.fatteningBatchId,
     feedType: row.feedType,
     amount: row.amount.toString(),
     unit: row.unit,

@@ -22,7 +22,8 @@ import type {
 } from './ai-veterinary-core.types.js';
 import { AI_DISCLAIMER, AI_MEMORY_TTL_DAYS } from './ai-veterinary-core.types.js';
 import { getAiVeterinaryRepository } from './repository/ai-veterinary.repository.js';
-import { getAiProvider } from './provider/rules-based.provider.js';
+import { getAiOrchestratorService } from '../ai/orchestrator/ai-orchestrator.service.js';
+import { getAiPromptService } from '../ai/prompts/ai-prompt.service.js';
 import { getAiSafetyService } from './safety/ai-safety.service.js';
 
 function memoryExpiry(kind: AiMemoryKind): Date {
@@ -140,10 +141,18 @@ export class AiVeterinaryCoreService {
     const memories = await repo.listMemory(userId, AiMemoryKind.CASE_CONTEXT);
     const contextSummary = memories.map((m) => JSON.stringify(m.valueJson)).join('; ');
 
-    const providerOut = await getAiProvider().complete({
-      message: input.message,
+    await getAiPromptService().ensureDefaults();
+    const prompt = await getAiPromptService().resolveActive('farmer_chat');
+    const systemPrompt = locale === 'bn' ? prompt.systemBn : prompt.systemEn;
+
+    const providerOut = await getAiOrchestratorService().complete({
+      feature: 'CHAT',
+      systemPrompt,
+      userMessage: contextSummary
+        ? `${input.message}\n\nContext: ${contextSummary}`
+        : input.message,
       locale,
-      ...(contextSummary ? { contextSummary } : {}),
+      userId,
     });
 
     const evaluated = safety.evaluateProviderOutput(providerOut, locale);
@@ -207,6 +216,13 @@ export class AiVeterinaryCoreService {
 
     if (input.caseId && !(await repo.customerOwnsCase(userId, input.caseId))) {
       throw new ForbiddenError('CASE_ACCESS_DENIED', 'Case not accessible');
+    }
+
+    if (input.sessionId) {
+      const session = await repo.findSessionForUser(input.sessionId, userId);
+      if (!session) {
+        throw new NotFoundError('SESSION_NOT_FOUND', 'AI session not found');
+      }
     }
 
     const assessment = safety.evaluateTriage(input.symptoms);
@@ -292,6 +308,13 @@ export class AiVeterinaryCoreService {
   async escalate(userId: string, input: AiEscalateRequest): Promise<AiEscalationDto> {
     if (input.caseId && !(await getAiVeterinaryRepository().customerOwnsCase(userId, input.caseId))) {
       throw new ForbiddenError('CASE_ACCESS_DENIED', 'Case not accessible');
+    }
+
+    if (input.sessionId) {
+      const session = await getAiVeterinaryRepository().findSessionForUser(input.sessionId, userId);
+      if (!session) {
+        throw new NotFoundError('SESSION_NOT_FOUND', 'AI session not found');
+      }
     }
 
     const escalation = await this.createEscalationInternal(userId, input);

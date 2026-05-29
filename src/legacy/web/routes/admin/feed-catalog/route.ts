@@ -1,0 +1,73 @@
+import { FeedCategory } from "@/generated/prisma/client";
+import { requireAdminPanelApiAccess } from "@/lib/admin-auth/api-guard";
+import {
+  adminCreateFeedCatalog,
+  adminListFeedCatalog,
+} from "@/lib/admin-feed-catalog/catalog-service";
+import {
+  createFeedCatalogBodySchema,
+  listFeedCatalogQuerySchema,
+} from "@/lib/admin-feed-catalog/schemas";
+import { jsonError, jsonOk } from "@/lib/api-response";
+
+export async function GET(request: Request) {
+  const authError = await requireAdminPanelApiAccess();
+  if (authError) return authError;
+
+  const url = new URL(request.url);
+  const parsed = listFeedCatalogQuerySchema.safeParse({
+    q: url.searchParams.get("q") ?? undefined,
+    category: url.searchParams.get("category") ?? undefined,
+    isActive: url.searchParams.get("isActive") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    offset: url.searchParams.get("offset") ?? undefined,
+  });
+  if (!parsed.success) {
+    return jsonError("VALIDATION_ERROR", "Invalid query", 422, parsed.error.flatten());
+  }
+
+  const isActive =
+    parsed.data.isActive === "true"
+      ? true
+      : parsed.data.isActive === "false"
+        ? false
+        : undefined;
+
+  try {
+    const data = await adminListFeedCatalog({
+      ...parsed.data,
+      isActive,
+      category: parsed.data.category as FeedCategory | undefined,
+    });
+    return jsonOk(data);
+  } catch {
+    return jsonError("DATABASE_ERROR", "Could not load feed catalog", 500);
+  }
+}
+
+export async function POST(request: Request) {
+  const authError = await requireAdminPanelApiAccess();
+  if (authError) return authError;
+
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return jsonError("INVALID_JSON", "Request body must be JSON", 400);
+  }
+
+  const parsed = createFeedCatalogBodySchema.safeParse(json);
+  if (!parsed.success) {
+    return jsonError("VALIDATION_ERROR", "Invalid payload", 422, parsed.error.flatten());
+  }
+
+  try {
+    const row = await adminCreateFeedCatalog(parsed.data);
+    return jsonOk({ item: row }, { status: 201 });
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("Unique constraint")) {
+      return jsonError("CONFLICT", "Feed code already exists", 409);
+    }
+    return jsonError("DATABASE_ERROR", "Could not create feed catalog item", 500);
+  }
+}

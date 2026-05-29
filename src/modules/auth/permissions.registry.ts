@@ -25,7 +25,9 @@ export type AdminPanelActor = {
 export type ServiceInstanceAdminCapability =
   | 'serviceInstance.view'
   | 'serviceInstance.review'
-  | 'serviceInstance.publish';
+  | 'serviceInstance.publish'
+  | 'analytics.view'
+  | 'analytics.export';
 
 const ROLE_MATRIX: Record<
   UserRole,
@@ -35,13 +37,18 @@ const ROLE_MATRIX: Record<
     'serviceInstance.view': true,
     'serviceInstance.review': true,
     'serviceInstance.publish': true,
+    'analytics.view': true,
+    'analytics.export': true,
   },
   [UserRole.ADMIN]: {
     'serviceInstance.view': true,
     'serviceInstance.review': true,
+    'analytics.view': true,
+    'analytics.export': true,
   },
   [UserRole.SUPPORT]: {
     'serviceInstance.view': true,
+    'analytics.view': true,
   },
   [UserRole.CUSTOMER]: undefined,
   [UserRole.DOCTOR]: undefined,

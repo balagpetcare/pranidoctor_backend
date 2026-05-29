@@ -1,0 +1,33 @@
+# Production overlay — use with base compose:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile production up -d
+#
+# Copy .env.production.example → .env and fill secrets before running.
+
+version: '3.9'
+
+services:
+  postgres:
+    ports: []
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+
+  redis:
+    ports: []
+
+  minio:
+    ports: []
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+
+  api:
+    environment:
+      NODE_ENV: production
+      REDIS_ENABLED: 'true'
+      LOG_FORMAT: json
+      METRICS_ENABLED: 'true'
+      OTP_MODE: live
+      # Set API_DOCS_KEY to enable Swagger in production (X-API-Docs-Key header)
+      # API_DOCS_KEY: ${API_DOCS_KEY}
+    ports:
+      - '127.0.0.1:${PORT:-3000}:3000'

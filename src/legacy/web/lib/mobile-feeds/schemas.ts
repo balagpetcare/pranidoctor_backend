@@ -17,6 +17,7 @@ export const listFeedsQuerySchema = z.object({
   to: dateStringSchema.optional(),
   animalId: z.string().trim().min(1).optional(),
   batchId: z.string().trim().min(1).optional(),
+  fatteningBatchId: z.string().trim().min(1).optional(),
   feedType: feedTypeSchema.optional(),
   search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -29,19 +30,29 @@ export const createFeedBodySchema = z
     animalId: z.string().trim().min(1).optional(),
     batchId: z.string().trim().max(120).optional(),
     batchName: z.string().trim().max(200).optional(),
+    fatteningBatchId: z.string().trim().min(1).optional(),
     feedType: feedTypeSchema,
     amount: z.coerce.number().positive().max(999999),
     unit: feedUnitSchema,
     costBdt: z.coerce.number().min(0).max(99999999).optional(),
     recordedDate: dateStringSchema,
     notes: z.string().trim().max(2000).optional(),
+    inventoryItemId: z.string().trim().min(1).optional(),
+    deductStock: z.boolean().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
-    if (!data.animalId && !data.batchId) {
+    if (data.deductStock && !data.inventoryItemId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Either animalId or batchId is required",
+        message: "inventoryItemId is required when deductStock is true",
+        path: ["inventoryItemId"],
+      });
+    }
+    if (!data.animalId && !data.batchId && !data.fatteningBatchId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Either animalId, batchId, or fatteningBatchId is required",
         path: ["animalId"],
       });
     }
@@ -63,6 +74,7 @@ export const patchFeedBodySchema = z
     animalId: z.string().trim().min(1).nullable().optional(),
     batchId: z.string().trim().max(120).nullable().optional(),
     batchName: z.string().trim().max(200).nullable().optional(),
+    fatteningBatchId: z.string().trim().min(1).nullable().optional(),
     feedType: feedTypeSchema.optional(),
     amount: z.coerce.number().positive().max(999999).optional(),
     unit: feedUnitSchema.optional(),
