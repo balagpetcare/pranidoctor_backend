@@ -5,6 +5,10 @@ import { PrismaClient } from '../../generated/prisma/index.js';
 
 import type { AppConfig } from '../config/config.schema.js';
 import { getLogger } from '../logger/logger.js';
+import { recordDbQuery } from '../monitoring/metrics/db.metrics.js';
+import { getSlowQueryThresholdMs } from '../monitoring/metrics/monitoring-config.js';
+import { parsePrismaQueryLabels } from '../monitoring/metrics/prisma-query-labels.js';
+import { recordDatabaseProbe } from '../monitoring/metrics/dependency.metrics.js';
 
 let prismaInstance: PrismaClient | null = null;
 let poolInstance: Pool | null = null;
@@ -17,6 +21,9 @@ export function createPrismaClient(options: PrismaClientOptions): PrismaClient {
   const { config } = options;
   const logger = getLogger();
   const isDev = config.nodeEnv === 'development';
+  const queryMetricsEnabled =
+    process.env['METRICS_ENABLED'] !== 'false' &&
+    process.env['DB_QUERY_METRICS_ENABLED'] !== 'false';
 
   const pool = new Pool({
     connectionString: config.database.url,
@@ -26,32 +33,44 @@ export function createPrismaClient(options: PrismaClientOptions): PrismaClient {
 
   const adapter = new PrismaPg(pool);
 
+  const logLevels: Array<{ emit: 'event'; level: 'query' | 'error' | 'warn' }> = [
+    { emit: 'event', level: 'error' },
+  ];
+  if (isDev || queryMetricsEnabled) {
+    logLevels.unshift({ emit: 'event', level: 'query' });
+  }
+  if (isDev) {
+    logLevels.push({ emit: 'event', level: 'warn' });
+  }
+
   const prisma = new PrismaClient({
     adapter,
-    log: isDev
-      ? [
-          { emit: 'event', level: 'query' },
-          { emit: 'event', level: 'error' },
-          { emit: 'event', level: 'warn' },
-        ]
-      : [{ emit: 'event', level: 'error' }],
+    log: logLevels,
   });
 
   prisma.$on('error', (e) => {
     logger.error({ msg: 'Prisma error', error: e.message, target: e.target });
   });
 
-  if (isDev) {
-    prisma.$on('query', (e) => {
-      if (e.duration > 200) {
-        logger.warn({
-          msg: 'Slow query detected',
-          duration: e.duration,
-          query: e.query.substring(0, 200),
-        });
-      }
-    });
+  prisma.$on('query', (e) => {
+    const { model, operation } = parsePrismaQueryLabels(e.query);
+    if (queryMetricsEnabled) {
+      recordDbQuery({ model, operation, durationMs: e.duration, logger });
+      return;
+    }
+    if (isDev && e.duration > getSlowQueryThresholdMs()) {
+      logger.warn({
+        event: 'db.query.slow',
+        msg: 'Slow query detected',
+        durationMs: e.duration,
+        model,
+        operation,
+        query: e.query.substring(0, 200),
+      });
+    }
+  });
 
+  if (isDev) {
     prisma.$on('warn', (e) => {
       logger.warn({ msg: 'Prisma warning', warning: e.message });
     });
@@ -93,14 +112,18 @@ export async function checkDatabaseConnection(): Promise<{
 
   try {
     await prisma.$queryRaw`SELECT 1`;
+    const latency = Date.now() - start;
+    recordDatabaseProbe({ up: true, latencyMs: latency });
     return {
       healthy: true,
-      latency: Date.now() - start,
+      latency,
     };
   } catch (error) {
+    const latency = Date.now() - start;
+    recordDatabaseProbe({ up: false, latencyMs: latency });
     return {
       healthy: false,
-      latency: Date.now() - start,
+      latency,
       error: error instanceof Error ? error.message : 'Unknown database error',
     };
   }

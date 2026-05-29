@@ -20,7 +20,15 @@ import type {
   AiTriageRequest,
   AiTriageResponse,
 } from './ai-veterinary-core.types.js';
-import { AI_DISCLAIMER, AI_MEMORY_TTL_DAYS } from './ai-veterinary-core.types.js';
+import { resolveAiResponseDisclaimer } from '../ai/disclaimer/ai-disclaimer.resolver.js';
+import { resolveOptionalEscalationDisclosure } from '../ai/disclaimer/ai-escalation-disclosure.resolver.js';
+import {
+  chatEscalationTrigger,
+  mapEscalationReasonToTrigger,
+  triageEscalationTrigger,
+} from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure.service.js';
+import type { AiEscalationDisclosureTriggerKey } from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure-defaults.js';
+import { AI_MEMORY_TTL_DAYS } from './ai-veterinary-core.types.js';
 import { getAiVeterinaryRepository } from './repository/ai-veterinary.repository.js';
 import { getAiOrchestratorService } from '../ai/orchestrator/ai-orchestrator.service.js';
 import { getAiPromptService } from '../ai/prompts/ai-prompt.service.js';
@@ -46,6 +54,15 @@ function mapMemory(row: {
     expiresAt: row.expiresAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+async function withEscalationDisclosure<T extends Record<string, unknown>>(
+  payload: T,
+  trigger: AiEscalationDisclosureTriggerKey | null,
+  locale: AiLocale,
+): Promise<T & { escalationDisclosure?: string; escalationTrigger?: string; escalationDisclosureVersion?: string }> {
+  const fields = await resolveOptionalEscalationDisclosure(trigger, locale);
+  return { ...payload, ...fields };
 }
 
 function mapEscalation(row: {
@@ -127,15 +144,23 @@ export class AiVeterinaryCoreService {
         });
       }
 
-      return {
-        sessionId: session.id,
-        messageId: assistant.id,
-        content: inputRefusal.content,
-        refused: true,
-        humanRedirect: inputRefusal.humanRedirect,
-        escalationRecommended: inputRefusal.escalationRecommended,
-        disclaimer: AI_DISCLAIMER[locale],
-      };
+      return withEscalationDisclosure(
+        {
+          sessionId: session.id,
+          messageId: assistant.id,
+          content: inputRefusal.content,
+          refused: true,
+          humanRedirect: inputRefusal.humanRedirect,
+          escalationRecommended: inputRefusal.escalationRecommended,
+          disclaimer: await resolveAiResponseDisclaimer('chat', locale),
+        },
+        chatEscalationTrigger({
+          refused: true,
+          escalationRecommended: inputRefusal.escalationRecommended,
+          humanRedirect: inputRefusal.humanRedirect,
+        }),
+        locale,
+      );
     }
 
     const memories = await repo.listMemory(userId, AiMemoryKind.CASE_CONTEXT);
@@ -198,15 +223,23 @@ export class AiVeterinaryCoreService {
       });
     }
 
-    return {
-      sessionId: session.id,
-      messageId: assistant.id,
-      content: evaluated.content,
-      refused: evaluated.refused,
-      humanRedirect: evaluated.humanRedirect,
-      escalationRecommended,
-      disclaimer: AI_DISCLAIMER[locale],
-    };
+    return withEscalationDisclosure(
+      {
+        sessionId: session.id,
+        messageId: assistant.id,
+        content: evaluated.content,
+        refused: evaluated.refused,
+        humanRedirect: evaluated.humanRedirect,
+        escalationRecommended,
+        disclaimer: await resolveAiResponseDisclaimer('chat', locale),
+      },
+      chatEscalationTrigger({
+        refused: evaluated.refused,
+        escalationRecommended,
+        humanRedirect: evaluated.humanRedirect,
+      }),
+      locale,
+    );
   }
 
   async triage(userId: string, input: AiTriageRequest): Promise<AiTriageResponse> {
@@ -280,15 +313,22 @@ export class AiVeterinaryCoreService {
       });
     }
 
-    return {
-      triageId: triage.id,
-      riskBucket: assessment.bucket,
-      urgencyLevel: assessment.urgencyLevel,
-      recommendation: assessment.recommendation,
-      escalationRequired: assessment.escalationRequired,
-      ...(escalationId ? { escalationId } : {}),
-      disclaimer: AI_DISCLAIMER[locale],
-    };
+    return withEscalationDisclosure(
+      {
+        triageId: triage.id,
+        riskBucket: assessment.bucket,
+        urgencyLevel: assessment.urgencyLevel,
+        recommendation: assessment.recommendation,
+        escalationRequired: assessment.escalationRequired,
+        ...(escalationId ? { escalationId } : {}),
+        disclaimer: await resolveAiResponseDisclaimer('advisory', locale),
+      },
+      triageEscalationTrigger({
+        escalationRequired: assessment.escalationRequired,
+        urgencyLevel: assessment.urgencyLevel,
+      }),
+      locale,
+    );
   }
 
   async listMemory(userId: string, query: AiMemoryQuery): Promise<AiMemoryEntry[]> {
@@ -317,8 +357,14 @@ export class AiVeterinaryCoreService {
       }
     }
 
+    const locale: AiLocale = input.locale ?? 'bn';
     const escalation = await this.createEscalationInternal(userId, input);
-    return mapEscalation(escalation);
+    const mapped = mapEscalation(escalation);
+    return withEscalationDisclosure(
+      mapped,
+      mapEscalationReasonToTrigger(input.reason),
+      locale,
+    );
   }
 
   async getHistory(userId: string, sessionId?: string): Promise<AiHistoryResponse> {
@@ -366,6 +412,9 @@ export class AiVeterinaryCoreService {
       await repo.markSessionEscalated(input.sessionId);
     }
 
+    const disclosureTrigger = mapEscalationReasonToTrigger(input.reason);
+    const disclosureFields = await resolveOptionalEscalationDisclosure(disclosureTrigger, 'bn');
+
     await repo.writeAudit({
       userId,
       action: 'ESCALATION_CREATED',
@@ -373,6 +422,8 @@ export class AiVeterinaryCoreService {
         escalationId: escalation.id,
         reason: input.reason,
         caseId: input.caseId ?? null,
+        escalationTrigger: disclosureTrigger,
+        escalationDisclosureVersion: disclosureFields.escalationDisclosureVersion ?? null,
       },
       ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
     });

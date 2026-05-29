@@ -3,6 +3,9 @@ import {
   type LivestockSpecies,
 } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { resolveAiResponseDisclaimer } from '../disclaimer/ai-disclaimer.resolver.js';
+import { resolveOptionalEscalationDisclosure } from '../disclaimer/ai-escalation-disclosure.resolver.js';
+import { symptomCheckEscalationTrigger } from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure.service.js';
 import { assessSymptomRisk } from '../../ai-veterinary-core/safety/ai-safety.guardrails.js';
 import { getAiSafetyService } from '../../ai-veterinary-core/safety/ai-safety.service.js';
 import { ValidationError } from '../../../shared/errors/http.errors.js';
@@ -190,21 +193,24 @@ export class SymptomCheckerService {
               ? 'See a vet if symptoms persist 24–48 hours.'
               : 'Monitor the animal and ensure rest and clean water.';
 
-    return {
+    const escalationRequired = risk.bucket === 'HIGH' || risk.emergency;
+    const base = {
       sessionId: session.id,
       confidence,
       redFlags,
       differentials,
       triageBucket,
       urgencyLevel,
-      escalationRequired: risk.bucket === 'HIGH' || risk.emergency,
+      escalationRequired,
       emergency: risk.emergency,
       recommendation,
-      disclaimer:
-        locale === 'bn'
-          ? 'এটি চিকিৎসা নির্ণয় নয় — শুধুমাত্র সহায়ক তথ্য।'
-          : 'This is not a medical diagnosis — assistive information only.',
+      disclaimer: await resolveAiResponseDisclaimer('advisory', locale),
     };
+    const disclosure = await resolveOptionalEscalationDisclosure(
+      symptomCheckEscalationTrigger({ escalationRequired, emergency: risk.emergency }),
+      locale,
+    );
+    return { ...base, ...disclosure };
   }
 }
 

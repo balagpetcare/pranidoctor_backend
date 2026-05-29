@@ -22,12 +22,13 @@ export interface ReadinessResponse {
 
 export interface LivenessResponse {
   alive: boolean;
+  service: string;
   timestamp: string;
 }
 
 export interface DependencyStatus {
   name: string;
-  type: 'database' | 'cache' | 'queue' | 'external';
+  type: 'database' | 'cache' | 'queue' | 'external' | 'ai';
   status: 'healthy' | 'unhealthy' | 'degraded';
   latency: number;
   required: boolean;

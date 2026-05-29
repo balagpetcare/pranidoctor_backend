@@ -12,6 +12,10 @@ import { AUTH_CHANNELS } from '../identity-core.js';
 import { toDoctorMeUser } from '../panel-auth.dto.js';
 import { assertJwtSessionActive, touchJwtSession } from '../session-guard.helper.js';
 import { getIdentityAuthService } from '../identity-auth.service.js';
+import {
+  getPanelLegalStatus,
+  mapLegalSummaryForAuthMe,
+} from '../../../legacy/web/lib/panel-legal/panel-legal.service.js';
 
 export async function handleDoctorLogin(request: Request): Promise<Response> {
   let json: unknown;
@@ -72,5 +76,10 @@ export async function handleDoctorMe(request: Request): Promise<Response> {
 
   await touchJwtSession(session);
 
-  return compatJsonOk({ user: toDoctorMeUser(actor) });
+  const legalStatus = await getPanelLegalStatus(actor.userId, 'DOCTOR');
+
+  return compatJsonOk({
+    user: toDoctorMeUser(actor),
+    legal: mapLegalSummaryForAuthMe(legalStatus),
+  });
 }

@@ -1,90 +1,17 @@
 import type { MobileUserSettings } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-import type { SyncSettingsBody } from "./schemas";
+import { authRequestContext } from "../../../../modules/auth/auth-audit.service.js";
+import { recordLegalConsentFireAndForget } from "./legal-consent-audit.js";
+import { loadLegalConfig, type LegalConfig } from "./legal-config.js";
+import { resolveLegalConsentStatus } from "./mobile-legal-consent.js";
+import { getOrCreateMobileUserSettings } from "./mobile-settings-store.js";
+import type { SyncSettingsBody } from "./schemas.js";
 
-export type LegalConfig = {
-  privacyPolicyUrl: string;
-  termsOfServiceUrl: string;
-  privacyVersion: string;
-  termsVersion: string;
-  privacyTitle: string;
-  termsTitle: string;
-  privacyContent: string;
-  termsContent: string;
-};
-
-const DEFAULT_LEGAL: LegalConfig = {
-  privacyPolicyUrl:
-    process.env.MOBILE_PRIVACY_POLICY_URL?.trim() || "https://pranidoctor.com/privacy",
-  termsOfServiceUrl:
-    process.env.MOBILE_TERMS_OF_SERVICE_URL?.trim() || "https://pranidoctor.com/terms",
-  privacyVersion: "2026-05-01",
-  termsVersion: "2026-05-01",
-  privacyTitle: "Privacy Policy",
-  termsTitle: "Terms of Service",
-  privacyContent:
-    "Prani Doctor respects your privacy. We collect account and farm data to provide veterinary and farm management services. Contact support to exercise data rights.",
-  termsContent:
-    "By using Prani Doctor you agree to use the app for lawful farm management purposes. AI guidance is informational only and not a substitute for professional veterinary care.",
-};
-
-export async function loadLegalConfig(): Promise<LegalConfig> {
-  try {
-    const row = await prisma.setting.findUnique({
-      where: { key: "mobile.legal.config" },
-      select: { valueJson: true },
-    });
-    const j = row?.valueJson;
-    if (j !== null && typeof j === "object" && !Array.isArray(j)) {
-      const o = j as Record<string, unknown>;
-      return {
-        privacyPolicyUrl:
-          typeof o.privacyPolicyUrl === "string" && o.privacyPolicyUrl.trim()
-            ? o.privacyPolicyUrl.trim()
-            : DEFAULT_LEGAL.privacyPolicyUrl,
-        termsOfServiceUrl:
-          typeof o.termsOfServiceUrl === "string" && o.termsOfServiceUrl.trim()
-            ? o.termsOfServiceUrl.trim()
-            : DEFAULT_LEGAL.termsOfServiceUrl,
-        privacyVersion:
-          typeof o.privacyVersion === "string" && o.privacyVersion.trim()
-            ? o.privacyVersion.trim()
-            : DEFAULT_LEGAL.privacyVersion,
-        termsVersion:
-          typeof o.termsVersion === "string" && o.termsVersion.trim()
-            ? o.termsVersion.trim()
-            : DEFAULT_LEGAL.termsVersion,
-        privacyTitle:
-          typeof o.privacyTitle === "string" && o.privacyTitle.trim()
-            ? o.privacyTitle.trim()
-            : DEFAULT_LEGAL.privacyTitle,
-        termsTitle:
-          typeof o.termsTitle === "string" && o.termsTitle.trim()
-            ? o.termsTitle.trim()
-            : DEFAULT_LEGAL.termsTitle,
-        privacyContent:
-          typeof o.privacyContent === "string" && o.privacyContent.trim()
-            ? o.privacyContent.trim()
-            : DEFAULT_LEGAL.privacyContent,
-        termsContent:
-          typeof o.termsContent === "string" && o.termsContent.trim()
-            ? o.termsContent.trim()
-            : DEFAULT_LEGAL.termsContent,
-      };
-    }
-  } catch {
-    /* optional */
-  }
-  return DEFAULT_LEGAL;
-}
+export type { LegalConfig };
 
 function mapSettingsDto(row: MobileUserSettings, legal: LegalConfig) {
-  const privacyAccepted =
-    row.privacyAcceptedVersion != null &&
-    row.privacyAcceptedVersion === legal.privacyVersion;
-  const termsAccepted =
-    row.termsAcceptedVersion != null && row.termsAcceptedVersion === legal.termsVersion;
+  const status = resolveLegalConsentStatus(row, legal);
 
   return {
     settings: {
@@ -94,6 +21,12 @@ function mapSettingsDto(row: MobileUserSettings, legal: LegalConfig) {
       privacyAcceptedAt: row.privacyAcceptedAt?.toISOString() ?? null,
       termsAcceptedVersion: row.termsAcceptedVersion,
       termsAcceptedAt: row.termsAcceptedAt?.toISOString() ?? null,
+      aiAcceptedVersion: row.aiAcceptedVersion,
+      aiAcceptedAt: row.aiAcceptedAt?.toISOString() ?? null,
+      vetAcceptedVersion: row.vetAcceptedVersion,
+      vetAcceptedAt: row.vetAcceptedAt?.toISOString() ?? null,
+      emergencyAcceptedVersion: row.emergencyAcceptedVersion,
+      emergencyAcceptedAt: row.emergencyAcceptedAt?.toISOString() ?? null,
       updatedAt: row.updatedAt.toISOString(),
     },
     legal: {
@@ -101,27 +34,39 @@ function mapSettingsDto(row: MobileUserSettings, legal: LegalConfig) {
       termsOfServiceUrl: legal.termsOfServiceUrl,
       privacyVersion: legal.privacyVersion,
       termsVersion: legal.termsVersion,
-      privacyAccepted,
-      termsAccepted,
+      aiConsentVersion: legal.aiConsentVersion,
+      vetDisclaimerVersion: legal.vetDisclaimerVersion,
+      emergencyLimitationVersion: legal.emergencyLimitationVersion,
+      privacyAccepted: status.privacyAccepted,
+      termsAccepted: status.termsAccepted,
+      aiConsentAccepted: status.aiConsentAccepted,
+      vetDisclaimerAccepted: status.vetDisclaimerAccepted,
+      emergencyLimitationAccepted: status.emergencyLimitationAccepted,
+      enforcePrivacyConsent: status.enforcePrivacyConsent,
+      legalGateEnabled: status.legalGateEnabled,
+      allRequiredAccepted: status.allRequiredAccepted,
+      missing: status.missing,
+      privacyRequired: !status.privacyAccepted,
+      termsRequired: !status.termsAccepted,
+      aiConsentRequired: !status.aiConsentAccepted,
+      vetDisclaimerRequired: !status.vetDisclaimerAccepted,
+      emergencyLimitationRequired: !status.emergencyLimitationAccepted,
     },
   };
 }
 
-async function getOrCreateSettings(userId: string): Promise<MobileUserSettings> {
-  const existing = await prisma.mobileUserSettings.findUnique({ where: { userId } });
-  if (existing) return existing;
-  return prisma.mobileUserSettings.create({ data: { userId } });
-}
-
 export async function getMobileSettingsForUser(userId: string) {
-  const [row, legal] = await Promise.all([getOrCreateSettings(userId), loadLegalConfig()]);
+  const [row, legal] = await Promise.all([getOrCreateMobileUserSettings(userId), loadLegalConfig()]);
   return mapSettingsDto(row, legal);
 }
 
-export async function getPrivacyDocumentForUser(userId: string) {
-  const [row, legal] = await Promise.all([getOrCreateSettings(userId), loadLegalConfig()]);
-  return {
-    document: {
+function mapLegalDocument(
+  type: "privacy" | "terms" | "ai",
+  row: MobileUserSettings,
+  legal: LegalConfig,
+) {
+  if (type === "privacy") {
+    return {
       type: "privacy" as const,
       version: legal.privacyVersion,
       url: legal.privacyPolicyUrl,
@@ -129,14 +74,10 @@ export async function getPrivacyDocumentForUser(userId: string) {
       content: legal.privacyContent,
       accepted: row.privacyAcceptedVersion === legal.privacyVersion,
       acceptedAt: row.privacyAcceptedAt?.toISOString() ?? null,
-    },
-  };
-}
-
-export async function getTermsDocumentForUser(userId: string) {
-  const [row, legal] = await Promise.all([getOrCreateSettings(userId), loadLegalConfig()]);
-  return {
-    document: {
+    };
+  }
+  if (type === "terms") {
+    return {
       type: "terms" as const,
       version: legal.termsVersion,
       url: legal.termsOfServiceUrl,
@@ -144,13 +85,42 @@ export async function getTermsDocumentForUser(userId: string) {
       content: legal.termsContent,
       accepted: row.termsAcceptedVersion === legal.termsVersion,
       acceptedAt: row.termsAcceptedAt?.toISOString() ?? null,
-    },
+    };
+  }
+  return {
+    type: "ai" as const,
+    version: legal.aiConsentVersion,
+    url: legal.privacyPolicyUrl,
+    title: legal.aiConsentTitle,
+    content: legal.aiConsentContent,
+    accepted: row.aiAcceptedVersion === legal.aiConsentVersion,
+    acceptedAt: row.aiAcceptedAt?.toISOString() ?? null,
   };
 }
 
-export async function syncMobileSettingsForUser(userId: string, body: SyncSettingsBody) {
+export async function getPrivacyDocumentForUser(userId: string) {
+  const [row, legal] = await Promise.all([getOrCreateMobileUserSettings(userId), loadLegalConfig()]);
+  return { document: mapLegalDocument("privacy", row, legal) };
+}
+
+export async function getTermsDocumentForUser(userId: string) {
+  const [row, legal] = await Promise.all([getOrCreateMobileUserSettings(userId), loadLegalConfig()]);
+  return { document: mapLegalDocument("terms", row, legal) };
+}
+
+export async function getAiConsentDocumentForUser(userId: string) {
+  const [row, legal] = await Promise.all([getOrCreateMobileUserSettings(userId), loadLegalConfig()]);
+  return { document: mapLegalDocument("ai", row, legal) };
+}
+
+export async function syncMobileSettingsForUser(
+  userId: string,
+  body: SyncSettingsBody,
+  request?: Request,
+) {
   const legal = await loadLegalConfig();
   const now = new Date();
+  const ctx = request ? authRequestContext(request) : {};
 
   const data: Parameters<typeof prisma.mobileUserSettings.upsert>[0]["update"] = {
     updatedAt: now,
@@ -161,10 +131,83 @@ export async function syncMobileSettingsForUser(userId: string, body: SyncSettin
   if (body.acceptPrivacyVersion === legal.privacyVersion) {
     data.privacyAcceptedVersion = legal.privacyVersion;
     data.privacyAcceptedAt = now;
+    recordLegalConsentFireAndForget({
+      userId,
+      consentType: "PRIVACY",
+      version: legal.privacyVersion,
+      role: "CUSTOMER",
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    });
   }
   if (body.acceptTermsVersion === legal.termsVersion) {
     data.termsAcceptedVersion = legal.termsVersion;
     data.termsAcceptedAt = now;
+    recordLegalConsentFireAndForget({
+      userId,
+      consentType: "TERMS",
+      version: legal.termsVersion,
+      role: "CUSTOMER",
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+      method: "EXPLICIT_BUTTON",
+    });
+  }
+  if (body.acceptAiVersion === legal.aiConsentVersion) {
+    data.aiAcceptedVersion = legal.aiConsentVersion;
+    data.aiAcceptedAt = now;
+    recordLegalConsentFireAndForget({
+      userId,
+      consentType: "AI_PROCESSING",
+      version: legal.aiConsentVersion,
+      role: "CUSTOMER",
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+      metadata: {
+        surface: body.acceptAiSurface ?? "SETTINGS",
+        kind: "AI_DISCLAIMER_ACCEPT",
+      },
+    });
+  }
+  if (body.acceptVetVersion === legal.vetDisclaimerVersion) {
+    data.vetAcceptedVersion = legal.vetDisclaimerVersion;
+    data.vetAcceptedAt = now;
+    recordLegalConsentFireAndForget({
+      userId,
+      consentType: "VET_ADVICE",
+      version: legal.vetDisclaimerVersion,
+      role: "CUSTOMER",
+      channel: "MOBILE",
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+      metadata: {
+        surface: body.acceptVetSurface ?? "SETTINGS",
+        kind: "VET_DISCLAIMER_ACCEPT",
+        ...(body.acceptVetServiceRequestId
+          ? { serviceRequestId: body.acceptVetServiceRequestId }
+          : {}),
+      },
+    });
+  }
+  if (body.acceptEmergencyVersion === legal.emergencyLimitationVersion) {
+    data.emergencyAcceptedVersion = legal.emergencyLimitationVersion;
+    data.emergencyAcceptedAt = now;
+    recordLegalConsentFireAndForget({
+      userId,
+      consentType: "EMERGENCY_SERVICE",
+      version: legal.emergencyLimitationVersion,
+      role: "CUSTOMER",
+      channel: "MOBILE",
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+      metadata: {
+        surface: body.acceptEmergencySurface ?? "SETTINGS",
+        kind: "EMERGENCY_LIMITATION_ACCEPT",
+        ...(body.acceptEmergencyServiceRequestId
+          ? { serviceRequestId: body.acceptEmergencyServiceRequestId }
+          : {}),
+      },
+    });
   }
 
   const row = await prisma.mobileUserSettings.upsert({
@@ -178,3 +221,6 @@ export async function syncMobileSettingsForUser(userId: string, body: SyncSettin
 
   return mapSettingsDto(row, legal);
 }
+
+// Re-export for admin and tests
+export { loadLegalConfig } from "./legal-config.js";

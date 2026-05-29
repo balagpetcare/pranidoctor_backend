@@ -1,7 +1,11 @@
 import { TooManyRequestsError } from '../../../shared/errors/http.errors.js';
 import { checkRateLimit } from '../../../shared/security/rate-limit/rate-limit.service.js';
 import { RateLimitPresets } from '../../../shared/security/rate-limit/rate-limit.config.js';
+import { getAiRepository } from '../ai.repository.js';
 import { getAiUsageService } from '../usage/ai-usage.service.js';
+import { classifyProviderError } from '../usage/ai-usage.errors.js';
+import { resolveDefaultModel } from '../usage/ai-usage.cost.js';
+import { getAiGovernanceService } from '../governance/ai-governance.service.js';
 import { getAiPromptService } from '../prompts/ai-prompt.service.js';
 
 import type { AiCompletionInput, AiCompletionOutput, AiProviderAdapter } from './provider.interface.js';
@@ -13,26 +17,27 @@ export class AiOrchestratorService {
   readonly name = 'AiOrchestratorService';
 
   private readonly providers: AiProviderAdapter[];
-  private llmDisabled = false;
 
   constructor() {
     this.providers = [new OpenAiProvider(), new AnthropicProvider(), new RulesBasedProvider()];
   }
 
+  /** @deprecated Prefer `getAiGovernanceService().setLlmDisabled()` — local-only for tests. */
   disableLlm(): void {
-    this.llmDisabled = true;
+    getAiGovernanceService().applyLocalState(true);
   }
 
+  /** @deprecated Prefer `getAiGovernanceService().setLlmDisabled()` — local-only for tests. */
   enableLlm(): void {
-    this.llmDisabled = false;
+    getAiGovernanceService().applyLocalState(false);
   }
 
   isLlmDisabled(): boolean {
-    return this.llmDisabled;
+    return getAiGovernanceService().isLlmDisabled();
   }
 
   private resolveChain(): AiProviderAdapter[] {
-    if (this.llmDisabled) {
+    if (this.isLlmDisabled()) {
       return [new RulesBasedProvider()];
     }
 
@@ -60,51 +65,97 @@ export class AiOrchestratorService {
     }
   }
 
+  private recordAttempt(
+    input: AiCompletionInput & { userId?: string; customerId?: string },
+    params: {
+      provider: string;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      latencyMs: number;
+      success: boolean;
+      errorCode?: string;
+      isFallback?: boolean;
+      fromProvider?: string;
+    },
+  ): void {
+    getAiUsageService().recordAttempt({
+      userId: input.userId,
+      customerId: input.customerId,
+      feature: input.feature,
+      provider: params.provider,
+      model: params.model,
+      inputTokens: params.inputTokens,
+      outputTokens: params.outputTokens,
+      latencyMs: params.latencyMs,
+      success: params.success,
+      errorCode: params.errorCode,
+      isFallback: params.isFallback,
+      fromProvider: params.fromProvider,
+    });
+  }
+
   async complete(
     input: AiCompletionInput & { userId?: string; customerId?: string },
   ): Promise<AiCompletionOutput> {
+    let customerId = input.customerId;
+    if (!customerId && input.userId) {
+      customerId = (await getAiRepository().resolveCustomerId(input.userId)) ?? undefined;
+    }
+    const enrichedInput = { ...input, customerId };
+
     const chain = this.resolveChain();
     const usesLlm = chain.some((p) => p.name !== 'rules-based' && p.isConfigured());
     if (usesLlm) {
-      await this.assertDailyLlmQuota(input.userId);
+      await this.assertDailyLlmQuota(enrichedInput.userId);
     }
+
+    let hadLlmFailure = false;
 
     for (const provider of chain) {
       if (provider.name !== 'rules-based' && !provider.isConfigured()) {
         continue;
       }
 
+      const start = Date.now();
       try {
-        const result = await provider.complete(input);
-        await getAiUsageService().record({
-          userId: input.userId,
-          customerId: input.customerId,
-          feature: input.feature,
+        const result = await provider.complete(enrichedInput);
+        this.recordAttempt(enrichedInput, {
           provider: result.provider,
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
           latencyMs: result.latencyMs,
           success: true,
+          isFallback: hadLlmFailure && result.provider === 'rules-based',
+          fromProvider: hadLlmFailure ? 'llm_chain' : undefined,
         });
         return result;
-      } catch {
-        // try next provider
+      } catch (err) {
+        hadLlmFailure = provider.name !== 'rules-based';
+        this.recordAttempt(enrichedInput, {
+          provider: provider.name,
+          model: resolveDefaultModel(provider.name),
+          inputTokens: 0,
+          outputTokens: 0,
+          latencyMs: Date.now() - start,
+          success: false,
+          errorCode: classifyProviderError(err),
+        });
       }
     }
 
     const fallback = new RulesBasedProvider();
-    const result = await fallback.complete(input);
-    await getAiUsageService().record({
-      userId: input.userId,
-      customerId: input.customerId,
-      feature: input.feature,
+    const result = await fallback.complete(enrichedInput);
+    this.recordAttempt(enrichedInput, {
       provider: result.provider,
       model: result.model,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
       latencyMs: result.latencyMs,
       success: true,
+      isFallback: true,
+      fromProvider: 'llm_chain',
     });
     return result;
   }

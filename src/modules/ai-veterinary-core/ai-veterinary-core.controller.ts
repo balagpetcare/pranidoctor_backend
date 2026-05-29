@@ -44,6 +44,7 @@ const escalateSchema = z.object({
     'POLICY_REFUSAL',
   ]),
   handoffNote: z.string().max(2000).optional(),
+  locale: z.enum(['bn', 'en']).optional(),
 });
 
 function userId(req: Request): string {
@@ -107,6 +108,7 @@ export class AiVeterinaryCoreController {
       ...(body.sessionId !== undefined ? { sessionId: body.sessionId } : {}),
       ...(body.caseId !== undefined ? { caseId: body.caseId } : {}),
       ...(body.handoffNote !== undefined ? { handoffNote: body.handoffNote } : {}),
+      ...(body.locale !== undefined ? { locale: body.locale } : {}),
     });
     sendCreated(res, result);
   }

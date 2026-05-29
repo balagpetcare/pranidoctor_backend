@@ -8,6 +8,13 @@ import type {
 
 export type AiLocale = 'bn' | 'en';
 
+/** Optional fields when AI safety recommends or records human escalation — see ai-escalation-disclosure plan */
+export type EscalationDisclosureResponseFields = {
+  escalationDisclosure?: string;
+  escalationTrigger?: string;
+  escalationDisclosureVersion?: string;
+};
+
 export type AiChatRequest = {
   message: string;
   sessionId?: string;
@@ -23,7 +30,7 @@ export type AiChatResponse = {
   humanRedirect: boolean;
   escalationRecommended: boolean;
   disclaimer: string;
-};
+} & EscalationDisclosureResponseFields;
 
 export type AiTriageRequest = {
   sessionId?: string;
@@ -42,7 +49,7 @@ export type AiTriageResponse = {
   escalationRequired: boolean;
   escalationId?: string;
   disclaimer: string;
-};
+} & EscalationDisclosureResponseFields;
 
 export type AiMemoryEntry = {
   id: string;
@@ -69,6 +76,7 @@ export type AiEscalateRequest = {
   caseId?: string;
   reason: AiEscalationReason;
   handoffNote?: string;
+  locale?: AiLocale;
 };
 
 export type AiEscalationDto = {
@@ -79,7 +87,7 @@ export type AiEscalationDto = {
   sessionId: string | null;
   handoffNote: string | null;
   flaggedAt: string;
-};
+} & EscalationDisclosureResponseFields;
 
 export type AiHistoryMessageDto = {
   id: string;

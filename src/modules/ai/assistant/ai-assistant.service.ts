@@ -1,6 +1,7 @@
 import { ValidationError } from '../../../shared/errors/http.errors.js';
 import { getAiKnowledgeService } from '../knowledge/ai-knowledge.service.js';
 import { getAiOrchestratorService } from '../orchestrator/ai-orchestrator.service.js';
+import { resolveAiResponseDisclaimer } from '../disclaimer/ai-disclaimer.resolver.js';
 import { getAiAuditService } from '../audit/ai-audit.service.js';
 import { getAiRepository } from '../ai.repository.js';
 import { getAiVeterinaryCoreService } from '../../ai-veterinary-core/ai-veterinary-core.service.js';
@@ -75,10 +76,7 @@ export class AiAssistantService {
       summary,
       briefing: llm.content,
       dashboard,
-      disclaimer:
-        locale === 'bn'
-          ? 'এটি সহায়ক তথ্য — চিকিৎসা নির্ণয় নয়।'
-          : 'Assistive information only — not a diagnosis.',
+      disclaimer: await resolveAiResponseDisclaimer('advisory', locale),
     };
   }
 
@@ -111,10 +109,7 @@ export class AiAssistantService {
     return {
       answer: llm.content,
       farmRef,
-      disclaimer:
-        locale === 'bn'
-          ? 'ডেটা-ভিত্তিক সহায়তা — গুরুত্বপূর্ণ সিদ্ধান্তে চিকিৎসক/consult করুন।'
-          : 'Data-assisted guidance — consult a vet for critical decisions.',
+      disclaimer: await resolveAiResponseDisclaimer('advisory', locale),
     };
   }
 }

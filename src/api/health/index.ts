@@ -5,6 +5,10 @@ export {
   getLivenessStatus,
   getDependencyStatus,
   getSystemInfo,
+  checkAiHealthStatus,
+  checkDatabaseHealth,
+  checkRedisHealth,
+  checkStorageHealth,
 } from './health.service.js';
 export type {
   HealthCheckResult,

@@ -14,6 +14,10 @@ import {
 import { AUTH_CHANNELS } from '../identity-core.js';
 import { assertJwtSessionActive, touchJwtSession } from '../session-guard.helper.js';
 import { getIdentityAuthService } from '../identity-auth.service.js';
+import {
+  getPanelLegalStatus,
+  mapLegalSummaryForAuthMe,
+} from '../../../legacy/web/lib/panel-legal/panel-legal.service.js';
 
 export async function handleAdminLogin(request: Request): Promise<Response> {
   let json: unknown;
@@ -81,6 +85,8 @@ export async function handleAdminMe(request: Request): Promise<Response> {
 
   await touchJwtSession(session);
 
+  const legalStatus = await getPanelLegalStatus(actor.id, actor.role);
+
   return compatJsonOk({
     user: {
       id: actor.id,
@@ -88,5 +94,6 @@ export async function handleAdminMe(request: Request): Promise<Response> {
       displayName: actor.displayName,
       role: actor.role,
     },
+    legal: mapLegalSummaryForAuthMe(legalStatus),
   });
 }

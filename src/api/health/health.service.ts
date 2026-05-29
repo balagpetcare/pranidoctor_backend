@@ -2,6 +2,11 @@ import type { AppConfig } from '../../shared/config/config.schema.js';
 import { isRedisEnabled, isStorageRequired } from '../../shared/config/infra.flags.js';
 import { checkDatabaseConnection } from '../../shared/database/prisma.js';
 import { logWarn } from '../../shared/logger/logger.js';
+import {
+  recordDatabaseProbe,
+  recordReadiness,
+  recordRedisProbe,
+} from '../../shared/monitoring/metrics/index.js';
 import { checkRedisConnection } from '../../infra/redis/redis.client.js';
 import { getQueue, QueueNames } from '../../infra/queue/index.js';
 import {
@@ -13,9 +18,12 @@ import {
 import { listRegisteredPaths } from '../../modules/compat-web/route-registry.js';
 import { moduleRegistry } from '../../shared/module/module-registry.js';
 
+import { checkAiHealth } from './ai-health.service.js';
+
 import type {
   HealthCheckResult,
   HealthResponse,
+  LivenessResponse,
   ModulesHealthResponse,
   ReadinessResponse,
   DependencyStatus,
@@ -34,10 +42,12 @@ async function checkDatabase(): Promise<HealthCheckResult> {
       ...(result.error && { message: result.error }),
     };
   } catch (error) {
+    const latency = Date.now() - start;
+    recordDatabaseProbe({ up: false, latencyMs: latency });
     return {
       name: 'database',
       status: 'unhealthy',
-      latency: Date.now() - start,
+      latency,
       message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
@@ -49,6 +59,10 @@ export async function checkDatabaseHealth(): Promise<HealthCheckResult> {
 
 export async function checkRedisHealth(config?: AppConfig): Promise<HealthCheckResult> {
   return checkRedis(config);
+}
+
+export async function checkAiHealthStatus(): Promise<HealthCheckResult> {
+  return checkAiHealth();
 }
 
 export async function checkStorageHealth(config: AppConfig): Promise<HealthCheckResult> {
@@ -154,6 +168,8 @@ async function checkRedis(config?: AppConfig): Promise<HealthCheckResult> {
 
   try {
     const result = await checkRedisConnection();
+    const up = result.healthy;
+    recordRedisProbe({ up, latencyMs: result.latency });
     const status = result.healthy
       ? 'healthy'
       : result.error?.includes('not initialized')
@@ -167,10 +183,12 @@ async function checkRedis(config?: AppConfig): Promise<HealthCheckResult> {
       ...(result.error && { message: result.error }),
     };
   } catch (error) {
+    const latency = Date.now() - start;
+    recordRedisProbe({ up: false, latencyMs: latency });
     return {
       name: 'redis',
       status: 'unhealthy',
-      latency: Date.now() - start,
+      latency,
       message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
@@ -256,17 +274,19 @@ function checkEventLoop(): HealthCheckResult {
 export async function getHealthStatus(config: AppConfig): Promise<HealthResponse> {
   const checks: HealthCheckResult[] = [];
 
-  const [dbResult, redisResult, queueResult, storageResult] = await Promise.all([
+  const [dbResult, redisResult, queueResult, storageResult, aiResult] = await Promise.all([
     checkDatabase(),
     checkRedis(config),
     checkQueues(),
     checkStorageHealth(config),
+    checkAiHealth(),
   ]);
 
   checks.push(dbResult);
   checks.push(redisResult);
   checks.push(queueResult);
   checks.push(storageResult);
+  checks.push(aiResult);
   checks.push(checkMemory());
   checks.push(checkEventLoop());
 
@@ -303,21 +323,24 @@ export async function getHealthStatus(config: AppConfig): Promise<HealthResponse
 }
 
 export async function getReadinessStatus(config: AppConfig): Promise<ReadinessResponse> {
-  const checks: HealthCheckResult[] = [];
-
-  const [dbResult, redisResult] = await Promise.all([
+  const checkPromises: Promise<HealthCheckResult>[] = [
     checkDatabase(),
     checkRedis(config),
-  ]);
+  ];
 
-  checks.push(dbResult);
-  checks.push(redisResult);
+  if (isStorageRequired(config)) {
+    checkPromises.push(checkStorageHealth(config));
+  }
 
-  const requiredChecks = isRedisEnabled(config)
-    ? checks
-    : checks.filter((c) => c.name !== 'redis');
+  const checks = await Promise.all(checkPromises);
 
-  const ready = requiredChecks.every((c) => c.status === 'healthy');
+  const requiredChecks = checks.filter((check) => {
+    if (check.name === 'redis' && !isRedisEnabled(config)) return false;
+    return true;
+  });
+
+  const ready = requiredChecks.every((check) => check.status === 'healthy');
+  recordReadiness(ready);
 
   if (!ready) {
     logWarn('Readiness check failed', {
@@ -336,19 +359,21 @@ export async function getReadinessStatus(config: AppConfig): Promise<ReadinessRe
   };
 }
 
-export function getLivenessStatus(): { alive: boolean; timestamp: string } {
+export function getLivenessStatus(): LivenessResponse {
   return {
     alive: true,
+    service: 'api',
     timestamp: new Date().toISOString(),
   };
 }
 
 export async function getDependencyStatus(config: AppConfig): Promise<DependencyStatus[]> {
-  const [dbResult, redisResult, queueResult, storageResult] = await Promise.all([
+  const [dbResult, redisResult, queueResult, storageResult, aiResult] = await Promise.all([
     checkDatabase(),
     checkRedis(config),
     checkQueues(),
     checkStorageHealth(config),
+    checkAiHealth(),
   ]);
 
   return [
@@ -381,6 +406,14 @@ export async function getDependencyStatus(config: AppConfig): Promise<Dependency
       latency: storageResult.latency,
       required: isStorageRequired(config),
       ...(storageResult.message && { message: storageResult.message }),
+    },
+    {
+      name: 'AI Services',
+      type: 'ai',
+      status: aiResult.status,
+      latency: aiResult.latency,
+      required: false,
+      ...(aiResult.message && { message: aiResult.message }),
     },
   ];
 }

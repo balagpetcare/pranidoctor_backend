@@ -49,6 +49,7 @@
     "area:verify": "tsx scripts/area-verify.ts",
     "treatment:verify": "tsx scripts/treatment-verify.ts",
     "ai:verify": "tsx scripts/ai-verify.ts",
+    "ai:usage-verify": "tsx scripts/ai-usage-monitoring-verify.ts",
     "voice:verify": "tsx scripts/voice-verify.ts",
     "offline:verify": "tsx scripts/offline-verify.ts",
     "docker:up": "docker compose up -d postgres redis minio",

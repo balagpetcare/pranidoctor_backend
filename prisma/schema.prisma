@@ -47,6 +47,8 @@ model User {
   refreshTokens                     RefreshToken[]
   userDevices                       UserDevice[]
   userSessions                      UserSession[]
+  legalConsentEvents                LegalConsentEvent[]
+  legalAcceptanceEvents             LegalAcceptanceEvent[]
 
   @@index([role])
   @@index([status])
@@ -1380,6 +1382,40 @@ model AiSafetyAuditLog {
   @@index([action])
 }
 
+/// Global AI governance — LLM kill switch (singleton row id = "global").
+model AiGovernanceState {
+  id              String   @id @default("global")
+  llmDisabled     Boolean  @default(false)
+  version         BigInt   @default(1)
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+  updatedByRole   String?
+  reason          String?
+  source          String   @default("startup_sync")
+  history         AiGovernanceStateHistory[]
+}
+
+/// Append-only audit trail for AI governance changes.
+model AiGovernanceStateHistory {
+  id                  String            @id @default(cuid())
+  stateId             String            @default("global")
+  llmDisabled         Boolean
+  previousLlmDisabled Boolean
+  version             BigInt
+  actorId             String?
+  actorRole           String?
+  reason              String?
+  source              String
+  requestId           String?
+  correlationId       String?
+  rollbackOfId        String?
+  createdAt           DateTime          @default(now())
+  state               AiGovernanceState @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  @@index([stateId, createdAt])
+  @@index([actorId, createdAt])
+}
+
 /// P7 — Bangla voice assistant session (transcript metadata; no raw audio by default).
 model VoiceSession {
   id             String                 @id @default(cuid())
@@ -1819,8 +1855,31 @@ model MobileUserSettings {
   privacyAcceptedAt      DateTime?
   termsAcceptedVersion   String?
   termsAcceptedAt        DateTime?
+  aiAcceptedVersion      String?
+  aiAcceptedAt           DateTime?
+  vetAcceptedVersion     String?
+  vetAcceptedAt          DateTime?
+  emergencyAcceptedVersion String?
+  emergencyAcceptedAt    DateTime?
   updatedAt              DateTime               @updatedAt
   user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Append-only log when a user accepts privacy, terms, or AI processing consent.
+model LegalConsentEvent {
+  id          String            @id @default(cuid())
+  userId      String
+  consentType LegalConsentType
+  version     String
+  channel     String            @default("MOBILE")
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([consentType, createdAt])
 }
 
 /// Enterprise: worker submission of a semen (main) template for admin review → publish → `AiTechnicianService`.
@@ -1970,6 +2029,62 @@ model AuthAuditEvent {
 
   @@index([userId, createdAt])
   @@index([action, createdAt])
+}
+
+/// Published legal document registry (version-controlled ToS, privacy, provider schedules).
+model LegalDocument {
+  id               String                  @id @default(cuid())
+  documentKey      String
+  version          String
+  locale           String
+  title            String
+  summary          String?
+  contentMarkdown  String                  @db.Text
+  contentHash      String
+  publicUrl        String?
+  effectiveAt      DateTime
+  requiresReaccept Boolean                 @default(false)
+  publishedAt      DateTime?
+  publishedById    String?
+  tenantId         String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  acceptances      LegalAcceptanceEvent[]
+
+  @@unique([documentKey, version, locale, tenantId])
+  @@index([documentKey, locale, effectiveAt])
+  @@index([tenantId])
+}
+
+/// Immutable user acceptance audit trail (append-only).
+model LegalAcceptanceEvent {
+  id              String                  @id @default(cuid())
+  userId          String
+  legalDocumentId String
+  documentKey     String
+  version         String
+  locale          String
+  acceptedAt      DateTime                @default(now())
+  ipAddress       String?
+  userAgent       String?
+  appSurface      String
+  appVersion      String?
+  method          LegalAcceptanceMethod   @default(EXPLICIT_BUTTON)
+  metadataJson    Json?
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalDocument   LegalDocument           @relation(fields: [legalDocumentId], references: [id])
+
+  @@index([userId, documentKey, acceptedAt])
+  @@index([legalDocumentId])
+  @@index([acceptedAt])
+}
+
+enum LegalAcceptanceMethod {
+  EXPLICIT_BUTTON
+  CHECKBOX_REGISTER
+  PROVIDER_ONBOARDING
+  FORCED_RECONSENT
+  ADMIN_ATTESTED
 }
 
 model Setting {
@@ -2913,6 +3028,14 @@ enum ServiceInstanceAuditAction {
   STATUS_CHANGE
 }
 
+enum LegalConsentType {
+  PRIVACY
+  TERMS
+  AI_PROCESSING
+  VET_ADVICE
+  EMERGENCY_SERVICE
+}
+
 /// Phase 1 identity — authentication audit trail (additive).
 enum AuthAuditAction {
   LOGIN_SUCCESS
@@ -2927,6 +3050,7 @@ enum AuthAuditAction {
   SESSION_REVOKED
   DEVICE_REGISTERED
   DEVICE_REVOKED
+  LEGAL_ACCEPTED
 }
 
 /// P1-06 — session channel (panel + mobile).
@@ -3630,13 +3754,86 @@ model AiUsageRecord {
   model        String
   inputTokens  Int      @default(0)
   outputTokens Int      @default(0)
+  totalTokens  Int      @default(0)
   costUsd      Decimal? @db.Decimal(10, 6)
+  billable     Boolean  @default(false)
+  rateVersion  String?  @db.VarChar(32)
   latencyMs    Int      @default(0)
   success      Boolean  @default(true)
+  errorCode    String?  @db.VarChar(64)
+  isFallback   Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   @@index([createdAt, feature])
+  @@index([createdAt, provider, success])
   @@index([userId])
+  @@index([userId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+/// Pre-aggregated daily AI usage for efficient admin/reporting queries.
+model AiUsageDailyRollup {
+  id              String   @id @default(cuid())
+  bucketDate      DateTime @db.Date
+  feature         String
+  provider        String
+  model           String
+  requestCount    Int      @default(0)
+  successCount    Int      @default(0)
+  failureCount    Int      @default(0)
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  totalTokens     Int      @default(0)
+  billableTokens  Int      @default(0)
+  costUsd         Decimal  @default(0) @db.Decimal(12, 6)
+  billableCostUsd Decimal  @default(0) @db.Decimal(12, 6)
+  latencyMsSum    Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([bucketDate, feature, provider, model])
+  @@index([bucketDate])
+}
+
+/// Daily token consumption per authenticated user.
+model AiUsageUserDailyRollup {
+  id              String   @id @default(cuid())
+  bucketDate      DateTime @db.Date
+  userId          String
+  feature         String
+  provider        String
+  model           String
+  requestCount    Int      @default(0)
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  totalTokens     Int      @default(0)
+  billableTokens  Int      @default(0)
+  costUsd         Decimal  @default(0) @db.Decimal(12, 6)
+  billableCostUsd Decimal  @default(0) @db.Decimal(12, 6)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([bucketDate, userId, feature, provider, model])
+  @@index([userId, bucketDate])
+}
+
+/// Daily token consumption per farmer tenant (CustomerProfile).
+model AiUsageCustomerDailyRollup {
+  id              String   @id @default(cuid())
+  bucketDate      DateTime @db.Date
+  customerId      String
+  feature         String
+  provider        String
+  model           String
+  requestCount    Int      @default(0)
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  totalTokens     Int      @default(0)
+  billableTokens  Int      @default(0)
+  costUsd         Decimal  @default(0) @db.Decimal(12, 6)
+  billableCostUsd Decimal  @default(0) @db.Decimal(12, 6)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([bucketDate, customerId, feature, provider, model])
+  @@index([customerId, bucketDate])
 }
 
 model AiPromptTemplate {

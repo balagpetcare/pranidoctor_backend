@@ -2,6 +2,7 @@ import type { Router } from 'express';
 
 import { asyncHandler } from '../../shared/middleware/async-handler.js';
 import { authenticateMobileCustomer } from '../auth/mobile-express.middleware.js';
+import { requireMobileAiConsent } from '../auth/mobile-legal-consent.middleware.js';
 import { rateLimitAiChat } from '../../shared/security/rate-limit/rate-limit.service.js';
 import { whenRateLimitAvailable } from '../../shared/security/rate-limit/safe-rate-limit.js';
 
@@ -11,7 +12,7 @@ export function configureAiVeterinaryCoreRoutes(
   router: Router,
   controller: AiVeterinaryCoreController,
 ): void {
-  const guard = [authenticateMobileCustomer] as const;
+  const guard = [authenticateMobileCustomer, requireMobileAiConsent] as const;
   const aiChatLimit = whenRateLimitAvailable(rateLimitAiChat);
 
   router.post('/chat', ...guard, aiChatLimit, asyncHandler(controller.chat.bind(controller)));

@@ -109,8 +109,11 @@ async function seedMobileSettings(): Promise<void> {
       valueJson: {
         privacyPolicyUrl: "https://pranidoctor.com/privacy",
         termsOfServiceUrl: "https://pranidoctor.com/terms",
-        privacyVersion: "2026-05-01",
-        termsVersion: "2026-05-01",
+        privacyVersion: "2026-06-01",
+        termsVersion: "2026-06-01",
+        aiConsentVersion: "2026-06-01",
+        enforcePrivacyConsent: false,
+        legalGateEnabled: true,
       },
     },
     {

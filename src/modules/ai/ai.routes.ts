@@ -3,6 +3,9 @@ import type { Router } from 'express';
 import { asyncHandler } from '../../shared/middleware/async-handler.js';
 import { authenticateMobileCustomer } from '../auth/mobile-express.middleware.js';
 import {
+  requireMobileAiConsent,
+} from '../auth/mobile-legal-consent.middleware.js';
+import {
   rateLimitAiChat,
   rateLimitSearch,
   rateLimitStrict,
@@ -17,7 +20,7 @@ import type { AiAdminController, AiController } from './ai.controller.js';
 export function configureAiRoutes(router: Router, controller: AiController): void {
   configureAiVeterinaryCoreRoutes(router, controller as unknown as AiVeterinaryCoreController);
 
-  const guard = [authenticateMobileCustomer] as const;
+  const guard = [authenticateMobileCustomer, requireMobileAiConsent] as const;
   const aiChatLimit = whenRateLimitAvailable(rateLimitAiChat);
   const aiReadLimit = whenRateLimitAvailable(rateLimitStrict);
   const searchLimit = whenRateLimitAvailable(rateLimitSearch);
@@ -44,6 +47,8 @@ export function configureAiAdminRoutes(router: Router, admin: AiAdminController)
   const guard = [requireInternalAdminAiOps] as const;
 
   router.get('/overview', ...guard, asyncHandler(admin.overview.bind(admin)));
+  router.get('/usage/users/:userId', ...guard, asyncHandler(admin.userTokenUsage.bind(admin)));
+  router.get('/usage/customers/:customerId', ...guard, asyncHandler(admin.customerTokenUsage.bind(admin)));
   router.get('/analytics/risk', ...guard, asyncHandler(admin.riskMonitoring.bind(admin)));
   router.get('/knowledge', ...guard, asyncHandler(admin.listKnowledge.bind(admin)));
   router.post('/knowledge', ...guard, asyncHandler(admin.createKnowledge.bind(admin)));

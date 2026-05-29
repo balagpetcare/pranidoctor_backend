@@ -13,6 +13,7 @@ import { getFarmHealthService } from './farm-health/farm-health.service.js';
 import { getFollowUpService } from './follow-up/follow-up.service.js';
 import { getNotificationIntelligenceService } from './notifications/notification-intelligence.service.js';
 import { getSmartRecommendationService } from './recommendations/smart-recommendation.service.js';
+import { resolveAiResponseDisclaimer } from './disclaimer/ai-disclaimer.resolver.js';
 import { getSymptomCheckerService } from './symptom-checker/symptom-checker.service.js';
 
 function userId(req: Request): string {
@@ -166,8 +167,9 @@ export class AiController extends AiVeterinaryCoreController {
       await getAiRepository().assertCustomerOwnedFarm(cid, farmRef);
     }
     const locale = req.query.locale === 'en' ? 'en' : 'bn';
-    const result = await getSmartRecommendationService().generateForCustomer(cid, farmRef, locale);
-    sendSuccess(res, result);
+    const items = await getSmartRecommendationService().generateForCustomer(cid, farmRef, locale);
+    const disclaimer = await resolveAiResponseDisclaimer('recommendations', locale);
+    sendSuccess(res, { items, disclaimer });
   }
 
   async dismissRecommendation(req: Request, res: Response): Promise<void> {
@@ -210,7 +212,8 @@ export class AiController extends AiVeterinaryCoreController {
     const cid = await assertOwnedFarm(req, farmRef);
     const locale = req.query.locale === 'en' ? 'en' : 'bn';
     const result = await getFarmHealthService().getDashboard(cid, farmRef, locale);
-    sendSuccess(res, result);
+    const disclaimer = await resolveAiResponseDisclaimer('advisory', locale);
+    sendSuccess(res, { ...result, disclaimer });
   }
 
   async farmBriefing(req: Request, res: Response): Promise<void> {
@@ -350,10 +353,44 @@ export class AiAdminController {
   }
 
   async killSwitch(req: Request, res: Response): Promise<void> {
-    const enabled = z.object({ disable: z.boolean() }).parse(req.body).disable;
-    const { getAiOrchestratorService } = await import('./orchestrator/ai-orchestrator.service.js');
-    if (enabled) getAiOrchestratorService().disableLlm();
-    else getAiOrchestratorService().enableLlm();
-    sendSuccess(res, { llmDisabled: getAiOrchestratorService().isLlmDisabled() });
+    const body = z
+      .object({
+        disable: z.boolean(),
+        reason: z.string().optional(),
+        expectedVersion: z.number().int().positive().optional(),
+      })
+      .parse(req.body);
+    const { getAiGovernanceService } = await import('./governance/ai-governance.service.js');
+    const governance = await getAiGovernanceService().setLlmDisabled({
+      llmDisabled: body.disable,
+      reason: body.reason,
+      source: 'internal_api',
+      expectedVersion: body.expectedVersion,
+    });
+    sendSuccess(res, {
+      llmDisabled: governance.llmDisabled,
+      version: governance.version,
+      governance,
+    });
+  }
+
+  async userTokenUsage(req: Request, res: Response): Promise<void> {
+    const userId = z.string().parse(req.params.userId);
+    const sinceDays = Math.min(90, Math.max(1, Number(req.query.sinceDays ?? 30)));
+    const since = new Date();
+    since.setDate(since.getDate() - sinceDays);
+    const { getAiUsageService } = await import('./usage/ai-usage.service.js');
+    const result = await getAiUsageService().getUserConsumption(userId, since);
+    sendSuccess(res, result);
+  }
+
+  async customerTokenUsage(req: Request, res: Response): Promise<void> {
+    const customerId = z.string().parse(req.params.customerId);
+    const sinceDays = Math.min(90, Math.max(1, Number(req.query.sinceDays ?? 30)));
+    const since = new Date();
+    since.setDate(since.getDate() - sinceDays);
+    const { getAiUsageService } = await import('./usage/ai-usage.service.js');
+    const result = await getAiUsageService().getCustomerConsumption(customerId, since);
+    sendSuccess(res, result);
   }
 }

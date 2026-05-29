@@ -18,12 +18,51 @@ groups:
           summary: API /ready failing
 
       - alert: High5xxRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+        expr: |
+          sum(rate(pranidoctor_http_requests_total{status_class="5xx"}[5m]))
+          /
+          sum(rate(pranidoctor_http_requests_total[5m])) > 0.01
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: Elevated 5xx error rate
+
+      - alert: HighApiLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(pranidoctor_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: HTTP p95 latency above 2s
+
+      - alert: DatabaseDown
+        expr: pranidoctor_db_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Database probe failing
+
+      - alert: SlowDbQueries
+        expr: rate(pranidoctor_db_slow_queries_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Sustained slow database queries
+
+      - alert: QueueJobFailures
+        expr: rate(pranidoctor_queue_jobs_total{outcome="failed"}[15m]) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Elevated permanent queue job failures
 
       - alert: RedisUnavailable
         expr: pranidoctor_redis_up == 0

@@ -12,6 +12,12 @@ import {
 } from "../../../../modules/auth/session-guard.helper.js";
 
 import { verifyMobileJwt } from "./jwt";
+import {
+  getMobileLegalConsentStatusForUser,
+  isPrivacyConsentEnforced,
+  isPrivacyConsentExemptPath,
+} from "@/lib/mobile-settings/mobile-legal-consent";
+import { loadLegalConfig } from "@/lib/mobile-settings/legal-config";
 
 export type MobileCustomerContext = {
   userId: string;
@@ -101,6 +107,43 @@ export async function requireMobileCustomer(
   }
 
   await touchJwtSession(payload);
+
+  const legal = await loadLegalConfig();
+  const enforceLegal =
+    legal.legalGateEnabled &&
+    process.env.LEGAL_ENFORCEMENT_ENABLED?.trim().toLowerCase() === "true";
+
+  if ((isPrivacyConsentEnforced(legal) || enforceLegal) && !isPrivacyConsentExemptPath(request)) {
+    const consent = await getMobileLegalConsentStatusForUser(user.id);
+    const missing = [...consent.missing];
+    if (enforceLegal) {
+      if (!consent.termsAccepted && !missing.includes("terms")) missing.push("terms");
+      if (!consent.privacyAccepted && !missing.includes("privacy")) missing.push("privacy");
+    } else if (!consent.privacyAccepted && !missing.includes("privacy")) {
+      missing.push("privacy");
+    }
+
+    const blocked =
+      missing.includes("privacy") || (enforceLegal && missing.includes("terms"));
+    if (blocked) {
+      return {
+        ok: false,
+        response: authJsonError(request, "LEGAL_CONSENT_REQUIRED", 403, {
+          messageKey: undefined,
+          message: "Legal acceptance required",
+          details: {
+            missing: enforceLegal
+              ? missing.filter((m) => m === "privacy" || m === "terms")
+              : ["privacy"],
+            privacyVersion: consent.privacyVersion,
+            termsVersion: consent.termsVersion,
+            aiConsentVersion: consent.aiConsentVersion,
+          },
+          profileLocale: user.customerProfile?.locale,
+        }),
+      };
+    }
+  }
 
   return {
     ok: true,

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await syncMobileSettingsForUser(auth.ctx.userId, parsed.data);
+    const result = await syncMobileSettingsForUser(auth.ctx.userId, parsed.data, request);
     return jsonOk(result, { status: 200 });
   } catch {
     return jsonError("DATABASE_ERROR", "Could not sync settings", 500);

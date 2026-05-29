@@ -4,6 +4,7 @@ import type { Logger } from 'pino';
 import type { HttpLogger, Options } from 'pino-http';
 
 import type { AppConfig } from '../config/config.schema.js';
+import { isProbePath, normalizeRoutePath, statusClass } from '../monitoring/metrics/route-normalizer.js';
 
 export function createLoggerMiddleware(
   logger: Logger,
@@ -15,8 +16,8 @@ export function createLoggerMiddleware(
     logger,
     autoLogging: {
       ignore: (req: IncomingMessage) => {
-        const path = req.url ?? '';
-        return path === '/health' || path === '/live' || path === '/ready';
+        const path = (req.url ?? '').split('?')[0] ?? '';
+        return isProbePath(path);
       },
     },
     customLogLevel: (_req: IncomingMessage, res: ServerResponse, error?: Error) => {
@@ -30,9 +31,15 @@ export function createLoggerMiddleware(
     customErrorMessage: (req: IncomingMessage, _res: ServerResponse, error: Error) => {
       return `${req.method} ${req.url} - ${error.message}`;
     },
-    customProps: (req: IncomingMessage) => ({
-      requestId: req.headers['x-request-id'],
-    }),
+    customProps: (req: IncomingMessage, res: ServerResponse) => {
+      const path = (req.url ?? '').split('?')[0] ?? '/';
+      return {
+        event: 'http.request',
+        route: normalizeRoutePath(path),
+        statusClass: statusClass(res.statusCode),
+        requestId: req.headers['x-request-id'],
+      };
+    },
     serializers: {
       req: (req: IncomingMessage) => ({
         method: req.method,

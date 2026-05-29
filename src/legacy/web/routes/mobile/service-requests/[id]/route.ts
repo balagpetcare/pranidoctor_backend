@@ -1,6 +1,11 @@
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { requireMobileCustomer } from "@/lib/mobile-auth/guard";
 import { getServiceRequestForCustomer } from "@/lib/mobile-service-requests/service-request-service";
+import {
+  resolveServiceRequestDisclaimer,
+  serviceTypeToDisclaimerContext,
+} from "@/lib/vet-disclaimer/vet-disclaimer.service";
+import { ServiceRequestType } from "@/generated/prisma/client";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,7 +23,11 @@ export async function GET(request: Request, context: RouteContext) {
     if (!row) {
       return jsonError("NOT_FOUND", "Service request not found", 404);
     }
-    return jsonOk({ request: row });
+    return jsonOk({
+      request: row,
+      disclaimer: await resolveServiceRequestDisclaimer(row.serviceType as ServiceRequestType),
+      disclaimerContext: serviceTypeToDisclaimerContext(row.serviceType as ServiceRequestType),
+    });
   } catch {
     return jsonError("DATABASE_ERROR", "Could not load service request", 500);
   }

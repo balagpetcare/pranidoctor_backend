@@ -2,6 +2,8 @@ import { Queue, Worker, type Job, type ConnectionOptions, type JobsOptions } fro
 
 import type { AppConfig } from '../../shared/config/config.schema.js';
 import { logInfo, logDebug, logWarn, logError } from '../../shared/logger/logger.js';
+import { captureException } from '../../shared/monitoring/error-tracking.js';
+import { recordQueueJob } from '../../shared/monitoring/metrics/queue.metrics.js';
 
 import { queueDefinitions, defaultJobOptions } from './queue.config.js';
 import type { QueueName } from './queue.types.js';
@@ -94,6 +96,13 @@ export function createWorker<T, R>(
         duration,
       });
 
+      recordQueueJob({
+        queue: queueName,
+        jobName: job.name,
+        outcome: 'completed',
+        durationMs: duration,
+      });
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -140,11 +149,33 @@ export function createWorker<T, R>(
         jobId: job?.id,
         attempts: job?.attemptsMade,
       });
+      const durationMs =
+        job?.finishedOn != null && job?.processedOn != null
+          ? job.finishedOn - job.processedOn
+          : 0;
+      recordQueueJob({
+        queue: queueName,
+        jobName: job?.name ?? 'unknown',
+        outcome: 'failed',
+        durationMs,
+      });
+      captureException(error, {
+        source: 'background_job',
+        queue: queueName,
+        jobId: job?.id != null ? String(job.id) : undefined,
+        jobName: job?.name,
+        route: `queue:${queueName}`,
+      });
     }
   });
 
   worker.on('error', (error) => {
     logError('Worker error', error, { queue: queueName });
+    captureException(error, {
+      source: 'background_worker',
+      queue: queueName,
+      route: `queue:${queueName}`,
+    });
   });
 
   worker.on('stalled', (jobId) => {

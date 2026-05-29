@@ -8,6 +8,18 @@ import {
   createServiceRequestForCustomer,
   listServiceRequestsForCustomer,
 } from "@/lib/mobile-service-requests/service-request-service";
+import { ServiceRequestType } from "@/generated/prisma/client";
+import { AppError } from "@/shared/errors/app.error.js";
+import {
+  resolveServiceRequestDisclaimer,
+  serviceTypeToDisclaimerContext,
+} from "@/lib/vet-disclaimer/vet-disclaimer.service";
+import {
+  resolveServiceRequestLimitationNotice,
+  serviceTypeToLimitationContext,
+} from "@/lib/emergency-limitation/emergency-limitation.service.js";
+import { assertVetDisclaimerForConsultationBooking } from "../../../../../modules/vet-disclaimer/vet-disclaimer-guard.js";
+import { assertEmergencyLimitationForEmergencyBooking } from "../../../../../modules/emergency-limitation/emergency-limitation-guard.js";
 
 export async function GET(request: Request) {
   const auth = await requireMobileCustomer(request);
@@ -64,6 +76,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertVetDisclaimerForConsultationBooking(
+      auth.ctx.userId,
+      parsed.data.serviceType as ServiceRequestType,
+    );
+    await assertEmergencyLimitationForEmergencyBooking(
+      auth.ctx.userId,
+      parsed.data.serviceType as ServiceRequestType,
+    );
+
     const result = await createServiceRequestForCustomer(
       auth.ctx.customerProfileId,
       parsed.data,
@@ -97,8 +118,19 @@ export async function POST(request: Request) {
       return jsonError("NOT_FOUND", "Village not found", 404);
     }
 
-    return jsonOk({ request: result.request }, { status: 201 });
-  } catch {
+    const serviceType = result.request.serviceType as ServiceRequestType;
+    return jsonOk(
+      {
+        request: result.request,
+        disclaimer: await resolveServiceRequestDisclaimer(serviceType),
+        disclaimerContext: serviceTypeToDisclaimerContext(serviceType),
+        limitationNotice: await resolveServiceRequestLimitationNotice(serviceType),
+        limitationContext: serviceTypeToLimitationContext(serviceType),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    if (error instanceof AppError) throw error;
     return jsonError("DATABASE_ERROR", "Could not create service request", 500);
   }
 }

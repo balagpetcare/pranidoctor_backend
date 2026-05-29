@@ -4,6 +4,10 @@ export interface ErrorTrackingContext {
   requestId?: string;
   userId?: string;
   route?: string;
+  source?: string;
+  queue?: string;
+  jobId?: string;
+  jobName?: string;
 }
 
 let captureHook: ((error: unknown, context?: ErrorTrackingContext) => void) | null =

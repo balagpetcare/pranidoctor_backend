@@ -7,6 +7,10 @@ vi.mock('../logger/logger.js', () => ({
   logError: vi.fn(),
 }));
 
+vi.mock('../monitoring/alerting/health-alerts.js', () => ({
+  alertApiServerError: vi.fn(),
+}));
+
 import { runWithContext, createRequestContext } from '../context/request-context.js';
 
 import { AppError } from './app.error.js';

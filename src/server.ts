@@ -5,8 +5,9 @@ loadEnvironment();
 import { createApp, finalizeApp } from './app.js';
 import { createDocsRouter } from './api/docs/docs.routes.js';
 import { createDocsAuthMiddleware } from './shared/security/middleware/docs-auth.middleware.js';
-import { registerErrorCapture, notifyErrorWebhook } from './shared/monitoring/error-tracking.js';
-import { captureSentryException, initSentry } from './shared/monitoring/sentry-init.js';
+import { captureException } from './shared/monitoring/error-tracking.js';
+import { alertUncaughtProcessError } from './shared/monitoring/alerting/health-alerts.js';
+import { bootstrapSentryMonitoring } from './shared/monitoring/sentry-bootstrap.js';
 import { createCompatWebRouter } from './modules/compat-web/index.js';
 import { initializeStorage, isStorageEnabled } from './modules/media/storage/index.js';
 import { bootstrapMinioStorage } from './legacy/web/lib/storage/minio-bootstrap.js';
@@ -34,6 +35,14 @@ import {
 import { createPrismaClient, disconnectPrisma } from './shared/database/prisma.js';
 import { warnIfProdDevOtpMode } from './legacy/web/lib/mobile-auth/otp-env.js';
 import { createLogger, logInfo, logError, logFatal, logWarn } from './shared/logger/logger.js';
+import {
+  startEscalationMonitoring,
+  stopEscalationMonitoring,
+} from './shared/monitoring/escalation/index.js';
+import {
+  bootstrapAiGovernance,
+  shutdownAiGovernance,
+} from './modules/ai/governance/ai-governance.service.js';
 
 let isShuttingDown = false;
 
@@ -48,11 +57,7 @@ async function bootstrap(): Promise<void> {
   }
 
   createLogger(config);
-  await initSentry();
-  registerErrorCapture((error, ctx) => {
-    void captureSentryException(error, ctx as Record<string, unknown> | undefined);
-    void notifyErrorWebhook(error, ctx);
-  });
+  await bootstrapSentryMonitoring();
   warnIfProdDevOtpMode();
   logInfo('Starting server', { env: config.nodeEnv, port: config.port });
 
@@ -156,6 +161,25 @@ async function bootstrap(): Promise<void> {
   }
   logInfo('Mobile profile modules verified', mobileModules.details);
 
+  try {
+    await bootstrapAiGovernance(config);
+    logInfo('AI governance kill switch initialized');
+  } catch (error) {
+    logWarn('AI governance bootstrap failed — continuing with safe defaults', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
+    const { seedLegalDocuments } = await import('./modules/legal/legal-document-seed.js');
+    await seedLegalDocuments();
+    logInfo('Legal document registry seeded');
+  } catch (error) {
+    logWarn('Legal document seed skipped — run migrations if tables are missing', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   const app = createApp(config);
 
   app.use('/api/docs', createDocsAuthMiddleware(), createDocsRouter());
@@ -193,6 +217,7 @@ async function bootstrap(): Promise<void> {
       version: config.appVersion,
       node: process.version,
     });
+    startEscalationMonitoring();
   });
 
   server.keepAliveTimeout = 65000;
@@ -206,6 +231,16 @@ async function bootstrap(): Promise<void> {
 
     isShuttingDown = true;
     logInfo('Shutting down', { signal });
+    stopEscalationMonitoring();
+
+    try {
+      await shutdownAiGovernance();
+      logInfo('AI governance shutdown complete');
+    } catch (error) {
+      logWarn('AI governance shutdown error', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     const shutdownTimeout = setTimeout(() => {
       logError('Shutdown timeout exceeded, forcing exit');
@@ -262,13 +297,18 @@ async function bootstrap(): Promise<void> {
 
   process.on('uncaughtException', (error) => {
     logFatal('Uncaught exception', error);
+    alertUncaughtProcessError('uncaughtException', error.message);
+    captureException(error, { source: 'uncaughtException' });
     void shutdown('uncaughtException');
   });
 
   process.on('unhandledRejection', (reason) => {
-    logFatal('Unhandled rejection', reason instanceof Error ? reason : undefined, {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    logFatal('Unhandled rejection', error, {
       reason: reason instanceof Error ? undefined : String(reason),
     });
+    alertUncaughtProcessError('unhandledRejection', error.message);
+    captureException(error, { source: 'unhandledRejection' });
     void shutdown('unhandledRejection');
   });
 }

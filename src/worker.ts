@@ -7,6 +7,8 @@ import { initializeQueueConnection, closeAllQueues } from './infra/queue/queue.s
 import { loadConfig, type AppConfig } from './shared/config/index.js';
 import { createPrismaClient, disconnectPrisma } from './shared/database/prisma.js';
 import { createLogger, getLogger } from './shared/logger/logger.js';
+import { captureException } from './shared/monitoring/error-tracking.js';
+import { bootstrapSentryMonitoring } from './shared/monitoring/sentry-bootstrap.js';
 
 let isShuttingDown = false;
 
@@ -21,6 +23,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const logger = createLogger(config);
+  await bootstrapSentryMonitoring();
   logger.info({ msg: 'Starting worker', env: config.nodeEnv });
 
   try {
@@ -95,12 +98,15 @@ async function bootstrap(): Promise<void> {
   process.on('uncaughtException', (error) => {
     const logger = getLogger();
     logger.fatal({ msg: 'Uncaught exception', error: error.message, stack: error.stack });
+    captureException(error, { source: 'uncaughtException' });
     void shutdown('uncaughtException');
   });
 
   process.on('unhandledRejection', (reason) => {
     const logger = getLogger();
+    const error = reason instanceof Error ? reason : new Error(String(reason));
     logger.fatal({ msg: 'Unhandled rejection', reason });
+    captureException(error, { source: 'unhandledRejection' });
     void shutdown('unhandledRejection');
   });
 }

@@ -152,6 +152,7 @@ export {
   checkDatabaseHealth,
   checkRedisHealth,
   checkStorageHealth,
+  checkAiHealthStatus,
   getModulesHealth,
   getSystemInfo,
 } from '../../api/health/health.service.js';

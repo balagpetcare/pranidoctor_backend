@@ -8,6 +8,7 @@ import type { AppConfig } from './shared/config/config.schema.js';
 import { errorHandler, notFoundHandler } from './shared/errors/error.handler.js';
 import { getLogger } from './shared/logger/logger.js';
 import { contextMiddleware, createLoggerMiddleware } from './shared/middleware/index.js';
+import { createHttpMetricsMiddleware } from './shared/monitoring/metrics/index.js';
 import { rateLimitApi } from './shared/security/rate-limit/rate-limit.service.js';
 import { rateLimitUnlessProbe } from './shared/security/rate-limit/probe-exempt.js';
 import { whenRateLimitAvailable } from './shared/security/rate-limit/safe-rate-limit.js';
@@ -60,6 +61,7 @@ export function createApp(config: AppConfig): Express {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   app.use(contextMiddleware);
+  app.use(createHttpMetricsMiddleware());
   app.use(createLoggerMiddleware(logger, config));
 
   const healthRouter = createHealthRouter(config);
