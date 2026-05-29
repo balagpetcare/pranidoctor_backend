@@ -1,0 +1,95 @@
+# Example nginx — TLS termination for API + admin
+# Replace example.com hostnames and certificate paths.
+# Apply: sudo cp deploy/nginx/pranidoctor.conf.example /etc/nginx/sites-available/pranidoctor
+
+upstream pranidoctor_api {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
+upstream pranidoctor_web {
+    server 127.0.0.1:3001;
+    keepalive 32;
+}
+
+limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=10r/m;
+
+# HTTP → HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.example.com admin.example.com;
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Probes — no rate limit, short timeout
+    location ~ ^/(health|ready|live|metrics)(/|$) {
+        proxy_pass http://pranidoctor_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 10s;
+    }
+
+    location /api/mobile/auth/ {
+        limit_req zone=auth_limit burst=5 nodelay;
+        proxy_pass http://pranidoctor_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://pranidoctor_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name admin.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/admin.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/admin.example.com/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    location ~ ^/api/health(/|$) {
+        proxy_pass http://pranidoctor_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://pranidoctor_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -25,9 +25,12 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:deploy": "node scripts/prisma-production-guard.mjs migrate:deploy && prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:feed-catalog": "tsx prisma/seeds/feed_catalog.seed.ts",
+    "db:seed:phase4-feed": "tsx prisma/seeds/phase4_feed_items.seed.ts",
+    "db:seed:phase4-vendors": "tsx prisma/seeds/phase4_vendors.seed.ts",
     "db:seed:admin": "tsx prisma/seed-admin.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:seed:reset-demo": "tsx prisma/seed-demo-reset.ts",
@@ -39,6 +42,7 @@
     "seed:full-location": "tsx prisma/seed-location.ts full",
     "legacy:fix-imports": "node scripts/fix-legacy-imports.mjs",
     "env:validate": "tsx scripts/env-validate.ts",
+    "validate:production-env": "tsx scripts/validate-production-env.ts",
     "foundation:verify": "tsx scripts/foundation-verify.ts",
     "phase2:auth-verify": "tsx scripts/phase2-auth-verify.ts",
     "area:seed": "tsx scripts/area-seed.ts",
@@ -80,6 +84,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1051.0",
     "@aws-sdk/s3-request-presigner": "^3.1051.0",
+    "@sentry/node": "^9.47.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
@@ -100,6 +105,7 @@
     "server-only": "^0.0.1",
     "sharp": "^0.34.5",
     "swagger-ui-express": "^5.0.1",
+    "tsx": "^4.21.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
@@ -120,7 +126,6 @@
     "pino-pretty": "^13.0.0",
     "prettier": "^3.5.0",
     "prisma": "^7.8.0",
-    "tsx": "^4.21.0",
     "typescript": "^5.8.0",
     "vitest": "^4.1.5"
   },

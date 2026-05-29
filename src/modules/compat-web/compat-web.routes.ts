@@ -2,11 +2,15 @@ import { Router } from 'express';
 
 import { getLogger } from '../../shared/logger/logger.js';
 import {
+  rateLimitExport,
   rateLimitLogin,
   rateLimitOtpRequest,
   rateLimitOtpVerify,
 } from '../../shared/security/rate-limit/rate-limit.service.js';
-import { createCompatAuthRateLimitMiddleware } from '../../shared/security/rate-limit/safe-rate-limit.js';
+import {
+  createCompatAuthRateLimitMiddleware,
+  whenRateLimitAvailable,
+} from '../../shared/security/rate-limit/safe-rate-limit.js';
 
 import { registerLegacyWebRoutes } from './route-registry.js';
 
@@ -22,6 +26,18 @@ export async function createCompatWebRouter(): Promise<Router> {
       login: rateLimitLogin,
     }),
   );
+
+  router.use((req, res, next) => {
+    const isCsvExport =
+      req.method === 'GET' &&
+      req.path === '/admin/analytics/reports' &&
+      String(req.query['format'] ?? '').toLowerCase() === 'csv';
+    if (isCsvExport) {
+      whenRateLimitAvailable(rateLimitExport)(req, res, next);
+      return;
+    }
+    next();
+  });
 
   router.get('/ping', (_req, res) => {
     res.json({ ok: true, scope: 'compat-web' });

@@ -4,6 +4,9 @@ loadEnvironment();
 
 import { createApp, finalizeApp } from './app.js';
 import { createDocsRouter } from './api/docs/docs.routes.js';
+import { createDocsAuthMiddleware } from './shared/security/middleware/docs-auth.middleware.js';
+import { registerErrorCapture, notifyErrorWebhook } from './shared/monitoring/error-tracking.js';
+import { captureSentryException, initSentry } from './shared/monitoring/sentry-init.js';
 import { createCompatWebRouter } from './modules/compat-web/index.js';
 import { initializeStorage, isStorageEnabled } from './modules/media/storage/index.js';
 import { bootstrapMinioStorage } from './legacy/web/lib/storage/minio-bootstrap.js';
@@ -45,6 +48,11 @@ async function bootstrap(): Promise<void> {
   }
 
   createLogger(config);
+  await initSentry();
+  registerErrorCapture((error, ctx) => {
+    void captureSentryException(error, ctx as Record<string, unknown> | undefined);
+    void notifyErrorWebhook(error, ctx);
+  });
   warnIfProdDevOtpMode();
   logInfo('Starting server', { env: config.nodeEnv, port: config.port });
 
@@ -150,7 +158,7 @@ async function bootstrap(): Promise<void> {
 
   const app = createApp(config);
 
-  app.use('/api/docs', createDocsRouter());
+  app.use('/api/docs', createDocsAuthMiddleware(), createDocsRouter());
 
   try {
     const compatRouter = await createCompatWebRouter();

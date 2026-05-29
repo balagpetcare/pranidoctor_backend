@@ -1,0 +1,69 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Docker image tag (e.g. v1.0.0)
+        required: true
+      deploy_remote:
+        description: SSH deploy to production VPS (requires secrets)
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate production env schema
+        run: npm run validate:production-env
+        env:
+          NODE_ENV: production
+          DATABASE_URL: postgresql://ci:ci@prod-db.example.com:5432/pranidoctor?sslmode=require
+          REDIS_ENABLED: "true"
+          REDIS_URL: redis://redis.example.com:6379
+          ADMIN_JWT_SECRET: ci-prod-admin-jwt-secret-min-32-chars-xx
+          MOBILE_JWT_SECRET: ci-prod-mobile-jwt-secret-min-32-chars-x
+          DOCTOR_JWT_SECRET: ci-prod-doctor-jwt-secret-min-32-chars-x
+          TECHNICIAN_JWT_SECRET: ci-prod-tech-jwt-secret-min-32-chars-xx
+          MOBILE_REFRESH_SECRET: ci-prod-refresh-secret-min-32-chars-xx
+          REFRESH_TOKEN_PEPPER: ci-prod-pepper-min-32-chars-xxxxxx
+          OTP_MODE: live
+          SKIP_STARTUP_VALIDATION: "true"
+
+      - name: Pre-deploy backup reminder
+        run: |
+          echo "Ensure postgres-backup.sh completed successfully before continuing."
+          echo "Run: ALLOW_PRODUCTION_MIGRATE=true npm run db:migrate:deploy on the host."
+
+      - name: Deploy to production VPS
+        if: inputs.deploy_remote
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+            ./scripts/backup/postgres-backup.sh /var/backups/pranidoctor || true
+            export ALLOW_PRODUCTION_MIGRATE=true
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api npm run db:migrate:deploy
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d api
+            curl -fsS http://127.0.0.1:3000/ready
+
+      - name: Deploy skipped (configure secrets)
+        if: !inputs.deploy_remote
+        run: |
+          echo "Manual production deploy: pull tag ${{ inputs.image_tag }}, backup DB, migrate, compose up, curl /ready"
