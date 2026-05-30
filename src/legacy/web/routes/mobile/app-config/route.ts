@@ -61,6 +61,37 @@ export async function GET() {
       /* ignore optional Setting read */
     }
 
+    let closedBeta: Record<string, unknown> | null = null;
+    try {
+      const betaRow = await prisma.setting.findUnique({
+        where: { key: "launch.closedBeta.config" },
+        select: { valueJson: true },
+      });
+      const b = betaRow?.valueJson;
+      if (b !== null && typeof b === "object" && !Array.isArray(b)) {
+        const bo = b as Record<string, unknown>;
+        if (bo.enabled === true) {
+          closedBeta = {
+            enabled: true,
+            feedbackEnabled: bo.feedbackEnabled !== false,
+            activeCohort: typeof bo.activeCohort === "string" ? bo.activeCohort : "NONE",
+            betaBanner:
+              bo.betaBanner !== null &&
+              typeof bo.betaBanner === "object" &&
+              !Array.isArray(bo.betaBanner)
+                ? bo.betaBanner
+                : null,
+            supportWhatsapp:
+              typeof bo.userSupportWhatsapp === "string"
+                ? bo.userSupportWhatsapp
+                : supportWhatsapp,
+          };
+        }
+      }
+    } catch {
+      /* optional */
+    }
+
     if (!emergencyPhone && supportPhone) {
       emergencyPhone = supportPhone;
     }
@@ -76,6 +107,7 @@ export async function GET() {
       ...(updateMessage ? { updateMessage } : {}),
       ...(maintenanceMode !== null ? { maintenanceMode } : {}),
       ...(maintenanceMessage ? { maintenanceMessage } : {}),
+      ...(closedBeta ? { closedBeta } : {}),
     });
   } catch {
     return jsonError("INTERNAL", "Could not read app config", 500);

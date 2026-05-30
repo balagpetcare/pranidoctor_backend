@@ -64,7 +64,14 @@ export async function resolveBannerDisclaimerText(locale: AiDisclaimerLocale): P
 }
 
 export async function isAiDisclaimerAcceptanceRequired(
-  row: Pick<MobileUserSettings, 'aiAcceptedVersion'>,
+  row: Pick<
+    MobileUserSettings,
+    | 'privacyAcceptedVersion'
+    | 'termsAcceptedVersion'
+    | 'aiAcceptedVersion'
+    | 'vetAcceptedVersion'
+    | 'emergencyAcceptedVersion'
+  >,
 ): Promise<boolean> {
   const [legal, disclaimer] = await Promise.all([loadLegalConfig(), loadAiDisclaimerConfig()]);
   if (!disclaimer.enforceAcceptance) return false;

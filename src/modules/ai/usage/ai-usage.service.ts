@@ -92,8 +92,8 @@ export class AiUsageService {
       params.latencyMs,
     );
 
-    const ops = [
-      prisma.aiUsageRecord.create({
+    await prisma.$transaction(async (tx) => {
+      await tx.aiUsageRecord.create({
         data: {
           userId: params.userId ?? null,
           customerId: params.customerId ?? null,
@@ -111,8 +111,8 @@ export class AiUsageService {
           errorCode: params.errorCode ?? null,
           isFallback: params.isFallback ?? false,
         },
-      }),
-      prisma.aiUsageDailyRollup.upsert({
+      });
+      await tx.aiUsageDailyRollup.upsert({
         where: {
           bucketDate_feature_provider_model: {
             bucketDate,
@@ -123,13 +123,11 @@ export class AiUsageService {
         },
         create: platformRollup.create,
         update: platformRollup.update,
-      }),
-    ];
+      });
 
-    if (params.userId) {
-      const scoped = buildScopedRollupFields(tokens, costUsd);
-      ops.push(
-        prisma.aiUsageUserDailyRollup.upsert({
+      if (params.userId) {
+        const scoped = buildScopedRollupFields(tokens, costUsd);
+        await tx.aiUsageUserDailyRollup.upsert({
           where: {
             bucketDate_userId_feature_provider_model: {
               bucketDate,
@@ -148,14 +146,12 @@ export class AiUsageService {
             ...scoped.create,
           },
           update: scoped.update,
-        }),
-      );
-    }
+        });
+      }
 
-    if (params.customerId) {
-      const scoped = buildScopedRollupFields(tokens, costUsd);
-      ops.push(
-        prisma.aiUsageCustomerDailyRollup.upsert({
+      if (params.customerId) {
+        const scoped = buildScopedRollupFields(tokens, costUsd);
+        await tx.aiUsageCustomerDailyRollup.upsert({
           where: {
             bucketDate_customerId_feature_provider_model: {
               bucketDate,
@@ -174,11 +170,9 @@ export class AiUsageService {
             ...scoped.create,
           },
           update: scoped.update,
-        }),
-      );
-    }
-
-    await prisma.$transaction(ops);
+        });
+      }
+    });
   }
 
   async getUsageSummary(since: Date): Promise<AiUsageSummary> {

@@ -2,6 +2,7 @@ import { requireAdminApiActor } from "@/lib/admin-auth/api-guard";
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { getAiAuditService } from "../../../../../../modules/ai/audit/ai-audit.service.js";
 import { getAiGovernanceService } from "../../../../../../modules/ai/governance/ai-governance.service.js";
+import type { AiGovernanceScopeUpdateInput } from "../../../../../../modules/ai/governance/ai-governance.types.js";
 
 export async function GET() {
   const auth = await requireAdminApiActor();
@@ -35,18 +36,36 @@ export async function POST(request: Request) {
     reason?: string;
     expectedVersion?: number;
     rollbackOfId?: string;
+    scopeUpdates?: AiGovernanceScopeUpdateInput[];
   };
-  const disable = Boolean(body.disable);
+
+  const gov = getAiGovernanceService();
+
   try {
-    const governance = await getAiGovernanceService().setLlmDisabled({
-      llmDisabled: disable,
-      reason: body.reason,
-      actorId: auth.actor.id,
-      actorRole: auth.actor.role,
-      source: "admin_ui",
-      expectedVersion: body.expectedVersion,
-      rollbackOfId: body.rollbackOfId,
-    });
+    let governance;
+
+    if (body.scopeUpdates?.length) {
+      governance = await gov.applyScopeUpdates(body.scopeUpdates, {
+        actorId: auth.actor.id,
+        actorRole: auth.actor.role,
+        reason: body.reason,
+        source: "admin_ui",
+        expectedVersion: body.expectedVersion,
+      });
+    } else if (body.disable !== undefined) {
+      governance = await gov.setLlmDisabled({
+        llmDisabled: Boolean(body.disable),
+        reason: body.reason,
+        actorId: auth.actor.id,
+        actorRole: auth.actor.role,
+        source: "admin_ui",
+        expectedVersion: body.expectedVersion,
+        rollbackOfId: body.rollbackOfId,
+      });
+    } else {
+      return jsonError("INVALID_BODY", "Provide disable and/or scopeUpdates", 400);
+    }
+
     return jsonOk({
       llmDisabled: governance.llmDisabled,
       version: governance.version,
@@ -64,6 +83,15 @@ export async function POST(request: Request) {
         : code === "AI_GOVERNANCE_STORE_UNAVAILABLE"
           ? 503
           : 400;
+
+    void gov.logFailedGovernanceAttempt({
+      actorId: auth.actor.id,
+      actorRole: auth.actor.role,
+      reason: `${code}: ${message}`,
+      source: "failed_attempt",
+      details: { code, status },
+    });
+
     return jsonError(code, message, status);
   }
 }

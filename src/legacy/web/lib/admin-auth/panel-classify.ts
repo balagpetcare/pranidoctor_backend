@@ -1,6 +1,6 @@
 import type { UserRole } from "@/generated/prisma/client";
 
-import type { AdminJwtPayload } from "./jwt";
+import type { AdminJwtPayload } from './jwt.js';
 
 export type AdminPanelActor = {
   id: string;

@@ -13,6 +13,8 @@ import {
   loadVetDisclaimerConfig,
   VET_DISCLAIMER_SETTING_KEY,
 } from '../vet-disclaimer/vet-disclaimer-config.js';
+import { assertLegalSafeMessagingConfig } from '../../../../shared/compliance/messaging-compliance.js';
+import { assertVetDisclaimerMessaging } from './messaging-compliance-admin.js';
 
 export type AdminVetDisclaimerDto = VetDisclaimerConfig & {
   consentVersion: string;
@@ -124,6 +126,11 @@ export async function updateAdminVetDisclaimerSettings(
     vetDisclaimerVersion: body.consentVersion?.trim() || currentLegal.vetDisclaimerVersion,
     vetDisclaimerTitle: body.consentTitle?.trim() || currentLegal.vetDisclaimerTitle,
   };
+
+  assertVetDisclaimerMessaging(nextDisclaimer);
+  if (nextLegal.vetDisclaimerTitle) {
+    assertLegalSafeMessagingConfig([{ field: 'consentTitle', text: nextLegal.vetDisclaimerTitle }]);
+  }
 
   const [disclaimerRow] = await Promise.all([
     prisma.setting.upsert({

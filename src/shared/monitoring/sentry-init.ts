@@ -22,10 +22,11 @@ export async function initSentry(): Promise<void> {
 
   try {
     const Sentry = await import('@sentry/node');
+    const release = getSentryRelease();
     Sentry.init({
       dsn,
       environment: getSentryEnvironment(),
-      release: getSentryRelease(),
+      ...(release ? { release } : {}),
       tracesSampleRate: getSentryTracesSampleRate(),
       sendDefaultPii: false,
       beforeSend: scrubSentryEvent,

@@ -1,0 +1,66 @@
+{
+  "title": "Prani Doctor — Security",
+  "uid": "pranidoctor-security",
+  "tags": ["pranidoctor", "security"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Auth failures by surface",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (surface) (rate(pranidoctor_auth_failures_total[5m]))",
+          "legendFormat": "{{surface}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Auth failures by action",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (action) (rate(pranidoctor_auth_failures_total[5m]))",
+          "legendFormat": "{{action}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "401 rate on auth paths",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(pranidoctor_http_status_total{status_code=\"401\"}[5m]))",
+          "legendFormat": "401/s"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Security events",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (event) (rate(pranidoctor_security_events_total[5m]))",
+          "legendFormat": "{{event}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Redis up (rate limit dependency)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
+      "targets": [{ "expr": "pranidoctor_redis_up" }]
+    }
+  ]
+}

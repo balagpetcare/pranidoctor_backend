@@ -1,0 +1,66 @@
+{
+  "title": "Prani Doctor — Business KPI",
+  "uid": "pranidoctor-business-kpi",
+  "tags": ["pranidoctor", "ops", "kpi"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "description": "Operational escalation gauges. Pair with /admin dashboards for business context.",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pending service requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "escalation_pending_service_requests",
+          "legendFormat": "pending"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Emergency unassigned",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 8, "y": 0 },
+      "targets": [{ "expr": "escalation_emergency_unassigned" }]
+    },
+    {
+      "id": 3,
+      "title": "Doctor accept SLA breaches",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 0 },
+      "targets": [
+        {
+          "expr": "escalation_doctor_accept_sla_breaches",
+          "legendFormat": "breaches"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "AI escalation backlog",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 8, "y": 4 },
+      "targets": [{ "expr": "escalation_ai_escalation_backlog" }]
+    },
+    {
+      "id": 5,
+      "title": "API availability proxy",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [{ "expr": "pranidoctor_ready" }]
+    },
+    {
+      "id": 6,
+      "title": "Note",
+      "type": "text",
+      "gridPos": { "h": 4, "w": 18, "x": 6, "y": 8 },
+      "options": {
+        "content": "Business revenue and farmer KPIs live in **Admin → Analytics**. This dashboard surfaces ops escalation metrics exported from the API process."
+      }
+    }
+  ]
+}

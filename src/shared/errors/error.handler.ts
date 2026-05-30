@@ -5,6 +5,7 @@ import { getRequestId, getElapsedTime } from '../context/request-context.js';
 import { captureException } from '../monitoring/error-tracking.js';
 import { alertApiServerError } from '../monitoring/alerting/health-alerts.js';
 import { logError, logWarn } from '../logger/logger.js';
+import { omitUndefined } from '../types/object.utils.js';
 
 import { AppError } from './app.error.js';
 import { InternalServerError, ValidationError } from './http.errors.js';
@@ -54,12 +55,14 @@ export function errorHandler(
         ...(requestId ? { requestId } : {}),
         route: `${req.method} ${req.path}`,
       });
-      alertApiServerError({
-        method: req.method,
-        path: req.path,
-        code: error.code,
-        requestId,
-      });
+      alertApiServerError(
+        omitUndefined({
+          method: req.method,
+          path: req.path,
+          code: error.code,
+          requestId,
+        }),
+      );
     } else {
       logWarn('Client error', {
         code: error.code,
@@ -120,12 +123,14 @@ export function errorHandler(
     ...(requestId ? { requestId } : {}),
     route: `${req.method} ${req.path}`,
   });
-  alertApiServerError({
-    method: req.method,
-    path: req.path,
-    code: 'INTERNAL_ERROR',
-    requestId,
-  });
+  alertApiServerError(
+    omitUndefined({
+      method: req.method,
+      path: req.path,
+      code: 'INTERNAL_ERROR',
+      requestId,
+    }),
+  );
 
   const internalError = new InternalServerError();
 

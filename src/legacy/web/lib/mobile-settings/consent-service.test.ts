@@ -29,7 +29,7 @@ describe('buildConsentStatus', () => {
     const status = buildConsentStatus(row, legal);
     const privacy = status.records.find((r) => r.key === 'privacy');
     expect(privacy?.accepted).toBe(true);
-    expect(status.reconsentRequired).toEqual(['terms', 'ai', 'vet']);
+    expect(status.reconsentRequired).toEqual(['terms', 'ai', 'vet', 'emergency']);
     expect(status.enforcePrivacyConsent).toBe(true);
   });
 

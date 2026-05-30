@@ -1,10 +1,18 @@
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { TooManyRequestsError } from '../../../shared/errors/http.errors.js';
+import { logAiExecution } from '../../../shared/monitoring/structured-logging.js';
+import { traceWorkflow } from '../../../shared/monitoring/workflow-tracing.js';
 import { checkRateLimit } from '../../../shared/security/rate-limit/rate-limit.service.js';
 import { RateLimitPresets } from '../../../shared/security/rate-limit/rate-limit.config.js';
 import { getAiRepository } from '../ai.repository.js';
 import { getAiUsageService } from '../usage/ai-usage.service.js';
 import { classifyProviderError } from '../usage/ai-usage.errors.js';
 import { resolveDefaultModel } from '../usage/ai-usage.cost.js';
+import {
+  assertAiLlmExecutionAllowed,
+  isProviderGovernanceBlocked,
+  shouldUseRulesOnlyForFeature,
+} from '../governance/ai-governance.enforcement.js';
 import { getAiGovernanceService } from '../governance/ai-governance.service.js';
 import { getAiPromptService } from '../prompts/ai-prompt.service.js';
 
@@ -36,8 +44,8 @@ export class AiOrchestratorService {
     return getAiGovernanceService().isLlmDisabled();
   }
 
-  private resolveChain(): AiProviderAdapter[] {
-    if (this.isLlmDisabled()) {
+  private resolveChain(feature: string): AiProviderAdapter[] {
+    if (shouldUseRulesOnlyForFeature(feature)) {
       return [new RulesBasedProvider()];
     }
 
@@ -50,7 +58,9 @@ export class AiOrchestratorService {
       if (b.name === 'rules-based') return -1;
       return 0;
     });
-    return ordered;
+    return ordered.filter(
+      (p) => p.name === 'rules-based' || !isProviderGovernanceBlocked(p.name),
+    );
   }
 
   private async assertDailyLlmQuota(userId?: string): Promise<void> {
@@ -79,32 +89,47 @@ export class AiOrchestratorService {
       fromProvider?: string;
     },
   ): void {
-    getAiUsageService().recordAttempt({
-      userId: input.userId,
-      customerId: input.customerId,
-      feature: input.feature,
-      provider: params.provider,
-      model: params.model,
-      inputTokens: params.inputTokens,
-      outputTokens: params.outputTokens,
-      latencyMs: params.latencyMs,
-      success: params.success,
-      errorCode: params.errorCode,
-      isFallback: params.isFallback,
-      fromProvider: params.fromProvider,
-    });
+    getAiUsageService().recordAttempt(
+      omitUndefined({
+        userId: input.userId,
+        customerId: input.customerId,
+        feature: input.feature,
+        provider: params.provider,
+        model: params.model,
+        inputTokens: params.inputTokens,
+        outputTokens: params.outputTokens,
+        latencyMs: params.latencyMs,
+        success: params.success,
+        errorCode: params.errorCode,
+        isFallback: params.isFallback,
+        fromProvider: params.fromProvider,
+      }),
+    );
   }
 
   async complete(
     input: AiCompletionInput & { userId?: string; customerId?: string },
   ): Promise<AiCompletionOutput> {
+    traceWorkflow({
+      workflow: 'ai',
+      step: 'orchestrator_start',
+      outcome: 'started',
+      metadata: { feature: input.feature },
+    });
+    logAiExecution('orchestrator_start', {
+      feature: input.feature,
+      locale: input.locale,
+    });
+
     let customerId = input.customerId;
     if (!customerId && input.userId) {
       customerId = (await getAiRepository().resolveCustomerId(input.userId)) ?? undefined;
     }
-    const enrichedInput = { ...input, customerId };
+    const enrichedInput = omitUndefined({ ...input, customerId });
 
-    const chain = this.resolveChain();
+    assertAiLlmExecutionAllowed(enrichedInput.feature);
+
+    const chain = this.resolveChain(enrichedInput.feature);
     const usesLlm = chain.some((p) => p.name !== 'rules-based' && p.isConfigured());
     if (usesLlm) {
       await this.assertDailyLlmQuota(enrichedInput.userId);
@@ -120,15 +145,29 @@ export class AiOrchestratorService {
       const start = Date.now();
       try {
         const result = await provider.complete(enrichedInput);
-        this.recordAttempt(enrichedInput, {
+        this.recordAttempt(
+          enrichedInput,
+          omitUndefined({
+            provider: result.provider,
+            model: result.model,
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            latencyMs: result.latencyMs,
+            success: true,
+            isFallback: hadLlmFailure && result.provider === 'rules-based',
+            fromProvider: hadLlmFailure ? 'llm_chain' : undefined,
+          }),
+        );
+        traceWorkflow({
+          workflow: 'ai',
+          step: 'orchestrator_complete',
+          outcome: 'completed',
+          metadata: { feature: input.feature, provider: result.provider },
+        });
+        logAiExecution('orchestrator_complete', {
+          feature: input.feature,
           provider: result.provider,
-          model: result.model,
-          inputTokens: result.inputTokens,
-          outputTokens: result.outputTokens,
           latencyMs: result.latencyMs,
-          success: true,
-          isFallback: hadLlmFailure && result.provider === 'rules-based',
-          fromProvider: hadLlmFailure ? 'llm_chain' : undefined,
         });
         return result;
       } catch (err) {
@@ -180,14 +219,16 @@ export class AiOrchestratorService {
       }
     }
 
-    return this.complete({
-      feature: params.feature,
-      systemPrompt,
-      userMessage,
-      locale: params.locale,
-      userId: params.userId,
-      customerId: params.customerId,
-    });
+    return this.complete(
+      omitUndefined({
+        feature: params.feature,
+        systemPrompt,
+        userMessage,
+        locale: params.locale,
+        userId: params.userId,
+        customerId: params.customerId,
+      }),
+    );
   }
 }
 

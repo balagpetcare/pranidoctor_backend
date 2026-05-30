@@ -4,8 +4,10 @@ import type { AppConfig } from '../../shared/config/config.schema.js';
 import { isProduction } from '../../shared/config/config.loader.js';
 import {
   alertDependencyUnhealthy,
+  alertQueueUnhealthy,
   alertReadinessFailure,
   alertRedisUnavailable,
+  alertStorageUnhealthy,
 } from '../../shared/monitoring/alerting/health-alerts.js';
 
 import {
@@ -14,7 +16,9 @@ import {
 } from './mobile-health.service.js';
 import {
   checkAiHealthStatus,
+  checkCacheHealth,
   checkDatabaseHealth,
+  checkQueueHealth,
   checkRedisHealth,
   checkStorageHealth,
   getDependencyStatus,
@@ -79,6 +83,29 @@ export function createHealthRouter(config: AppConfig): Router {
 
   router.get('/health/storage', async (req: Request, res: Response) => {
     const body = granular(await checkStorageHealth(config));
+    if (body.check.status === 'unhealthy') {
+      alertStorageUnhealthy(body.check.message);
+    }
+    res
+      .status(statusCodeFor(body.check))
+      .json(wantsLiteResponse(req.query) ? toLiteGranularResponse(body) : body);
+  });
+
+  router.get('/health/cache', async (req: Request, res: Response) => {
+    const body = granular(await checkCacheHealth(config));
+    if (body.check.status === 'unhealthy') {
+      alertRedisUnavailable(body.check.message);
+    }
+    res
+      .status(statusCodeFor(body.check))
+      .json(wantsLiteResponse(req.query) ? toLiteGranularResponse(body) : body);
+  });
+
+  router.get('/health/queue', async (req: Request, res: Response) => {
+    const body = granular(await checkQueueHealth());
+    if (body.check.status === 'unhealthy') {
+      alertQueueUnhealthy(body.check.message);
+    }
     res
       .status(statusCodeFor(body.check))
       .json(wantsLiteResponse(req.query) ? toLiteGranularResponse(body) : body);

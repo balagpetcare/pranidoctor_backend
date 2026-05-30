@@ -262,7 +262,7 @@ export async function upsertLegalDocument(input: {
         documentKey: input.documentKey,
         version: input.version,
         locale: input.locale,
-        tenantId,
+        tenantId: tenantId as unknown as string,
       },
     },
     create: {

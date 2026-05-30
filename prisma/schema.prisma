@@ -1402,6 +1402,11 @@ model AiGovernanceStateHistory {
   llmDisabled         Boolean
   previousLlmDisabled Boolean
   version             BigInt
+  changeKind          String            @default("global")
+  scopeType           String?
+  scopeId             String?
+  disabled            Boolean?
+  previousDisabled    Boolean?
   actorId             String?
   actorRole           String?
   reason              String?
@@ -1414,6 +1419,22 @@ model AiGovernanceStateHistory {
 
   @@index([stateId, createdAt])
   @@index([actorId, createdAt])
+  @@index([changeKind, createdAt])
+}
+
+/// Per-feature / per-provider kill switch scopes (PostgreSQL source of truth).
+model AiGovernanceScope {
+  scopeType       String
+  scopeId         String
+  disabled        Boolean  @default(false)
+  version         BigInt   @default(1)
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+  updatedByRole   String?
+  reason          String?
+  source          String   @default("startup_sync")
+
+  @@id([scopeType, scopeId])
 }
 
 /// P7 — Bangla voice assistant session (transcript metadata; no raw audio by default).

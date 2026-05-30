@@ -1,4 +1,6 @@
+import type { Prisma } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 export class AiAuditService {
   readonly name = 'AiAuditService';
@@ -10,12 +12,12 @@ export class AiAuditService {
     detailJson?: Record<string, unknown>;
   }): Promise<void> {
     await getPrisma().aiSafetyAuditLog.create({
-      data: {
+      data: omitUndefined({
         userId: params.userId,
         sessionId: params.sessionId,
         action: params.action,
-        detailJson: params.detailJson ?? {},
-      },
+        detailJson: (params.detailJson ?? {}) as Prisma.InputJsonValue,
+      }),
     });
   }
 
@@ -38,7 +40,7 @@ export class AiAuditService {
 
   async listEscalations(status?: string) {
     return getPrisma().aiEscalationRecord.findMany({
-      where: status ? { status: status as never } : undefined,
+      ...(status ? { where: { status: status as never } } : {}),
       orderBy: { flaggedAt: 'desc' },
       take: 100,
     });

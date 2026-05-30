@@ -1,4 +1,5 @@
 import { logInfo, logWarn } from '../../logger/logger.js';
+import { omitUndefined } from '../../types/object.utils.js';
 
 import {
   getAlertAppVersion,
@@ -128,14 +129,16 @@ export function sendCriticalAlert(
   metadata?: Record<string, unknown>,
   fingerprint?: string,
 ): void {
-  void sendProductionAlert({
-    alertId,
-    title,
-    message,
-    severity: 'critical',
-    metadata,
-    fingerprint,
-  });
+  void sendProductionAlert(
+    omitUndefined({
+      alertId,
+      title,
+      message,
+      severity: 'critical' as const,
+      metadata,
+      fingerprint,
+    }),
+  );
 }
 
 export function sendWarningAlert(
@@ -145,14 +148,16 @@ export function sendWarningAlert(
   metadata?: Record<string, unknown>,
   fingerprint?: string,
 ): void {
-  void sendProductionAlert({
-    alertId,
-    title,
-    message,
-    severity: 'warning',
-    metadata,
-    fingerprint,
-  });
+  void sendProductionAlert(
+    omitUndefined({
+      alertId,
+      title,
+      message,
+      severity: 'warning' as const,
+      metadata,
+      fingerprint,
+    }),
+  );
 }
 
 export function sendInformationalAlert(
@@ -162,14 +167,16 @@ export function sendInformationalAlert(
   metadata?: Record<string, unknown>,
   fingerprint?: string,
 ): void {
-  void sendProductionAlert({
-    alertId,
-    title,
-    message,
-    severity: 'info',
-    metadata,
-    fingerprint,
-  });
+  void sendProductionAlert(
+    omitUndefined({
+      alertId,
+      title,
+      message,
+      severity: 'info' as const,
+      metadata,
+      fingerprint,
+    }),
+  );
 }
 
 /** Test helper — clears dedup and storm state. */

@@ -40,6 +40,26 @@ export function alertRedisUnavailable(message?: string): void {
   );
 }
 
+export function alertStorageUnhealthy(message?: string): void {
+  sendCriticalAlert(
+    'ALT-DOWN-03',
+    'Object storage unhealthy',
+    message ?? 'Storage health check failed',
+    { dependency: 'storage' },
+    'storage',
+  );
+}
+
+export function alertQueueUnhealthy(message?: string): void {
+  sendWarningAlert(
+    'ALT-ERR-09',
+    'Queue subsystem unhealthy',
+    message ?? 'Background queue probe failed',
+    { dependency: 'queue' },
+    'queue',
+  );
+}
+
 export function alertApiServerError(params: {
   method: string;
   path: string;

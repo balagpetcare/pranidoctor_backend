@@ -37,6 +37,7 @@ export function createLoggerMiddleware(
         event: 'http.request',
         route: normalizeRoutePath(path),
         statusClass: statusClass(res.statusCode),
+        statusCode: res.statusCode,
         requestId: req.headers['x-request-id'],
       };
     },

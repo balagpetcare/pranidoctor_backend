@@ -13,6 +13,8 @@ import {
 } from '../ai-disclaimer/ai-disclaimer-config.js';
 import { loadLegalConfig } from '../mobile-settings/legal-config.js';
 import { legalConfigToSettingJson, LEGAL_SETTING_KEY } from '../mobile-settings/legal-defaults.js';
+import { assertLegalSafeMessagingConfig } from '../../../../shared/compliance/messaging-compliance.js';
+import { assertAiDisclaimerMessaging } from './messaging-compliance-admin.js';
 
 export type AdminAiDisclaimerDto = AiDisclaimerConfig & {
   consentVersion: string;
@@ -101,6 +103,16 @@ export async function updateAdminAiDisclaimerSettings(
     aiConsentTitle: body.consentTitle?.trim() || currentLegal.aiConsentTitle,
     aiConsentContent: body.consentContent?.trim() || currentLegal.aiConsentContent,
   };
+
+  assertAiDisclaimerMessaging(nextDisclaimer);
+  assertLegalSafeMessagingConfig([
+    ...(nextLegal.aiConsentTitle
+      ? [{ field: 'consentTitle', text: nextLegal.aiConsentTitle }]
+      : []),
+    ...(nextLegal.aiConsentContent
+      ? [{ field: 'consentContent', text: nextLegal.aiConsentContent }]
+      : []),
+  ]);
 
   const [disclaimerRow] = await Promise.all([
     prisma.setting.upsert({

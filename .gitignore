@@ -36,6 +36,9 @@ coverage/
 # Prisma
 src/generated/
 
+# DB validation reports (regenerate via npm run db:audit)
+reports/db/
+
 # Temporary files
 tmp/
 temp/

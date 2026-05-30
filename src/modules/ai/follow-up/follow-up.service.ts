@@ -1,4 +1,5 @@
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 export class FollowUpService {
   readonly name = 'FollowUpService';
@@ -59,13 +60,13 @@ export class FollowUpService {
     const created = [];
     for (const s of suggestions) {
       const row = await prisma.aiFollowUpSuggestion.create({
-        data: {
+        data: omitUndefined({
           userId: params.userId,
           customerId: params.customerId,
           livestockId: params.livestockId,
           sessionId: params.sessionId,
           ...s,
-        },
+        }),
       });
       created.push({
         id: row.id,

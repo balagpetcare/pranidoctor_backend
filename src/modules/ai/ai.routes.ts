@@ -16,8 +16,11 @@ import { configureAiVeterinaryCoreRoutes } from '../ai-veterinary-core/ai-veteri
 import type { AiVeterinaryCoreController } from '../ai-veterinary-core/ai-veterinary-core.controller.js';
 
 import type { AiAdminController, AiController } from './ai.controller.js';
+import { aiGovernanceRouteObserver } from './governance/ai-governance.middleware.js';
 
 export function configureAiRoutes(router: Router, controller: AiController): void {
+  router.use(aiGovernanceRouteObserver);
+
   configureAiVeterinaryCoreRoutes(router, controller as unknown as AiVeterinaryCoreController);
 
   const guard = [authenticateMobileCustomer, requireMobileAiConsent] as const;

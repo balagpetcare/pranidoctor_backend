@@ -13,6 +13,10 @@ import {
   EMERGENCY_LIMITATION_SETTING_KEY,
   loadEmergencyLimitationConfig,
 } from '../emergency-limitation/emergency-limitation-config.js';
+import {
+  assertEmergencyLimitationMessaging,
+} from './messaging-compliance-admin.js';
+import { assertLegalSafeMessagingConfig } from '../../../../shared/compliance/messaging-compliance.js';
 
 export type AdminEmergencyLimitationDto = EmergencyLimitationConfig & {
   consentVersion: string;
@@ -126,6 +130,13 @@ export async function updateAdminEmergencyLimitationSettings(
     emergencyLimitationTitle:
       body.consentTitle?.trim() || currentLegal.emergencyLimitationTitle,
   };
+
+  assertEmergencyLimitationMessaging(nextLimitation);
+  if (nextLegal.emergencyLimitationTitle) {
+    assertLegalSafeMessagingConfig([
+      { field: 'consentTitle', text: nextLegal.emergencyLimitationTitle },
+    ]);
+  }
 
   const [limitationRow] = await Promise.all([
     prisma.setting.upsert({

@@ -7,6 +7,7 @@ describe('voice-assistant routes', () => {
   it('registers voice endpoints', () => {
     const paths: string[] = [];
     const router = {
+      use: () => router,
       post: (path: string) => paths.push(`POST ${path}`),
       get: (path: string) => paths.push(`GET ${path}`),
     } as unknown as import('express').Router;

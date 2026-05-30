@@ -6,9 +6,11 @@ import {
   recordDatabaseProbe,
   recordReadiness,
   recordRedisProbe,
+  recordStorageProbe,
 } from '../../shared/monitoring/metrics/index.js';
+import { recordQueueDepth, recordQueueHealthProbe } from '../../shared/monitoring/metrics/queue.metrics.js';
 import { checkRedisConnection } from '../../infra/redis/redis.client.js';
-import { getQueue, QueueNames } from '../../infra/queue/index.js';
+import { getQueue, getQueueStats, QueueNames } from '../../infra/queue/index.js';
 import {
   getStorage,
   getStorageRuntimeDegradeReason,
@@ -118,6 +120,11 @@ export async function checkStorageHealth(config: AppConfig): Promise<HealthCheck
         ? 'unhealthy'
         : 'degraded';
 
+    recordStorageProbe({
+      up: health.healthy,
+      latencyMs: health.latency ?? Date.now() - start,
+    });
+
     return {
       name: 'storage',
       status,
@@ -126,6 +133,7 @@ export async function checkStorageHealth(config: AppConfig): Promise<HealthCheck
       details: storageDetails,
     };
   } catch (error) {
+    recordStorageProbe({ up: false, latencyMs: Date.now() - start });
     return {
       name: 'storage',
       status: required ? 'unhealthy' : 'degraded',
@@ -195,34 +203,72 @@ async function checkRedis(config?: AppConfig): Promise<HealthCheckResult> {
 }
 
 async function checkQueues(): Promise<HealthCheckResult> {
+  return checkQueueHealth();
+}
+
+export async function checkQueueHealth(): Promise<HealthCheckResult> {
   const start = Date.now();
-  try {
-    const notificationQueue = getQueue(QueueNames.NOTIFICATION);
+  const queueNames = Object.values(QueueNames);
+  const initialized: string[] = [];
+  let totalWaiting = 0;
+  let totalFailed = 0;
+  let probeError: string | undefined;
 
-    if (!notificationQueue) {
-      return {
-        name: 'queues',
-        status: 'degraded',
-        latency: Date.now() - start,
-        message: 'No queues initialized',
-      };
+  for (const name of queueNames) {
+    const queue = getQueue(name);
+    if (!queue) continue;
+
+    initialized.push(name);
+    try {
+      const stats = await getQueueStats(name);
+      recordQueueDepth(name, {
+        waiting: stats.waiting,
+        active: stats.active,
+        failed: stats.failed,
+      });
+      totalWaiting += stats.waiting;
+      totalFailed += stats.failed;
+    } catch (error) {
+      probeError = error instanceof Error ? error.message : 'Queue probe failed';
     }
+  }
 
-    await notificationQueue.getWaitingCount();
-
+  if (initialized.length === 0) {
+    recordQueueHealthProbe({ healthy: true, waitingTotal: 0 });
     return {
       name: 'queues',
-      status: 'healthy',
+      status: 'degraded',
       latency: Date.now() - start,
-    };
-  } catch (error) {
-    return {
-      name: 'queues',
-      status: 'unhealthy',
-      latency: Date.now() - start,
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: 'No queues initialized',
     };
   }
+
+  const healthy = !probeError;
+  recordQueueHealthProbe({ healthy, waitingTotal: totalWaiting });
+
+  let status: HealthCheckResult['status'] = 'healthy';
+  if (!healthy) {
+    status = 'unhealthy';
+  } else if (totalFailed > 50) {
+    status = 'degraded';
+  }
+
+  return {
+    name: 'queues',
+    status,
+    latency: Date.now() - start,
+    ...(probeError ? { message: probeError } : {}),
+    details: {
+      initializedQueues: initialized,
+      totalWaiting,
+      totalFailed,
+    },
+  };
+}
+
+export async function checkCacheHealth(config?: AppConfig): Promise<HealthCheckResult> {
+  const redis = await checkRedis(config);
+  return { ...redis, name: 'cache' };
 }
 
 function checkMemory(): HealthCheckResult {

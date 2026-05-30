@@ -6,6 +6,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 
 import { AuthAuditAction, UserRole, UserStatus } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { traceWorkflow } from '../../../shared/monitoring/workflow-tracing.js';
 import { authRequestContext, recordAuthAuditFireAndForget } from '../auth-audit.service.js';
 import { AUTH_CHANNELS, normalizeBdMobilePhone } from '../identity-core.js';
 import { dispatchMobileOtpDelivery } from '../../../legacy/web/lib/mobile-auth/otp-dispatch.js';
@@ -15,6 +16,10 @@ import {
   otpHourlyRateLimitMessage,
   otpResendCooldownMessage,
 } from '../../../legacy/web/lib/mobile-auth/otp-messages.js';
+import {
+  assertClosedBetaPhoneAccess,
+  autoTagUserOnFirstLogin,
+} from '../../../shared/launch/closed-beta-access.service.js';
 
 export type OtpServiceFailure = {
   ok: false;
@@ -61,6 +66,22 @@ export class MobileOtpAuthService {
         httpStatus: 422,
         code: 'VALIDATION_ERROR',
         message: OTP_MSG.validationPhone,
+      };
+    }
+
+    const betaAccess = await assertClosedBetaPhoneAccess(normalizedPhone);
+    if (!betaAccess.ok) {
+      recordAuthAuditFireAndForget({
+        action: AuthAuditAction.OTP_REQUEST,
+        channel: AUTH_CHANNELS.mobile,
+        ...ctx,
+        metadata: { ok: false, code: betaAccess.code },
+      });
+      return {
+        ok: false,
+        httpStatus: betaAccess.httpStatus,
+        code: betaAccess.code,
+        message: betaAccess.message,
       };
     }
 
@@ -345,6 +366,21 @@ export class MobileOtpAuthService {
       role: UserRole.CUSTOMER,
       ...ctx,
     });
+
+    traceWorkflow({
+      workflow: 'authentication',
+      step: 'otp_verify_success',
+      outcome: 'completed',
+      resourceType: 'user',
+      resourceId: userResult.userId,
+      metadata: { isNewUser: userResult.isNewUser },
+    });
+
+    try {
+      await autoTagUserOnFirstLogin(userResult.userId);
+    } catch {
+      /* beta tagging must not block login */
+    }
 
     return {
       ok: true,

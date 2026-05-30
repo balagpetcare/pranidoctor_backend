@@ -1,22 +1,88 @@
 groups:
-  - name: pranidoctor-api
+  - name: pranidoctor-p0-critical
     rules:
       - alert: ApiDown
         expr: up{job="pranidoctor-api"} == 0
         for: 2m
         labels:
           severity: critical
+          priority: P0
+          alert_id: ALT-DOWN-06
         annotations:
           summary: Prani Doctor API unreachable
+          runbook: docs/monitoring/runbook.md#service-unavailable
 
       - alert: ApiReadinessFailed
         expr: pranidoctor_ready == 0
         for: 3m
         labels:
           severity: critical
+          priority: P0
+          alert_id: ALT-DOWN-02
         annotations:
           summary: API /ready failing
+          runbook: docs/monitoring/runbook.md#service-unavailable
 
+      - alert: DatabaseDown
+        expr: pranidoctor_db_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          priority: P0
+          alert_id: ALT-DB-01
+        annotations:
+          summary: Database probe failing
+          runbook: docs/monitoring/runbook.md#database-unavailable
+
+      - alert: RedisUnavailable
+        expr: pranidoctor_redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          priority: P0
+          alert_id: ALT-SEC-02
+        annotations:
+          summary: Redis down — rate limits fail closed
+          runbook: docs/monitoring/runbook.md#cache-unavailable
+
+      - alert: QueueSubsystemDown
+        expr: pranidoctor_queue_up == 0
+        for: 5m
+        labels:
+          severity: critical
+          priority: P0
+          alert_id: ALT-ERR-09
+        annotations:
+          summary: Queue health probe failing
+          runbook: docs/monitoring/runbook.md#queue-failures
+
+      - alert: AuthFailureSpike
+        expr: rate(pranidoctor_auth_failures_total[5m]) > 1.5
+        for: 5m
+        labels:
+          severity: critical
+          priority: P0
+          alert_id: ALT-SEC-01
+        annotations:
+          summary: Authentication failure spike detected
+          runbook: docs/monitoring/runbook.md#auth-failure-spike
+
+      - alert: AiFailureSpike
+        expr: |
+          sum(rate(ai_requests_total{status="failure"}[10m]))
+          /
+          sum(rate(ai_requests_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          priority: P0
+          alert_id: ALT-AI-01
+        annotations:
+          summary: AI provider error rate above 5%
+          runbook: docs/monitoring/runbook.md#ai-failures
+
+  - name: pranidoctor-p1-warning
+    rules:
       - alert: High5xxRate
         expr: |
           sum(rate(pranidoctor_http_requests_total{status_class="5xx"}[5m]))
@@ -25,8 +91,11 @@ groups:
         for: 5m
         labels:
           severity: warning
+          priority: P1
+          alert_id: ALT-ERR-01
         annotations:
           summary: Elevated 5xx error rate
+          runbook: docs/monitoring/runbook.md#elevated-errors
 
       - alert: HighApiLatencyP95
         expr: |
@@ -37,37 +106,95 @@ groups:
         for: 10m
         labels:
           severity: warning
+          priority: P1
+          alert_id: ALT-SLOW-05
         annotations:
           summary: HTTP p95 latency above 2s
-
-      - alert: DatabaseDown
-        expr: pranidoctor_db_up == 0
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: Database probe failing
+          runbook: docs/monitoring/runbook.md#high-latency
 
       - alert: SlowDbQueries
         expr: rate(pranidoctor_db_slow_queries_total[5m]) > 0.5
         for: 10m
         labels:
           severity: warning
+          priority: P1
+          alert_id: ALT-DB-03
         annotations:
           summary: Sustained slow database queries
+          runbook: docs/monitoring/runbook.md#slow-queries
 
       - alert: QueueJobFailures
         expr: rate(pranidoctor_queue_jobs_total{outcome="failed"}[15m]) > 0.1
         for: 15m
         labels:
           severity: warning
+          priority: P1
+          alert_id: ALT-ERR-08
         annotations:
           summary: Elevated permanent queue job failures
+          runbook: docs/monitoring/runbook.md#queue-failures
 
-      - alert: RedisUnavailable
-        expr: pranidoctor_redis_up == 0
-        for: 1m
+      - alert: StorageUnavailable
+        expr: pranidoctor_storage_up == 0
+        for: 5m
         labels:
-          severity: critical
+          severity: warning
+          priority: P1
+          alert_id: ALT-DOWN-03
         annotations:
-          summary: Redis down — rate limits fail closed
+          summary: Object storage probe failing
+          runbook: docs/monitoring/runbook.md#storage-issues
+
+      - alert: AiFallbackSpike
+        expr: |
+          sum(rate(ai_requests_total{provider="rules-based"}[15m]))
+          /
+          sum(rate(ai_requests_total[15m])) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+          priority: P1
+          alert_id: ALT-AI-02
+        annotations:
+          summary: AI fallback to rules-based above 30%
+          runbook: docs/monitoring/runbook.md#ai-failures
+
+  - name: pranidoctor-p2-info
+    rules:
+      - alert: HighHeapUsage
+        expr: |
+          pranidoctor_heap_used_bytes
+          /
+          (pranidoctor_heap_used_bytes + 1) > 0
+          and
+          pranidoctor_heap_used_bytes / 1024 / 1024 > 512
+        for: 15m
+        labels:
+          severity: info
+          priority: P2
+          alert_id: ALT-RES-01
+        annotations:
+          summary: Process heap above 512MB
+          runbook: docs/monitoring/runbook.md#resource-warnings
+
+      - alert: HighEventLoopLag
+        expr: pranidoctor_event_loop_lag_ms > 100
+        for: 10m
+        labels:
+          severity: info
+          priority: P2
+          alert_id: ALT-RES-02
+        annotations:
+          summary: Event loop lag above 100ms
+          runbook: docs/monitoring/runbook.md#resource-warnings
+
+      - alert: QueueBacklogHigh
+        expr: sum(pranidoctor_queue_waiting_jobs) > 100
+        for: 30m
+        labels:
+          severity: info
+          priority: P2
+          alert_id: ALT-QUE-01
+        annotations:
+          summary: Queue waiting jobs above 100
+          runbook: docs/monitoring/runbook.md#queue-failures

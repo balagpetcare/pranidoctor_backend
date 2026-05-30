@@ -355,8 +355,8 @@ export class AdminAnalyticsRepository {
         submittedAt: { gte: from, lte: to },
         ...consultationFilter,
       },
-      _count: { _all: true },
-      orderBy: { _count: { _all: 'desc' } },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
       take: limit,
     });
 
@@ -416,7 +416,7 @@ export class AdminAnalyticsRepository {
         const profile = profileMap.get(doctorId);
         const rating = ratingMap.get(doctorId);
         const earning = earningMap.get(doctorId);
-        const consultations = row._count._all;
+        const consultations = row._count.id;
         return {
           doctorId,
           name: profile?.displayName ?? 'Unknown',

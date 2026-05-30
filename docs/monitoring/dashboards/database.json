@@ -1,0 +1,61 @@
+{
+  "title": "Prani Doctor — Database",
+  "uid": "pranidoctor-database",
+  "tags": ["pranidoctor", "database"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Database up",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "pranidoctor_db_up" }]
+    },
+    {
+      "id": 2,
+      "title": "Probe latency (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [{ "expr": "pranidoctor_db_probe_latency_ms", "legendFormat": "latency" }]
+    },
+    {
+      "id": 3,
+      "title": "Query rate by model",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum by (model) (rate(pranidoctor_db_queries_total[5m]))",
+          "legendFormat": "{{model}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Slow query rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "sum(rate(pranidoctor_db_slow_queries_total[5m]))",
+          "legendFormat": "slow/s"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Query p95 latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(pranidoctor_db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { Queue, Worker, type Job, type ConnectionOptions, type JobsOptions } fro
 
 import type { AppConfig } from '../../shared/config/config.schema.js';
 import { logInfo, logDebug, logWarn, logError } from '../../shared/logger/logger.js';
+import { logBackgroundJob } from '../../shared/monitoring/structured-logging.js';
 import { captureException } from '../../shared/monitoring/error-tracking.js';
 import { recordQueueJob } from '../../shared/monitoring/metrics/queue.metrics.js';
 
@@ -79,9 +80,9 @@ export function createWorker<T, R>(
 
   const wrappedProcessor = async (job: Job<T>): Promise<R> => {
     const startTime = Date.now();
-    logInfo('Job started', {
+    logBackgroundJob('started', {
       queue: queueName,
-      jobId: job.id,
+      jobId: job.id != null ? String(job.id) : undefined,
       jobName: job.name,
       attempt: job.attemptsMade + 1,
     });
@@ -90,10 +91,10 @@ export function createWorker<T, R>(
       const result = await processor(job);
       const duration = Date.now() - startTime;
 
-      logInfo('Job completed', {
+      logBackgroundJob('completed', {
         queue: queueName,
-        jobId: job.id,
-        duration,
+        jobId: job.id != null ? String(job.id) : undefined,
+        durationMs: duration,
       });
 
       recordQueueJob({
@@ -107,12 +108,13 @@ export function createWorker<T, R>(
     } catch (error) {
       const duration = Date.now() - startTime;
 
-      logError('Job failed', error, {
+      logBackgroundJob('failed', {
         queue: queueName,
-        jobId: job.id,
+        jobId: job.id != null ? String(job.id) : undefined,
         attempt: job.attemptsMade + 1,
         maxAttempts: job.opts.attempts ?? 3,
-        duration,
+        durationMs: duration,
+        error: error instanceof Error ? error.message : String(error),
       });
 
       throw error;
@@ -137,9 +139,9 @@ export function createWorker<T, R>(
     const willRetry = job && job.attemptsMade < (job.opts.attempts ?? 3);
 
     if (willRetry) {
-      logWarn('Job failed, will retry', {
+      logBackgroundJob('retry', {
         queue: queueName,
-        jobId: job?.id,
+        jobId: job?.id != null ? String(job.id) : undefined,
         attempt: job?.attemptsMade,
         error: error.message,
       });
@@ -162,8 +164,8 @@ export function createWorker<T, R>(
       captureException(error, {
         source: 'background_job',
         queue: queueName,
-        jobId: job?.id != null ? String(job.id) : undefined,
-        jobName: job?.name,
+        ...(job?.id != null ? { jobId: String(job.id) } : {}),
+        ...(job?.name ? { jobName: job.name } : {}),
         route: `queue:${queueName}`,
       });
     }

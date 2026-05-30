@@ -39,6 +39,12 @@ vi.mock('../ai.repository.js', () => ({
   }),
 }));
 
+vi.mock('../governance/ai-governance.enforcement.js', () => ({
+  shouldUseRulesOnlyForFeature: () => false,
+  isProviderGovernanceBlocked: () => false,
+  assertAiLlmExecutionAllowed: () => undefined,
+}));
+
 function mockProvider(
   name: 'openai' | 'anthropic' | 'rules-based',
   behavior: 'ok' | 'fail' | 'skip',

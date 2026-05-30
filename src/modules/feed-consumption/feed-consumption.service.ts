@@ -1,5 +1,7 @@
 import { Prisma } from '@/generated/prisma/client';
 
+import { traceWorkflow } from '../../shared/monitoring/workflow-tracing.js';
+
 import {
   assertFeedInventoryOwned,
   assertFeedItemExists,
@@ -131,6 +133,18 @@ export class FeedConsumptionService {
           `Insufficient stock: ${result.onHand} on hand, ${body.amount} requested`,
         );
       }
+
+      traceWorkflow({
+        workflow: 'livestock',
+        step: 'feed_consumption_recorded',
+        outcome: 'completed',
+        resourceType: 'feed_consumption',
+        resourceId: result.row!.id,
+        metadata: {
+          farmRef: body.farmRef,
+          livestockId: body.livestockId ?? null,
+        },
+      });
 
       return toFeedConsumptionDto(result.row!);
     } catch (e) {

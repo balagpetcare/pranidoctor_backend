@@ -1,26 +1,32 @@
-# Prisma migrations — mirror only
+# Prisma migrations — canonical (backend)
 
-**Authority:** `pranidoctor-web/prisma/migrations/`  
-**This folder:** historical copy for reference; **do not apply** from `pranidoctor-backend`.
+**Authority:** `pranidoctor-backend/prisma/migrations/`  
+**Schema owner:** `prisma/SCHEMA_OWNER.md`
 
-## Production commands (web repo)
+## Commands
 
 ```bash
-cd D:\PraniDoctor\pranidoctor-web
-npm run db:migrate
-npm run db:deploy:safe
+npm run db:generate
+npm run db:migrate          # development only — disposable DB
+npm run db:migrate:deploy   # staging / production (with guard)
+npm run db:audit            # migration inventory + safety scan (no DB)
+npm run db:preflight        # pre-deploy checks (requires DATABASE_URL)
 npx prisma migrate status
 ```
 
-## Staging mirror
+## Production
 
 ```bash
-# BLOCKED in this repo:
-npm run db:migrate
-npm run db:migrate:deploy
-
-# Allowed:
-npm run db:generate
+# After backup:
+ALLOW_PRODUCTION_MIGRATE=true npm run db:migrate:deploy
 ```
 
-See `prisma/SCHEMA_OWNER.md` and `ARCHITECTURE.md`.
+## Web repo
+
+`pranidoctor-web` syncs schema for client generation only — **do not** apply migrations from web.
+
+See `pranidoctor-web/docs/PRISMA_CANONICAL_PLAN.md`.
+
+## Archives
+
+`prisma/_archived_out_of_chain/` — not applied by Prisma CLI.

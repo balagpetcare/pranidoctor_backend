@@ -149,10 +149,11 @@ export {
   getReadinessStatus,
   getLivenessStatus,
   getDependencyStatus,
+  getSystemInfo,
   checkDatabaseHealth,
   checkRedisHealth,
   checkStorageHealth,
   checkAiHealthStatus,
-  getModulesHealth,
-  getSystemInfo,
+  checkQueueHealth,
+  checkCacheHealth,
 } from '../../api/health/health.service.js';

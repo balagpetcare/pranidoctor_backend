@@ -1,8 +1,5 @@
-import { authRequestContext } from '../../../../../modules/auth/auth-audit.service.js';
-import { recordLegalConsentFireAndForget } from '@/lib/mobile-settings/legal-consent-audit.js';
 import { loadLegalConfig } from '@/lib/mobile-settings/legal-config.js';
-import { syncMobileSettingsForUser } from '@/lib/mobile-settings/mobile-settings-service.js';
-import { aiDisclaimerAcceptBodySchema } from '@/lib/ai-disclaimer/schemas.js';
+import { syncMobileSettingsForUser } from '@/lib/mobile-settings/mobile-settings-service.js';import { aiDisclaimerAcceptBodySchema } from '@/lib/ai-disclaimer/schemas.js';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { requireMobileCustomer } from '@/lib/mobile-auth/guard';
 
@@ -30,26 +27,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const ctx = authRequestContext(request);
     const result = await syncMobileSettingsForUser(
       auth.ctx.userId,
-      { acceptAiVersion: parsed.data.version },
+      { acceptAiVersion: parsed.data.version, acceptAiSurface: parsed.data.surface },
       request,
     );
-
-    recordLegalConsentFireAndForget({
-      userId: auth.ctx.userId,
-      consentType: 'AI_PROCESSING',
-      version: parsed.data.version,
-      channel: 'MOBILE',
-      ipAddress: ctx.ipAddress ?? null,
-      userAgent: ctx.userAgent ?? null,
-      metadata: {
-        surface: parsed.data.surface ?? 'FIRST_AI_USE',
-        kind: 'AI_DISCLAIMER_ACCEPT',
-      },
-    });
-
     return jsonOk(result);
   } catch {
     return jsonError('DATABASE_ERROR', 'Could not record AI disclaimer acceptance', 500);

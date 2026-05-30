@@ -5,13 +5,18 @@ import {
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { resolveAiResponseDisclaimer } from '../disclaimer/ai-disclaimer.resolver.js';
 import { resolveOptionalEscalationDisclosure } from '../disclaimer/ai-escalation-disclosure.resolver.js';
-import { symptomCheckEscalationTrigger } from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure.service.js';
+import {
+  attachComplianceToResponse,
+  mapBucketToComplianceRisk,
+} from '../compliance/ai-compliance.service.js';
+import { symptomCheckEscalationTrigger } from '../../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure.service.js';
 import { assessSymptomRisk } from '../../ai-veterinary-core/safety/ai-safety.guardrails.js';
 import { getAiSafetyService } from '../../ai-veterinary-core/safety/ai-safety.service.js';
 import { ValidationError } from '../../../shared/errors/http.errors.js';
 import { getAiAuditService } from '../audit/ai-audit.service.js';
 import { getAiKnowledgeService } from '../knowledge/ai-knowledge.service.js';
 import { getAiOrchestratorService } from '../orchestrator/ai-orchestrator.service.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 export interface SymptomCheckInput {
   userId: string;
@@ -148,7 +153,7 @@ export class SymptomCheckerService {
     const urgencyLevel = risk.urgencyLevel;
 
     const session = await prisma.aiSymptomCheckSession.create({
-      data: {
+      data: omitUndefined({
         userId: input.userId,
         customerId: input.customerId,
         livestockId: input.livestockId,
@@ -166,15 +171,17 @@ export class SymptomCheckerService {
         triageBucket,
         urgencyLevel,
         aiSessionId: input.aiSessionId,
-      },
+      }),
     });
 
-    await getAiAuditService().write({
-      userId: input.userId,
-      sessionId: input.aiSessionId,
-      action: redFlags.length > 0 ? 'TRIAGE_RED_FLAG' : 'SYMPTOM_CHECK_OK',
-      detailJson: { sessionId: session.id, triageBucket, confidence },
-    });
+    await getAiAuditService().write(
+      omitUndefined({
+        userId: input.userId,
+        sessionId: input.aiSessionId,
+        action: redFlags.length > 0 ? 'TRIAGE_RED_FLAG' : 'SYMPTOM_CHECK_OK',
+        detailJson: { sessionId: session.id, triageBucket, confidence },
+      }),
+    );
 
     const recommendation =
       locale === 'bn'
@@ -210,7 +217,17 @@ export class SymptomCheckerService {
       symptomCheckEscalationTrigger({ escalationRequired, emergency: risk.emergency }),
       locale,
     );
-    return { ...base, ...disclosure };
+    return attachComplianceToResponse(
+      { ...base, ...disclosure },
+      {
+        userId: input.userId,
+        ...(input.aiSessionId !== undefined ? { sessionId: input.aiSessionId } : {}),
+        feature: 'symptom_check',
+        riskLevel: mapBucketToComplianceRisk(triageBucket),
+        emergency: risk.emergency,
+        escalationRequired,
+      },
+    );
   }
 }
 

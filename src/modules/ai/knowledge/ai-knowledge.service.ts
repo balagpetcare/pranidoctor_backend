@@ -5,6 +5,7 @@ import {
   type LivestockSpecies,
 } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 export class AiKnowledgeService {
   readonly name = 'AiKnowledgeService';
@@ -63,12 +64,14 @@ export class AiKnowledgeService {
     species?: LivestockSpecies;
     limit?: number;
   }): Promise<string> {
-    const hits = await this.search({
-      query: params.query,
-      locale: params.locale,
-      species: params.species,
-      limit: params.limit ?? 4,
-    });
+    const hits = await this.search(
+      omitUndefined({
+        query: params.query,
+        locale: params.locale,
+        species: params.species,
+        limit: params.limit ?? 4,
+      }),
+    );
     if (hits.length === 0) return '';
     return hits.map((h, i) => `[${i + 1}] ${h.title}: ${h.excerpt}`).join('\n\n');
   }
@@ -132,11 +135,11 @@ export class AiKnowledgeService {
   async publish(id: string, reviewedById?: string) {
     return getPrisma().aiKnowledgeEntry.update({
       where: { id },
-      data: {
+      data: omitUndefined({
         status: AiKnowledgeStatus.PUBLISHED,
         publishedAt: new Date(),
         reviewedById,
-      },
+      }),
     });
   }
 }

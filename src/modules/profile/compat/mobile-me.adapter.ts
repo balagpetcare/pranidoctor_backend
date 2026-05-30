@@ -75,7 +75,6 @@ export async function handleMobileMePatch(
     );
     if (!parsedMultipart.ok) {
       return authJsonError(request, parsedMultipart.code, parsedMultipart.httpStatus, {
-        messageKey: parsedMultipart.code,
         details: parsedMultipart.details,
         profileLocale: localeOpt(profileLocale),
       });

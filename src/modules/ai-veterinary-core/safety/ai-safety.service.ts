@@ -52,6 +52,7 @@ export class AiSafetyService {
   evaluateTriage(symptoms: string[]): {
     bucket: 'LOW' | 'MEDIUM' | 'HIGH';
     urgencyLevel: number;
+    emergency: boolean;
     escalationRequired: boolean;
     recommendation: string;
     auditAction: string;
@@ -61,7 +62,8 @@ export class AiSafetyService {
 
     let recommendation = 'Monitor the animal and keep notes of symptoms.';
     if (risk.emergency) {
-      recommendation = 'Seek immediate veterinary care — possible emergency.';
+      recommendation =
+        'Seek immediate in-person veterinary care for a possible emergency. The app does not dispatch emergency services.';
     } else if (risk.bucket === 'HIGH') {
       recommendation = 'Contact a veterinarian as soon as possible.';
     } else if (risk.bucket === 'MEDIUM') {
@@ -71,6 +73,7 @@ export class AiSafetyService {
     return {
       bucket: risk.bucket,
       urgencyLevel: risk.urgencyLevel,
+      emergency: risk.emergency,
       escalationRequired,
       recommendation: `${recommendation} ${buildHumanRedirect('en')}`,
       auditAction: escalationRequired ? 'TRIAGE_ESCALATION' : 'TRIAGE_OK',

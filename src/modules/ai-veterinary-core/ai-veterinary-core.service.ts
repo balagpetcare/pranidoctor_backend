@@ -33,6 +33,11 @@ import { getAiVeterinaryRepository } from './repository/ai-veterinary.repository
 import { getAiOrchestratorService } from '../ai/orchestrator/ai-orchestrator.service.js';
 import { getAiPromptService } from '../ai/prompts/ai-prompt.service.js';
 import { getAiSafetyService } from './safety/ai-safety.service.js';
+import { assessSymptomRisk } from './safety/ai-safety.guardrails.js';
+import {
+  attachComplianceToResponse,
+  mapBucketToComplianceRisk,
+} from '../ai/compliance/ai-compliance.service.js';
 
 function memoryExpiry(kind: AiMemoryKind): Date {
   return addDays(new Date(), AI_MEMORY_TTL_DAYS[kind]);
@@ -63,6 +68,16 @@ async function withEscalationDisclosure<T extends Record<string, unknown>>(
 ): Promise<T & { escalationDisclosure?: string; escalationTrigger?: string; escalationDisclosureVersion?: string }> {
   const fields = await resolveOptionalEscalationDisclosure(trigger, locale);
   return { ...payload, ...fields };
+}
+
+function chatComplianceRisk(input: {
+  refused: boolean;
+  escalationRecommended: boolean;
+  emergency: boolean;
+}): 'LOW' | 'MEDIUM' | 'HIGH' {
+  if (input.emergency || input.refused) return 'HIGH';
+  if (input.escalationRecommended) return 'MEDIUM';
+  return 'LOW';
 }
 
 function mapEscalation(row: {
@@ -144,22 +159,42 @@ export class AiVeterinaryCoreService {
         });
       }
 
-      return withEscalationDisclosure(
+      const messageRisk = assessSymptomRisk([input.message.trim()]);
+      return attachComplianceToResponse(
+        await withEscalationDisclosure(
+          {
+            sessionId: session.id,
+            messageId: assistant.id,
+            content: inputRefusal.content,
+            refused: true,
+            humanRedirect: inputRefusal.humanRedirect,
+            escalationRecommended: inputRefusal.escalationRecommended,
+            disclaimer: await resolveAiResponseDisclaimer('chat', locale),
+          },
+          messageRisk.emergency
+              ? 'emergency'
+              : chatEscalationTrigger({
+                  refused: true,
+                  escalationRecommended: inputRefusal.escalationRecommended,
+                  humanRedirect: inputRefusal.humanRedirect,
+                }),
+          locale,
+        ),
         {
+          userId,
           sessionId: session.id,
-          messageId: assistant.id,
-          content: inputRefusal.content,
-          refused: true,
-          humanRedirect: inputRefusal.humanRedirect,
-          escalationRecommended: inputRefusal.escalationRecommended,
-          disclaimer: await resolveAiResponseDisclaimer('chat', locale),
+          feature: 'chat',
+          riskLevel: chatComplianceRisk({
+            refused: true,
+            escalationRecommended: inputRefusal.escalationRecommended,
+            emergency: messageRisk.emergency,
+          }),
+          emergency: messageRisk.emergency,
+          escalationRequired:
+            inputRefusal.escalationRecommended ||
+            inputRefusal.humanRedirect ||
+            messageRisk.emergency,
         },
-        chatEscalationTrigger({
-          refused: true,
-          escalationRecommended: inputRefusal.escalationRecommended,
-          humanRedirect: inputRefusal.humanRedirect,
-        }),
-        locale,
       );
     }
 
@@ -223,22 +258,42 @@ export class AiVeterinaryCoreService {
       });
     }
 
-    return withEscalationDisclosure(
+    const messageRisk = assessSymptomRisk([input.message.trim()]);
+    const escalationTrigger = messageRisk.emergency
+        ? 'emergency'
+        : chatEscalationTrigger({
+            refused: evaluated.refused,
+            escalationRecommended,
+            humanRedirect: evaluated.humanRedirect,
+          });
+
+    return attachComplianceToResponse(
+      await withEscalationDisclosure(
+        {
+          sessionId: session.id,
+          messageId: assistant.id,
+          content: evaluated.content,
+          refused: evaluated.refused,
+          humanRedirect: evaluated.humanRedirect,
+          escalationRecommended,
+          disclaimer: await resolveAiResponseDisclaimer('chat', locale),
+        },
+        escalationTrigger,
+        locale,
+      ),
       {
+        userId,
         sessionId: session.id,
-        messageId: assistant.id,
-        content: evaluated.content,
-        refused: evaluated.refused,
-        humanRedirect: evaluated.humanRedirect,
-        escalationRecommended,
-        disclaimer: await resolveAiResponseDisclaimer('chat', locale),
+        feature: 'chat',
+        riskLevel: chatComplianceRisk({
+          refused: evaluated.refused,
+          escalationRecommended,
+          emergency: messageRisk.emergency,
+        }),
+        emergency: messageRisk.emergency,
+        escalationRequired:
+          escalationRecommended || evaluated.humanRedirect || messageRisk.emergency,
       },
-      chatEscalationTrigger({
-        refused: evaluated.refused,
-        escalationRecommended,
-        humanRedirect: evaluated.humanRedirect,
-      }),
-      locale,
     );
   }
 
@@ -313,21 +368,32 @@ export class AiVeterinaryCoreService {
       });
     }
 
-    return withEscalationDisclosure(
+    return attachComplianceToResponse(
+      await withEscalationDisclosure(
+        {
+          triageId: triage.id,
+          riskBucket: assessment.bucket,
+          urgencyLevel: assessment.urgencyLevel,
+          emergency: assessment.emergency,
+          recommendation: assessment.recommendation,
+          escalationRequired: assessment.escalationRequired,
+          ...(escalationId ? { escalationId } : {}),
+          disclaimer: await resolveAiResponseDisclaimer('advisory', locale),
+        },
+        triageEscalationTrigger({
+          escalationRequired: assessment.escalationRequired,
+          urgencyLevel: assessment.urgencyLevel,
+        }),
+        locale,
+      ),
       {
-        triageId: triage.id,
-        riskBucket: assessment.bucket,
-        urgencyLevel: assessment.urgencyLevel,
-        recommendation: assessment.recommendation,
+        userId,
+        ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
+        feature: 'triage',
+        riskLevel: mapBucketToComplianceRisk(assessment.bucket),
+        emergency: assessment.emergency,
         escalationRequired: assessment.escalationRequired,
-        ...(escalationId ? { escalationId } : {}),
-        disclaimer: await resolveAiResponseDisclaimer('advisory', locale),
       },
-      triageEscalationTrigger({
-        escalationRequired: assessment.escalationRequired,
-        urgencyLevel: assessment.urgencyLevel,
-      }),
-      locale,
     );
   }
 

@@ -13,6 +13,8 @@
     "src/modules/auth/_archived_foundation/**",
     "src/modules/auth/legacy-web/**",
     "src/modules/auth/compat/**",
-    "src/modules/media/_archived_foundation/**"
+    "src/modules/media/_archived_foundation/**",
+    "src/modules/ai/ai.service.ts",
+    "src/modules/dev/**"
   ]
 }

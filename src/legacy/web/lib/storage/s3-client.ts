@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import type { StorageEnv } from "./storage-env";
+import type { StorageEnv } from './storage-env.js';
 
 let cached: S3Client | null = null;
 
@@ -14,7 +14,7 @@ export function getS3Client(env: StorageEnv): S3Client {
   if (cached) return cached;
   cached = new S3Client({
     region: env.region,
-    endpoint: env.endpoint,
+    ...(env.endpoint ? { endpoint: env.endpoint } : {}),
     forcePathStyle: env.forcePathStyle,
     credentials: {
       accessKeyId: env.accessKeyId,

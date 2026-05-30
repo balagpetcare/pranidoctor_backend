@@ -89,10 +89,13 @@ export async function validateMobileProfileModulesCheck(): Promise<ServiceCheckR
     name: 'mobile-profile-modules',
     healthy: result.ok,
     optional: false,
-    error: result.ok
-      ? undefined
-      : result.error ??
-        'Mobile profile module import failed — check customer-address.service.ts and mobile-me.adapter',
+    ...(result.ok
+      ? {}
+      : {
+          error:
+            result.error ??
+            'Mobile profile module import failed — check customer-address.service.ts and mobile-me.adapter',
+        }),
   };
 }
 

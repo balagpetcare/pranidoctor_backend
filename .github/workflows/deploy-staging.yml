@@ -71,7 +71,10 @@ jobs:
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
+            ./scripts/backup/postgres-backup.sh /var/backups/pranidoctor || true
+            export ALLOW_PRODUCTION_MIGRATE=true
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api npm run db:migrate:deploy
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d api
             for i in $(seq 1 30); do
               if curl -fsS http://127.0.0.1:3000/ready >/dev/null; then

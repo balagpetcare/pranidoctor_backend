@@ -1,3 +1,4 @@
+import { getAiGovernanceService } from '../../modules/ai/governance/ai-governance.service.js';
 import { getAiOrchestratorService } from '../../modules/ai/orchestrator/ai-orchestrator.service.js';
 import { AnthropicProvider } from '../../modules/ai/orchestrator/providers/anthropic.provider.js';
 import { OpenAiProvider } from '../../modules/ai/orchestrator/providers/openai.provider.js';
@@ -17,7 +18,9 @@ function listProviderConfig(): Array<{ name: string; configured: boolean }> {
 export async function checkAiHealth(): Promise<HealthCheckResult> {
   const start = Date.now();
   const orchestrator = getAiOrchestratorService();
+  const governance = getAiGovernanceService();
   const llmDisabled = orchestrator.isLlmDisabled();
+  const scopes = governance.getScopeSnapshot();
   const preferredProvider = (process.env.AI_PROVIDER ?? 'openai').trim().toLowerCase();
   const providers = listProviderConfig();
   const anyLlmConfigured = providers.some((provider) => provider.configured);
@@ -45,6 +48,9 @@ export async function checkAiHealth(): Promise<HealthCheckResult> {
     ...(message && { message }),
     details: {
       llmDisabled,
+      governanceHydrated: governance.isHydrated(),
+      environment: (process.env.NODE_ENV ?? 'development').trim(),
+      scopes,
       preferredProvider,
       providers,
       rulesFallbackAvailable: true,

@@ -5,6 +5,7 @@ import type {
   AiMessageRole,
   AiRiskBucket,
 } from '../../generated/prisma/index.js';
+import type { AiComplianceMetadata } from '../ai/compliance/ai-compliance.types.js';
 
 export type AiLocale = 'bn' | 'en';
 
@@ -22,6 +23,18 @@ export type AiChatRequest = {
   locale?: AiLocale;
 };
 
+export type AiTriageResponse = {
+  triageId: string;
+  riskBucket: AiRiskBucket;
+  urgencyLevel: number;
+  emergency: boolean;
+  recommendation: string;
+  escalationRequired: boolean;
+  escalationId?: string;
+  disclaimer: string;
+  compliance?: AiComplianceMetadata;
+} & EscalationDisclosureResponseFields;
+
 export type AiChatResponse = {
   sessionId: string;
   messageId: string;
@@ -30,8 +43,8 @@ export type AiChatResponse = {
   humanRedirect: boolean;
   escalationRecommended: boolean;
   disclaimer: string;
+  compliance?: AiComplianceMetadata;
 } & EscalationDisclosureResponseFields;
-
 export type AiTriageRequest = {
   sessionId?: string;
   caseId?: string;
@@ -40,16 +53,6 @@ export type AiTriageRequest = {
   mediaMetadata?: Record<string, unknown>[];
   locale?: AiLocale;
 };
-
-export type AiTriageResponse = {
-  triageId: string;
-  riskBucket: AiRiskBucket;
-  urgencyLevel: number;
-  recommendation: string;
-  escalationRequired: boolean;
-  escalationId?: string;
-  disclaimer: string;
-} & EscalationDisclosureResponseFields;
 
 export type AiMemoryEntry = {
   id: string;

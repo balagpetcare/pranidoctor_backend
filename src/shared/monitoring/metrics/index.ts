@@ -5,15 +5,19 @@ import { renderDependencyPrometheusLines, resetDependencyMetricsForTests } from 
 import { renderHttpPrometheusLines, resetHttpMetricsForTests } from './http.metrics.js';
 import { renderQueuePrometheusLines, resetQueueMetricsForTests } from './queue.metrics.js';
 import { renderResourcePrometheusLines, resetResourceMetricsForTests } from './resource.metrics.js';
+import { renderSecurityPrometheusLines, resetSecurityMetricsForTests } from './security.metrics.js';
 
 export { createHttpMetricsMiddleware, recordHttpRequest } from './http.metrics.js';
 export { recordDbQuery } from './db.metrics.js';
-export { recordQueueJob } from './queue.metrics.js';
+export { recordQueueJob, recordQueueDepth, recordQueueHealthProbe } from './queue.metrics.js';
 export {
   recordDatabaseProbe,
   recordReadiness,
   recordRedisProbe,
+  recordStorageProbe,
 } from './dependency.metrics.js';
+export { recordAuthFailure, recordSecurityEvent } from './security.metrics.js';
+export { isAuthPath, resolveAuthSurface, normalizeStatusCode } from './auth-paths.js';
 export { normalizeRoutePath, statusClass, isProbePath } from './route-normalizer.js';
 export { getSlowQueryThresholdMs } from './monitoring-config.js';
 
@@ -26,6 +30,7 @@ export function renderAllPrometheusLines(): string[] {
     ...renderResourcePrometheusLines(),
     ...renderEscalationPrometheusLines(),
     ...renderAiUsagePrometheusLines(),
+    ...renderSecurityPrometheusLines(),
   ];
 }
 
@@ -35,4 +40,5 @@ export function resetAllMetricsForTests(): void {
   resetQueueMetricsForTests();
   resetDependencyMetricsForTests();
   resetResourceMetricsForTests();
+  resetSecurityMetricsForTests();
 }

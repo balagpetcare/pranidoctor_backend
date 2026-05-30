@@ -141,11 +141,15 @@ export class OfflineRepository {
       }
     >
   > {
-    return getPrisma().offlineSyncItem.findMany({
+    const rows = await getPrisma().offlineSyncItem.findMany({
       where: { userId },
       orderBy: [{ clientSequence: 'asc' }, { createdAt: 'asc' }],
       include: { leadDraft: true },
     });
+    return rows.map((row) => ({
+      ...row,
+      leadDraft: row.leadDraft[0] ?? null,
+    }));
   }
 
   async updateItem(

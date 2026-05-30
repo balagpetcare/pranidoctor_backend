@@ -14,7 +14,13 @@ import { getFollowUpService } from './follow-up/follow-up.service.js';
 import { getNotificationIntelligenceService } from './notifications/notification-intelligence.service.js';
 import { getSmartRecommendationService } from './recommendations/smart-recommendation.service.js';
 import { resolveAiResponseDisclaimer } from './disclaimer/ai-disclaimer.resolver.js';
+import { buildAiComplianceMetadata } from './compliance/ai-compliance.service.js';
 import { getSymptomCheckerService } from './symptom-checker/symptom-checker.service.js';
+import {
+  API_LIVESTOCK_SPECIES,
+  apiSpeciesToPrisma,
+} from './symptom-checker/api-species.js';
+import { omitUndefined } from '../../shared/types/object.utils.js';
 
 function userId(req: Request): string {
   if (!req.user?.id) {
@@ -38,16 +44,7 @@ async function assertOwnedFarm(req: Request, farmRef: string): Promise<string> {
 }
 
 const symptomCheckSchema = z.object({
-  species: z.enum([
-    'CATTLE',
-    'BUFFALO',
-    'GOAT',
-    'SHEEP',
-    'POULTRY',
-    'DUCK',
-    'PIGEON',
-    'OTHER',
-  ]),
+  species: z.enum(API_LIVESTOCK_SPECIES),
   symptomCodes: z.array(z.string().min(1).max(64)).min(1).max(20),
   freeTextSymptoms: z.array(z.string().min(1).max(200)).max(5).optional(),
   livestockId: z.string().max(64).optional(),
@@ -89,10 +86,8 @@ export class AiController extends AiVeterinaryCoreController {
   }
 
   async symptomTaxonomy(req: Request, res: Response): Promise<void> {
-    const species = z
-      .enum(['CATTLE', 'BUFFALO', 'GOAT', 'SHEEP', 'POULTRY', 'DUCK', 'PIGEON', 'OTHER'])
-      .parse(req.query.species);
-    const result = await getSymptomCheckerService().getTaxonomy(species);
+    const species = z.enum(API_LIVESTOCK_SPECIES).parse(req.query.species);
+    const result = await getSymptomCheckerService().getTaxonomy(apiSpeciesToPrisma(species));
     sendSuccess(res, result);
   }
 
@@ -107,27 +102,31 @@ export class AiController extends AiVeterinaryCoreController {
       }
     }
 
-    const result = await getSymptomCheckerService().runCheck({
-      userId: uid,
-      customerId: cid ?? undefined,
-      species: body.species,
-      symptomCodes: body.symptomCodes,
-      ...(body.freeTextSymptoms !== undefined ? { freeTextSymptoms: body.freeTextSymptoms } : {}),
-      ...(body.livestockId !== undefined ? { livestockId: body.livestockId } : {}),
-      ...(body.durationDays !== undefined ? { durationDays: body.durationDays } : {}),
-      ...(body.severity !== undefined ? { severity: body.severity } : {}),
-      ...(body.locale !== undefined ? { locale: body.locale } : {}),
-      ...(body.aiSessionId !== undefined ? { aiSessionId: body.aiSessionId } : {}),
-    });
+    const result = await getSymptomCheckerService().runCheck(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        species: apiSpeciesToPrisma(body.species),
+        symptomCodes: body.symptomCodes,
+        freeTextSymptoms: body.freeTextSymptoms,
+        livestockId: body.livestockId,
+        durationDays: body.durationDays,
+        severity: body.severity,
+        locale: body.locale,
+        aiSessionId: body.aiSessionId,
+      }),
+    );
 
-    await getFollowUpService().createFromSymptomCheck({
-      userId: uid,
-      customerId: cid ?? undefined,
-      livestockId: body.livestockId,
-      sessionId: body.aiSessionId,
-      triageBucket: result.triageBucket,
-      locale: body.locale ?? 'bn',
-    });
+    await getFollowUpService().createFromSymptomCheck(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        livestockId: body.livestockId,
+        sessionId: body.aiSessionId,
+        triageBucket: result.triageBucket,
+        locale: body.locale ?? 'bn',
+      }),
+    );
 
     sendCreated(res, result);
   }
@@ -169,7 +168,13 @@ export class AiController extends AiVeterinaryCoreController {
     const locale = req.query.locale === 'en' ? 'en' : 'bn';
     const items = await getSmartRecommendationService().generateForCustomer(cid, farmRef, locale);
     const disclaimer = await resolveAiResponseDisclaimer('recommendations', locale);
-    sendSuccess(res, { items, disclaimer });
+    const compliance = await buildAiComplianceMetadata({
+      feature: 'recommendations',
+      riskLevel: 'LOW',
+      emergency: false,
+      escalationRequired: false,
+    });
+    sendSuccess(res, { items, disclaimer, compliance });
   }
 
   async dismissRecommendation(req: Request, res: Response): Promise<void> {
@@ -213,7 +218,14 @@ export class AiController extends AiVeterinaryCoreController {
     const locale = req.query.locale === 'en' ? 'en' : 'bn';
     const result = await getFarmHealthService().getDashboard(cid, farmRef, locale);
     const disclaimer = await resolveAiResponseDisclaimer('advisory', locale);
-    sendSuccess(res, { ...result, disclaimer });
+    const compliance = await buildAiComplianceMetadata({
+      feature: 'farm_health',
+      riskLevel:
+        result.farmRiskScore >= 70 ? 'HIGH' : result.farmRiskScore >= 40 ? 'MEDIUM' : 'LOW',
+      emergency: false,
+      escalationRequired: result.farmRiskScore >= 70,
+    });
+    sendSuccess(res, { ...result, disclaimer, compliance });
   }
 
   async farmBriefing(req: Request, res: Response): Promise<void> {
@@ -326,7 +338,7 @@ export class AiAdminController {
       })
       .parse(req.body);
     const { getAiPromptService } = await import('./prompts/ai-prompt.service.js');
-    const result = await getAiPromptService().create(body);
+    const result = await getAiPromptService().create(omitUndefined(body));
     sendCreated(res, result);
   }
 
@@ -361,12 +373,14 @@ export class AiAdminController {
       })
       .parse(req.body);
     const { getAiGovernanceService } = await import('./governance/ai-governance.service.js');
-    const governance = await getAiGovernanceService().setLlmDisabled({
-      llmDisabled: body.disable,
-      reason: body.reason,
-      source: 'internal_api',
-      expectedVersion: body.expectedVersion,
-    });
+    const governance = await getAiGovernanceService().setLlmDisabled(
+      omitUndefined({
+        llmDisabled: body.disable,
+        reason: body.reason,
+        source: 'internal_api' as const,
+        expectedVersion: body.expectedVersion,
+      }),
+    );
     sendSuccess(res, {
       llmDisabled: governance.llmDisabled,
       version: governance.version,

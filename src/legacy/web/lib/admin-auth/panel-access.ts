@@ -1,7 +1,7 @@
-import type { AdminJwtPayload } from './jwt';
-import type { AdminPanelActor } from './panel-classify';
+import type { AdminJwtPayload } from './jwt.js';
+import type { AdminPanelActor } from './panel-classify.js';
 
-export type { AdminPanelActor } from './panel-classify';
+export type { AdminPanelActor } from './panel-classify.js';
 
 import { getIdentityAuthService } from '../../../../modules/auth/identity-auth.service.js';
 

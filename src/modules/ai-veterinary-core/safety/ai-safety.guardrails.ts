@@ -30,8 +30,24 @@ export function containsDiagnosisLanguage(text: string): boolean {
   return DIAGNOSIS_PATTERNS.some((p) => p.test(text));
 }
 
-export function sanitizeAssistantOutput(text: string): string {
+const ETA_OUTPUT_PATTERNS = [
+  /\btypical\s+response[^.!?]*[.!?]?/gi,
+  /\bwithin\s+\d+\s*(?:min|minute|hour)s?[^.!?]*[.!?]?/gi,
+  /\bunder\s+\d+\s*(?:min|minute)s?[^.!?]*[.!?]?/gi,
+  /\b\d+\s*[-–]\s*\d+\s*(?:min|minute)s?[^.!?]*[.!?]?/gi,
+  /\bwill\s+(?:arrive|respond)\s+within\s+\d+[^.!?]*[.!?]?/gi,
+];
+
+export function stripProhibitedEtaPhrases(text: string): string {
   let out = text;
+  for (const pattern of ETA_OUTPUT_PATTERNS) {
+    out = out.replace(pattern, ' ');
+  }
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
+
+export function sanitizeAssistantOutput(text: string): string {
+  let out = stripProhibitedEtaPhrases(text);
   for (const pattern of DIAGNOSIS_PATTERNS) {
     out = out.replace(pattern, '[consult a veterinarian]');
   }

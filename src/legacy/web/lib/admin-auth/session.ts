@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
-import { ADMIN_SESSION_COOKIE } from "./constants";
-import { verifyAdminToken, type AdminJwtPayload } from "./jwt";
+import { ADMIN_SESSION_COOKIE } from './constants.js';
+import { verifyAdminToken, type AdminJwtPayload } from './jwt.js';
 
 export async function getAdminSession(): Promise<AdminJwtPayload | null> {
   const jar = await cookies();

@@ -41,7 +41,7 @@ export class RiskScoringService {
       }
 
       const recentIllness = animal.healthRecords.some(
-        (h) => h.recordType === 'ILLNESS' || h.recordType === 'DISEASE',
+        (h) => h.recordType === 'DISEASE' || h.recordType === 'SYMPTOM',
       );
       if (recentIllness) {
         animalHealth -= 10;
@@ -57,7 +57,7 @@ export class RiskScoringService {
         factors.push({ factor: 'overdue_vaccine', impact: overdueVaccines * 8, detail: animal.name });
       }
 
-      if (animal.weightKg != null && Number(animal.weightKg) < 50 && animal.species === 'CATTLE') {
+      if (animal.weightKg != null && Number(animal.weightKg) < 50 && animal.species === 'COW') {
         mortalityRisk += 5;
       }
 

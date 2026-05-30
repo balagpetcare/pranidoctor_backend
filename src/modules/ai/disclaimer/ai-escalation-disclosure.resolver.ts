@@ -1,11 +1,11 @@
 import {
   buildEscalationDisclosureFields,
   type EscalationDisclosureFields,
-} from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure.service.js';
+} from '../../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure.service.js';
 import type {
   AiEscalationDisclosureLocale,
   AiEscalationDisclosureTriggerKey,
-} from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure-defaults.js';
+} from '../../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure-defaults.js';
 
 export async function resolveEscalationDisclosure(
   trigger: AiEscalationDisclosureTriggerKey,

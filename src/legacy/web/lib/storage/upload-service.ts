@@ -7,10 +7,11 @@ import {
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-import { isDangerousExtension, isDangerousMime, sniffMimeFromBuffer } from "./mime-sniff";
-import { putObjectBytes } from "./s3-client";
-import type { StorageEnv } from "./storage-env";
-import { getStorageEnv, isS3Configured } from "./storage-env";
+import { isDangerousExtension, isDangerousMime, sniffMimeFromBuffer } from './mime-sniff.js';
+import { putObjectBytes } from './s3-client.js';
+import type { StorageEnv } from './storage-env.js';
+import { getStorageEnv, isS3Configured } from './storage-env.js';
+import { omitUndefined } from '../../../../shared/types/object.utils.js';
 
 export type ProcessedUpload = {
   buffer: Buffer;
@@ -181,7 +182,7 @@ export async function ingestMobileUpload(params: {
     return { ok: "INVALID_TYPE" };
   }
 
-  const processed =
+  const processed: ProcessedUpload =
     sniffed === "application/pdf"
       ? { buffer: params.fileBuffer, mimeType: sniffed }
       : sniffed.startsWith("video/")
@@ -227,8 +228,8 @@ export async function ingestMobileUpload(params: {
     },
   });
 
-  return {
-    ok: true,
+  return omitUndefined({
+    ok: true as const,
     id: row.id,
     storageKey: row.storageKey,
     bucket: row.bucket,
@@ -237,7 +238,7 @@ export async function ingestMobileUpload(params: {
     checksum,
     width: processed.width,
     height: processed.height,
-  };
+  });
 }
 
 /** Map technician document enum to expected upload purpose (for linking validation). */

@@ -1,0 +1,25 @@
+# Prometheus scrape configuration — Prani Doctor API
+# Mount alongside prometheus-alerts.yml when deploying the monitoring profile.
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - prometheus-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: pranidoctor-api
+    metrics_path: /metrics
+    authorization:
+      credentials: ${METRICS_TOKEN}
+    static_configs:
+      - targets: ['api:3000']
+        labels:
+          service: pranidoctor-api
+          environment: production

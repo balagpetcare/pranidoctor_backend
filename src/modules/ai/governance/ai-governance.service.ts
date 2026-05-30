@@ -11,7 +11,9 @@ import {
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { isRedisInitialized } from '../../../infra/redis/redis.client.js';
 import { createAuditLogAsync } from '../../../shared/security/audit/index.js';
+import type { AuditAction } from '../../../shared/security/audit/audit.types.js';
 import { logInfo, logWarn } from '../../../shared/logger/logger.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { setAiLlmDisabledMetric } from '../usage/ai-usage.service.js';
 
 import {
@@ -24,12 +26,27 @@ import {
   writeGovernanceRedisCache,
 } from './ai-governance.redis.js';
 import {
+  AI_GOVERNANCE_FEATURES,
+  AI_GOVERNANCE_PROVIDERS,
+  AI_GOVERNANCE_SCOPE_TYPES,
+  emptyScopeSnapshot,
+  isKnownFeature,
+  isKnownProvider,
+  normalizeFeatureKey,
+  normalizeProviderKey,
+  type AiGovernanceScopeSnapshot,
+  type AiGovernanceScopeType,
+} from './ai-governance.scopes.js';
+import {
   AI_GOVERNANCE_SCOPE_ID,
+  type AiGovernanceChangeKind,
   type AiGovernanceHistoryDto,
   type AiGovernancePanelDto,
+  type AiGovernanceScopeUpdateInput,
   type AiGovernanceSource,
   type AiGovernanceStateDto,
   type SetAiGovernanceParams,
+  type SetAiGovernanceScopeParams,
 } from './ai-governance.types.js';
 
 const DEFAULT_POLL_MS = 45_000;
@@ -39,6 +56,8 @@ const MAX_TOGGLES_PER_HOUR = 10;
 interface LocalMirror {
   llmDisabled: boolean;
   version: number;
+  scopes: AiGovernanceScopeSnapshot;
+  hydrated: boolean;
 }
 
 function isPersistenceEnabled(): boolean {
@@ -51,15 +70,19 @@ function envForceLlmDisabled(): boolean {
   return process.env.AI_LLM_DISABLED?.trim().toLowerCase() === 'true';
 }
 
-function mapStateRow(row: {
-  llmDisabled: boolean;
-  version: bigint;
-  updatedAt: Date;
-  updatedByUserId: string | null;
-  updatedByRole: string | null;
-  reason: string | null;
-  source: string;
-}): AiGovernanceStateDto {
+function mapStateRow(
+  row: {
+    llmDisabled: boolean;
+    version: bigint;
+    updatedAt: Date;
+    updatedByUserId: string | null;
+    updatedByRole: string | null;
+    reason: string | null;
+    source: string;
+  },
+  scopes: AiGovernanceScopeSnapshot,
+  environment: string,
+): AiGovernanceStateDto {
   return {
     llmDisabled: row.llmDisabled,
     version: Number(row.version),
@@ -68,13 +91,20 @@ function mapStateRow(row: {
     updatedByRole: row.updatedByRole,
     reason: row.reason,
     source: row.source,
+    environment,
+    scopes,
   };
 }
 
 function mapHistoryRow(row: {
   id: string;
+  changeKind: string;
   llmDisabled: boolean;
   previousLlmDisabled: boolean;
+  scopeType: string | null;
+  scopeId: string | null;
+  disabled: boolean | null;
+  previousDisabled: boolean | null;
   version: bigint;
   actorId: string | null;
   actorRole: string | null;
@@ -87,8 +117,13 @@ function mapHistoryRow(row: {
 }): AiGovernanceHistoryDto {
   return {
     id: row.id,
+    changeKind: row.changeKind as AiGovernanceChangeKind,
     llmDisabled: row.llmDisabled,
     previousLlmDisabled: row.previousLlmDisabled,
+    scopeType: row.scopeType,
+    scopeId: row.scopeId,
+    disabled: row.disabled,
+    previousDisabled: row.previousDisabled,
     version: Number(row.version),
     actorId: row.actorId,
     actorRole: row.actorRole,
@@ -105,12 +140,26 @@ export class AiGovernanceService {
   readonly name = 'AiGovernanceService';
 
   private config: AppConfig | null = null;
-  private mirror: LocalMirror = { llmDisabled: false, version: 0 };
+  private mirror: LocalMirror = {
+    llmDisabled: false,
+    version: 0,
+    scopes: emptyScopeSnapshot(),
+    hydrated: false,
+  };
   private subscriber: Redis | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** Hot path — read in-process mirror (no I/O). */
+  isHydrated(): boolean {
+    return this.mirror.hydrated;
+  }
+
+  private isFailClosed(): boolean {
+    return isPersistenceEnabled() && !this.mirror.hydrated;
+  }
+
+  /** Hot path — global LLM kill switch (fail-closed if not hydrated). */
   isLlmDisabled(): boolean {
+    if (this.isFailClosed()) return true;
     return this.mirror.llmDisabled;
   }
 
@@ -118,25 +167,59 @@ export class AiGovernanceService {
     return this.mirror.version;
   }
 
-  /**
-   * Apply state locally + metrics (tests, pub/sub, startup).
-   * Does not persist.
-   */
-  applyLocalState(llmDisabled: boolean, version?: number): void {
-    this.mirror.llmDisabled = llmDisabled;
-    if (version !== undefined) {
-      this.mirror.version = version;
+  getScopeSnapshot(): AiGovernanceScopeSnapshot {
+    return {
+      features: { ...this.mirror.scopes.features },
+      providers: { ...this.mirror.scopes.providers },
+    };
+  }
+
+  shouldUseRulesOnlyForFeature(feature: string): boolean {
+    if (this.isFailClosed()) return true;
+    if (this.mirror.llmDisabled) return true;
+    const key = normalizeFeatureKey(feature);
+    return Boolean(this.mirror.scopes.features[key]);
+  }
+
+  isProviderDisabled(provider: string): boolean {
+    if (this.isFailClosed()) return provider !== 'rules-based';
+    const key = normalizeProviderKey(provider);
+    if (key === 'rules-based') return false;
+    return Boolean(this.mirror.scopes.providers[key]);
+  }
+
+  /** No-op guard for observability; orchestrator enforces rules-only. */
+  assertLlmExecutionAllowed(feature: string): void {
+    if (this.shouldUseRulesOnlyForFeature(feature)) {
+      return;
     }
+  }
+
+  applyLocalState(
+    llmDisabled: boolean,
+    version?: number,
+    scopes?: AiGovernanceScopeSnapshot,
+  ): void {
+    this.mirror.llmDisabled = llmDisabled;
+    if (version !== undefined) this.mirror.version = version;
+    if (scopes) this.mirror.scopes = scopes;
+    this.mirror.hydrated = true;
     setAiLlmDisabledMetric(llmDisabled);
   }
 
-  private applyRemoteIfNewer(version: number, llmDisabled: boolean): void {
-    if (version <= this.mirror.version) return;
-    this.applyLocalState(llmDisabled, version);
+  private applyRemoteIfNewer(
+    version: number,
+    llmDisabled: boolean,
+    scopes?: AiGovernanceScopeSnapshot,
+  ): void {
+    if (version < this.mirror.version) return;
+    if (version === this.mirror.version && !scopes) return;
+    this.applyLocalState(llmDisabled, version, scopes ?? this.mirror.scopes);
   }
 
   async bootstrap(config: AppConfig): Promise<void> {
     this.config = config;
+    this.mirror.hydrated = false;
 
     if (!isPersistenceEnabled()) {
       const forced = envForceLlmDisabled();
@@ -149,6 +232,7 @@ export class AiGovernanceService {
 
     try {
       const state = await this.ensureStateRow();
+      const scopes = await this.loadScopesFromDb();
       let llmDisabled = state.llmDisabled;
       let version = Number(state.version);
 
@@ -157,8 +241,8 @@ export class AiGovernanceService {
         logWarn('AI_LLM_DISABLED env override — forcing rules-only until persisted toggle');
       }
 
-      this.applyLocalState(llmDisabled, version);
-      await writeGovernanceRedisCache(config, { llmDisabled, version });
+      this.applyLocalState(llmDisabled, version, scopes);
+      await writeGovernanceRedisCache(config, { llmDisabled, version, scopes });
 
       if (isRedisInitialized()) {
         this.subscriber = createGovernanceSubscriber(config);
@@ -168,7 +252,7 @@ export class AiGovernanceService {
           if (ch !== channel) return;
           const payload = parseGovernancePubSubMessage(message);
           if (!payload) return;
-          this.applyRemoteIfNewer(payload.version, payload.llmDisabled);
+          this.applyRemoteIfNewer(payload.version, payload.llmDisabled, payload.scopes);
         });
       }
 
@@ -184,10 +268,11 @@ export class AiGovernanceService {
         this.pollTimer.unref?.();
       }
 
-      logInfo('AI governance hydrated', { llmDisabled, version });
+      logInfo('AI governance hydrated', { llmDisabled, version, scopes });
     } catch (error) {
       let llmDisabled = envForceLlmDisabled();
       let version = 0;
+      let scopes = emptyScopeSnapshot();
 
       if (isRedisInitialized()) {
         try {
@@ -195,24 +280,21 @@ export class AiGovernanceService {
           if (cached) {
             llmDisabled = llmDisabled || cached.llmDisabled;
             version = cached.version;
+            if (cached.scopes) scopes = cached.scopes;
           }
         } catch {
-          // Redis read failed — continue with env / fail-closed below
+          // continue
         }
       }
 
-      if (
-        !llmDisabled &&
-        config.nodeEnv === 'production' &&
-        isPersistenceEnabled()
-      ) {
+      if (!llmDisabled && config.nodeEnv === 'production' && isPersistenceEnabled()) {
         llmDisabled = true;
         logWarn(
           'AI governance bootstrap failed — fail-closed to LLM disabled in production',
         );
       }
 
-      this.applyLocalState(llmDisabled, version);
+      this.applyLocalState(llmDisabled, version, scopes);
       logWarn('AI governance bootstrap failed — using recovery defaults', {
         error: error instanceof Error ? error.message : String(error),
         llmDisabled,
@@ -240,18 +322,20 @@ export class AiGovernanceService {
     if (!isPersistenceEnabled() || !this.config) return;
 
     const pgState = await this.loadStateFromDb();
+    const scopes = await this.loadScopesFromDb();
     if (pgState) {
-      this.applyRemoteIfNewer(pgState.version, pgState.llmDisabled);
+      this.applyRemoteIfNewer(pgState.version, pgState.llmDisabled, scopes);
       await writeGovernanceRedisCache(this.config, {
         llmDisabled: pgState.llmDisabled,
         version: pgState.version,
+        scopes,
       });
       return;
     }
 
     const cached = await readGovernanceRedisCache(this.config);
     if (cached) {
-      this.applyRemoteIfNewer(cached.version, cached.llmDisabled);
+      this.applyRemoteIfNewer(cached.version, cached.llmDisabled, cached.scopes ?? undefined);
     }
   }
 
@@ -259,7 +343,10 @@ export class AiGovernanceService {
     const row = await getPrisma().aiGovernanceState.findUnique({
       where: { id: AI_GOVERNANCE_SCOPE_ID },
     });
-    return row ? mapStateRow(row) : null;
+    if (!row) return null;
+    const scopes = await this.loadScopesFromDb();
+    const config = this.config ?? getConfig();
+    return mapStateRow(row, scopes, config.nodeEnv);
   }
 
   async getRecentHistory(limit = 50): Promise<AiGovernanceHistoryDto[]> {
@@ -272,6 +359,7 @@ export class AiGovernanceService {
   }
 
   async buildGovernancePanel(escalations: unknown[]): Promise<AiGovernancePanelDto> {
+    const config = this.config ?? getConfig();
     const governance = (await this.getStateFromDb()) ?? {
       llmDisabled: this.mirror.llmDisabled,
       version: this.mirror.version,
@@ -280,6 +368,8 @@ export class AiGovernanceService {
       updatedByRole: null,
       reason: null,
       source: 'local_mirror',
+      environment: config.nodeEnv,
+      scopes: this.getScopeSnapshot(),
     };
     const history = await this.getRecentHistory(50);
     return { escalations, governance, history };
@@ -289,19 +379,23 @@ export class AiGovernanceService {
     const config = this.config ?? getConfig();
 
     if (!isPersistenceEnabled()) {
-      this.applyLocalState(params.llmDisabled);
-      return {
-        llmDisabled: params.llmDisabled,
-        version: this.mirror.version,
-        updatedAt: new Date().toISOString(),
-        updatedByUserId: params.actorId ?? null,
-        updatedByRole: params.actorRole ?? null,
-        reason: params.reason ?? null,
-        source: params.source,
-      };
+      this.applyLocalState(params.llmDisabled, undefined, this.mirror.scopes);
+      return mapStateRow(
+        {
+          llmDisabled: params.llmDisabled,
+          version: BigInt(this.mirror.version),
+          updatedAt: new Date(),
+          updatedByUserId: params.actorId ?? null,
+          updatedByRole: params.actorRole ?? null,
+          reason: params.reason ?? null,
+          source: params.source,
+        },
+        this.mirror.scopes,
+        config.nodeEnv,
+      );
     }
 
-    this.assertTogglePolicy(params);
+    this.assertTogglePolicy(params, 'global');
 
     const ctx = getRequestContext();
     const requestId = params.requestId ?? ctx?.requestId;
@@ -322,10 +416,11 @@ export class AiGovernanceService {
     }
 
     if (previousDisabled === params.llmDisabled) {
-      return mapStateRow(previous);
+      return mapStateRow(previous, await this.loadScopesFromDb(), config.nodeEnv);
     }
 
     const nextVersion = previousVersion + 1;
+    const scopes = await this.loadScopesFromDb();
 
     let updated;
     try {
@@ -345,6 +440,7 @@ export class AiGovernanceService {
         await tx.aiGovernanceStateHistory.create({
           data: {
             stateId: AI_GOVERNANCE_SCOPE_ID,
+            changeKind: 'global',
             llmDisabled: params.llmDisabled,
             previousLlmDisabled: previousDisabled,
             version: BigInt(nextVersion),
@@ -370,55 +466,264 @@ export class AiGovernanceService {
       );
     }
 
-    const dto = mapStateRow(updated);
-    this.applyLocalState(dto.llmDisabled, dto.version);
-
-    try {
-      await writeGovernanceRedisCache(config, {
-        llmDisabled: dto.llmDisabled,
-        version: dto.version,
-      });
-      await publishGovernanceChange(config, {
-        version: dto.version,
-        llmDisabled: dto.llmDisabled,
-        at: dto.updatedAt,
-      });
-    } catch (error) {
-      logWarn('AI governance Redis sync failed after persist', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    void createAuditLogAsync({
-      action: 'SYSTEM_CONFIG_CHANGE',
-      severity: 'CRITICAL',
-      actorId: params.actorId,
-      actorRole: params.actorRole,
-      actorType: 'user',
-      resourceType: 'ai_governance',
-      resourceId: AI_GOVERNANCE_SCOPE_ID,
-      details: {
-        field: 'llmDisabled',
-        source: params.source,
-        reason: params.reason,
-      },
-      changes: {
-        before: { llmDisabled: previousDisabled, version: previousVersion },
-        after: { llmDisabled: dto.llmDisabled, version: dto.version },
-      },
-    });
-
-    logInfo('AI governance state changed', {
-      llmDisabled: dto.llmDisabled,
-      version: dto.version,
-      source: params.source,
-      actorId: params.actorId,
-    });
-
+    const dto = mapStateRow(updated, scopes, config.nodeEnv);
+    this.applyLocalState(dto.llmDisabled, dto.version, scopes);
+    await this.syncAfterPersist(dto, scopes, params, previousDisabled, previousVersion);
     return dto;
   }
 
-  private assertTogglePolicy(params: SetAiGovernanceParams): void {
+  async setScopeDisabled(params: SetAiGovernanceScopeParams): Promise<AiGovernanceStateDto> {
+    const config = this.config ?? getConfig();
+    this.validateScopeParams(params);
+
+    if (!isPersistenceEnabled()) {
+      const key =
+        params.scopeType === 'feature'
+          ? normalizeFeatureKey(params.scopeId)
+          : normalizeProviderKey(params.scopeId);
+      if (params.scopeType === 'feature') {
+        this.mirror.scopes.features[key] = params.disabled;
+      } else {
+        this.mirror.scopes.providers[key] = params.disabled;
+      }
+      return mapStateRow(
+        {
+          llmDisabled: this.mirror.llmDisabled,
+          version: BigInt(this.mirror.version),
+          updatedAt: new Date(),
+          updatedByUserId: params.actorId ?? null,
+          updatedByRole: params.actorRole ?? null,
+          reason: params.reason ?? null,
+          source: params.source,
+        },
+        this.mirror.scopes,
+        config.nodeEnv,
+      );
+    }
+
+    this.assertTogglePolicy(
+      { ...params, llmDisabled: params.disabled, source: params.source },
+      params.scopeType,
+    );
+
+    const ctx = getRequestContext();
+    const requestId = params.requestId ?? ctx?.requestId;
+    const correlationId = params.correlationId ?? ctx?.traceId;
+
+    await this.assertToggleRateLimit(params.actorId);
+
+    const globalRow = await this.ensureStateRow();
+    const globalVersion = Number(globalRow.version);
+    const scopeRow = await this.ensureScopeRow(params.scopeType, params.scopeId);
+    const scopeVersion = Number(scopeRow.version);
+
+    if (params.expectedVersion !== undefined && params.expectedVersion !== scopeVersion) {
+      throw new BadRequestError(
+        'AI_GOVERNANCE_VERSION_CONFLICT',
+        'Scope changed by another operator. Refresh and retry.',
+        { expectedVersion: params.expectedVersion, currentVersion: scopeVersion },
+      );
+    }
+
+    if (scopeRow.disabled === params.disabled) {
+      const scopes = await this.loadScopesFromDb();
+      return mapStateRow(globalRow, scopes, config.nodeEnv);
+    }
+
+    const nextGlobalVersion = globalVersion + 1;
+    const nextScopeVersion = scopeVersion + 1;
+    const changeKind = params.scopeType;
+
+    let updatedGlobal;
+    try {
+      updatedGlobal = await getPrisma().$transaction(async (tx) => {
+        await tx.aiGovernanceScope.update({
+          where: {
+            scopeType_scopeId: {
+              scopeType: params.scopeType,
+              scopeId:
+                params.scopeType === 'feature'
+                  ? normalizeFeatureKey(params.scopeId)
+                  : normalizeProviderKey(params.scopeId),
+            },
+          },
+          data: {
+            disabled: params.disabled,
+            version: BigInt(nextScopeVersion),
+            updatedByUserId: params.actorId ?? null,
+            updatedByRole: params.actorRole ?? null,
+            reason: params.reason ?? null,
+            source: params.source,
+          },
+        });
+
+        const state = await tx.aiGovernanceState.update({
+          where: { id: AI_GOVERNANCE_SCOPE_ID },
+          data: { version: BigInt(nextGlobalVersion) },
+        });
+
+        await tx.aiGovernanceStateHistory.create({
+          data: {
+            stateId: AI_GOVERNANCE_SCOPE_ID,
+            changeKind,
+            llmDisabled: state.llmDisabled,
+            previousLlmDisabled: state.llmDisabled,
+            scopeType: params.scopeType,
+            scopeId:
+              params.scopeType === 'feature'
+                ? normalizeFeatureKey(params.scopeId)
+                : normalizeProviderKey(params.scopeId),
+            disabled: params.disabled,
+            previousDisabled: scopeRow.disabled,
+            version: BigInt(nextGlobalVersion),
+            actorId: params.actorId ?? null,
+            actorRole: params.actorRole ?? null,
+            reason: params.reason ?? null,
+            source: params.source,
+            requestId: requestId ?? null,
+            correlationId: correlationId ?? null,
+            rollbackOfId: params.rollbackOfId ?? null,
+          },
+        });
+
+        return state;
+      });
+    } catch (error) {
+      logWarn('AI governance scope persist failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new ServiceUnavailableError(
+        'AI_GOVERNANCE_STORE_UNAVAILABLE',
+        'Could not persist AI governance scope. Try again when the database is available.',
+      );
+    }
+
+    const scopes = await this.loadScopesFromDb();
+    const dto = mapStateRow(updatedGlobal, scopes, config.nodeEnv);
+    this.applyLocalState(dto.llmDisabled, dto.version, scopes);
+    await this.syncAfterPersist(
+      dto,
+      scopes,
+      omitUndefined({
+        llmDisabled: dto.llmDisabled,
+        reason: params.reason,
+        actorId: params.actorId,
+        actorRole: params.actorRole,
+        source: params.source,
+      }),
+      dto.llmDisabled,
+      globalVersion,
+      `scope.${params.scopeType}.${params.scopeId}`,
+    );
+    return dto;
+  }
+
+  async applyScopeUpdates(
+    updates: AiGovernanceScopeUpdateInput[],
+    meta: {
+      actorId?: string;
+      actorRole?: string;
+      reason?: string;
+      source: AiGovernanceSource;
+      expectedVersion?: number;
+    },
+  ): Promise<AiGovernanceStateDto> {
+    let last: AiGovernanceStateDto | null = null;
+    for (const u of updates) {
+      last = await this.setScopeDisabled(
+        omitUndefined({
+          scopeType: u.scopeType,
+          scopeId: u.scopeId,
+          disabled: u.disabled,
+          reason: meta.reason,
+          actorId: meta.actorId,
+          actorRole: meta.actorRole,
+          source: meta.source,
+          expectedVersion: meta.expectedVersion,
+        }),
+      );
+      meta.expectedVersion = last.version;
+    }
+    if (!last) {
+      const existing = await this.getStateFromDb();
+      if (!existing) {
+        throw new ServiceUnavailableError(
+          'AI_GOVERNANCE_STORE_UNAVAILABLE',
+          'Governance state unavailable',
+        );
+      }
+      return existing;
+    }
+    return last;
+  }
+
+  async logFailedGovernanceAttempt(params: {
+    actorId?: string;
+    actorRole?: string;
+    reason: string;
+    source: AiGovernanceSource;
+    details?: Record<string, unknown>;
+  }): Promise<void> {
+    if (!isPersistenceEnabled()) {
+      logWarn('AI governance failed attempt', params);
+      return;
+    }
+
+    const globalRow = await this.ensureStateRow();
+    const version = Number(globalRow.version) + 1;
+    const ctx = getRequestContext();
+
+    try {
+      await getPrisma().$transaction(async (tx) => {
+        await tx.aiGovernanceState.update({
+          where: { id: AI_GOVERNANCE_SCOPE_ID },
+          data: { version: BigInt(version) },
+        });
+        await tx.aiGovernanceStateHistory.create({
+          data: {
+            stateId: AI_GOVERNANCE_SCOPE_ID,
+            changeKind: 'failed_attempt',
+            llmDisabled: globalRow.llmDisabled,
+            previousLlmDisabled: globalRow.llmDisabled,
+            version: BigInt(version),
+            actorId: params.actorId ?? null,
+            actorRole: params.actorRole ?? null,
+            reason: params.reason,
+            source: params.source,
+            requestId: ctx?.requestId ?? null,
+            correlationId: ctx?.traceId ?? null,
+          },
+        });
+      });
+    } catch (error) {
+      logWarn('AI governance failed attempt audit write failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private validateScopeParams(params: SetAiGovernanceScopeParams): void {
+    if (!AI_GOVERNANCE_SCOPE_TYPES.includes(params.scopeType)) {
+      throw new BadRequestError('AI_GOVERNANCE_INVALID_SCOPE', 'Invalid scope type');
+    }
+    if (params.scopeType === 'feature' && !isKnownFeature(params.scopeId)) {
+      throw new BadRequestError(
+        'AI_GOVERNANCE_INVALID_SCOPE',
+        `Unknown feature. Allowed: ${AI_GOVERNANCE_FEATURES.join(', ')}`,
+      );
+    }
+    if (params.scopeType === 'provider' && !isKnownProvider(params.scopeId)) {
+      throw new BadRequestError(
+        'AI_GOVERNANCE_INVALID_SCOPE',
+        `Unknown provider. Allowed: ${AI_GOVERNANCE_PROVIDERS.join(', ')}`,
+      );
+    }
+  }
+
+  private assertTogglePolicy(
+    params: { llmDisabled: boolean; source: AiGovernanceSource; actorRole?: string; reason?: string },
+    kind: 'global' | AiGovernanceScopeType,
+  ): void {
     const config = this.config ?? getConfig();
     const isProd = config.nodeEnv === 'production';
 
@@ -430,7 +735,9 @@ export class AiGovernanceService {
     ) {
       throw new ForbiddenError(
         'AI_GOVERNANCE_ENABLE_FORBIDDEN',
-        'Enabling LLM in production requires SUPER_ADMIN role.',
+        kind === 'global'
+          ? 'Enabling LLM in production requires SUPER_ADMIN role.'
+          : 'Enabling this scope in production requires SUPER_ADMIN role.',
       );
     }
 
@@ -439,10 +746,73 @@ export class AiGovernanceService {
       if (reason.length < 10) {
         throw new BadRequestError(
           'AI_GOVERNANCE_REASON_REQUIRED',
-          'A reason of at least 10 characters is required to disable LLM in production.',
+          'A reason of at least 10 characters is required to disable in production.',
         );
       }
     }
+  }
+
+  private async syncAfterPersist(
+    dto: AiGovernanceStateDto,
+    scopes: AiGovernanceScopeSnapshot,
+    params: {
+      llmDisabled: boolean;
+      reason?: string;
+      actorId?: string;
+      actorRole?: string;
+      source: AiGovernanceSource;
+    },
+    previousDisabled: boolean,
+    previousVersion: number,
+    auditField = 'llmDisabled',
+  ): Promise<void> {
+    const config = this.config ?? getConfig();
+
+    try {
+      await writeGovernanceRedisCache(config, {
+        llmDisabled: dto.llmDisabled,
+        version: dto.version,
+        scopes,
+      });
+      await publishGovernanceChange(config, {
+        version: dto.version,
+        llmDisabled: dto.llmDisabled,
+        at: dto.updatedAt,
+        scopes,
+      });
+    } catch (error) {
+      logWarn('AI governance Redis sync failed after persist', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    void createAuditLogAsync({
+      action: 'SYSTEM_CONFIG_CHANGE' satisfies AuditAction,
+      ...omitUndefined({
+        severity: 'CRITICAL' as const,
+        actorId: params.actorId,
+        actorRole: params.actorRole,
+        actorType: 'user' as const,
+        resourceType: 'ai_governance',
+        resourceId: AI_GOVERNANCE_SCOPE_ID,
+        details: {
+          field: auditField,
+          source: params.source,
+          reason: params.reason,
+        },
+        changes: [
+          { field: 'llmDisabled', oldValue: previousDisabled, newValue: dto.llmDisabled },
+          { field: 'version', oldValue: previousVersion, newValue: dto.version },
+        ],
+      }),
+    });
+
+    logInfo('AI governance state changed', {
+      llmDisabled: dto.llmDisabled,
+      version: dto.version,
+      source: params.source,
+      actorId: params.actorId,
+    });
   }
 
   private async assertToggleRateLimit(actorId?: string): Promise<void> {
@@ -478,6 +848,49 @@ export class AiGovernanceService {
         source: 'startup_sync',
       },
     });
+  }
+
+  private async ensureScopeRow(scopeType: AiGovernanceScopeType, scopeId: string) {
+    const prisma = getPrisma();
+    const normalizedId =
+      scopeType === 'feature' ? normalizeFeatureKey(scopeId) : normalizeProviderKey(scopeId);
+    const existing = await prisma.aiGovernanceScope.findUnique({
+      where: { scopeType_scopeId: { scopeType, scopeId: normalizedId } },
+    });
+    if (existing) return existing;
+
+    return prisma.aiGovernanceScope.create({
+      data: {
+        scopeType,
+        scopeId: normalizedId,
+        disabled: false,
+        version: BigInt(1),
+        source: 'startup_sync',
+      },
+    });
+  }
+
+  private async ensureAllScopeRows(): Promise<void> {
+    for (const f of AI_GOVERNANCE_FEATURES) {
+      await this.ensureScopeRow('feature', f);
+    }
+    for (const p of AI_GOVERNANCE_PROVIDERS) {
+      await this.ensureScopeRow('provider', p);
+    }
+  }
+
+  private async loadScopesFromDb(): Promise<AiGovernanceScopeSnapshot> {
+    await this.ensureAllScopeRows();
+    const rows = await getPrisma().aiGovernanceScope.findMany();
+    const snapshot = emptyScopeSnapshot();
+    for (const row of rows) {
+      if (row.scopeType === 'feature') {
+        snapshot.features[normalizeFeatureKey(row.scopeId)] = row.disabled;
+      } else if (row.scopeType === 'provider') {
+        snapshot.providers[normalizeProviderKey(row.scopeId)] = row.disabled;
+      }
+    }
+    return snapshot;
   }
 
   private async loadStateFromDb() {

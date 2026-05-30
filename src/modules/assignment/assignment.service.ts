@@ -6,6 +6,7 @@ import {
   UserStatus,
 } from '../../generated/prisma/index.js';
 import { getPrisma } from '../../shared/database/prisma.js';
+import { traceWorkflow } from '../../shared/monitoring/workflow-tracing.js';
 
 import { appendTimelineEvent } from '../timeline/timeline.service.js';
 
@@ -235,6 +236,14 @@ export async function acceptServiceRequestForDoctor(
       serviceRequestId: requestId,
       eventType: ServiceRequestEventType.ACCEPTED,
       actorRole: UserRole.DOCTOR,
+      metadata: { doctorProfileId },
+    });
+    traceWorkflow({
+      workflow: 'doctor_consultation',
+      step: 'doctor_accepted',
+      outcome: 'completed',
+      resourceType: 'service_request',
+      resourceId: requestId,
       metadata: { doctorProfileId },
     });
     return { ok: 'ACCEPTED' };

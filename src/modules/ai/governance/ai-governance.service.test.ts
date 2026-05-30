@@ -8,6 +8,12 @@ const prismaMock = {
     create: vi.fn(),
     update: vi.fn(),
   },
+  aiGovernanceScope: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
   aiGovernanceStateHistory: {
     findMany: vi.fn(),
     create: vi.fn(),
@@ -64,6 +70,25 @@ describe('AiGovernanceService', () => {
     service = new AiGovernanceService();
     process.env.AI_KILL_SWITCH_PERSISTENCE_ENABLED = 'true';
     process.env.NODE_ENV = 'test';
+    prismaMock.aiGovernanceScope.findMany.mockResolvedValue([
+      { scopeType: 'feature', scopeId: 'CHAT', disabled: false },
+      { scopeType: 'provider', scopeId: 'openai', disabled: false },
+    ]);
+    prismaMock.aiGovernanceScope.findUnique.mockImplementation(
+      async ({ where }: { where: { scopeType_scopeId: { scopeType: string; scopeId: string } } }) => ({
+        scopeType: where.scopeType_scopeId.scopeType,
+        scopeId: where.scopeType_scopeId.scopeId,
+        disabled: false,
+        version: BigInt(1),
+      }),
+    );
+    prismaMock.aiGovernanceScope.create.mockImplementation(
+      async ({ data }: { data: { scopeType: string; scopeId: string } }) => ({
+        ...data,
+        disabled: false,
+        version: BigInt(1),
+      }),
+    );
   });
 
   afterEach(() => {
@@ -168,6 +193,31 @@ describe('AiGovernanceService', () => {
     });
 
     expect(result.llmDisabled).toBe(false);
+  });
+
+  it('shouldUseRulesOnlyForFeature when feature scope disabled', async () => {
+    service.applyLocalState(false, 2, {
+      features: { CHAT: true, FARM_BRIEFING: false, FARM_QUERY: false },
+      providers: { openai: false, anthropic: false },
+    });
+    expect(service.shouldUseRulesOnlyForFeature('CHAT')).toBe(true);
+    expect(service.shouldUseRulesOnlyForFeature('FARM_QUERY')).toBe(false);
+  });
+
+  it('isProviderDisabled blocks provider in chain', async () => {
+    service.applyLocalState(false, 2, {
+      features: { CHAT: false, FARM_BRIEFING: false, FARM_QUERY: false },
+      providers: { openai: true, anthropic: false },
+    });
+    expect(service.isProviderDisabled('openai')).toBe(true);
+    expect(service.isProviderDisabled('anthropic')).toBe(false);
+    expect(service.isProviderDisabled('rules-based')).toBe(false);
+  });
+
+  it('fail-closed when not hydrated with persistence on', () => {
+    const s = new AiGovernanceService();
+    expect(s.isLlmDisabled()).toBe(true);
+    expect(s.shouldUseRulesOnlyForFeature('CHAT')).toBe(true);
   });
 
   it('skips persist when persistence flag is off', async () => {

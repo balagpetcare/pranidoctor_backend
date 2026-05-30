@@ -43,6 +43,17 @@ async function bootstrap(): Promise<void> {
   }
 
   try {
+    const { bootstrapAiGovernance } = await import('./modules/ai/governance/ai-governance.service.js');
+    await bootstrapAiGovernance(config);
+    logger.info({ msg: 'AI governance kill switch initialized (worker)' });
+  } catch (error) {
+    logger.warn({
+      msg: 'AI governance bootstrap failed in worker — LLM paths fail-closed until hydrated',
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
     initializeQueueConnection(config);
     logger.info({ msg: 'Queue connection initialized' });
   } catch (error) {

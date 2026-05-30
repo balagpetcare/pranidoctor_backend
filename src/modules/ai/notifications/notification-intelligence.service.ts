@@ -4,6 +4,7 @@ import {
   SmartRecommendationStatus,
 } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { getSmartRecommendationService } from '../recommendations/smart-recommendation.service.js';
 
 export class NotificationIntelligenceService {
@@ -29,7 +30,7 @@ export class NotificationIntelligenceService {
       if (existing) continue;
 
       await prisma.aiSmartAlert.create({
-        data: {
+        data: omitUndefined({
           customerId,
           userId,
           type: `rec:${rec.id}`,
@@ -41,7 +42,7 @@ export class NotificationIntelligenceService {
           deepLink: rec.deepLink,
           status: AiAlertStatus.PENDING,
           scheduledAt: new Date(),
-        },
+        }),
       });
     }
   }

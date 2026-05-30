@@ -1,13 +1,14 @@
 # AI Kill Switch — Operations & Recovery
 
 **Status:** Implemented  
-**Related:** `pranidoctor_user/docs/production/ai/ai-kill-switch-persistence-plan.md`
+**Related:** `pranidoctor_user/docs/production/ai/ai-kill-switch-persistence-plan.md`, `docs/operations/ai-kill-switch.md`, `docs/operations/ai-emergency-runbook.md`
 
 ## Architecture (runtime)
 
 | Layer | Role |
 |-------|------|
 | PostgreSQL `AiGovernanceState` | Source of truth (singleton `id = global`) |
+| PostgreSQL `AiGovernanceScope` | Per-feature / per-provider disable flags |
 | PostgreSQL `AiGovernanceStateHistory` | Append-only audit of every change |
 | Redis `{prefix}ai:governance:*` | Runtime cache + pub/sub fan-out |
 | In-process mirror | Hot path for `AiOrchestratorService` (no Redis per request) |
@@ -30,7 +31,10 @@ pnpm prisma migrate deploy
 # or dev: pnpm prisma migrate dev
 ```
 
-Migration: `prisma/migrations/20260530160000_ai_governance_kill_switch/migration.sql`
+Migrations:
+
+- `prisma/migrations/20260530160000_ai_governance_kill_switch/migration.sql`
+- `prisma/migrations/20260601120000_ai_governance_scopes/migration.sql`
 
 ## Admin API (unchanged paths)
 

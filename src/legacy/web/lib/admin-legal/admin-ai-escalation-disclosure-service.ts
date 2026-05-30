@@ -12,6 +12,7 @@ import {
   AI_ESCALATION_DISCLOSURE_SETTING_KEY,
   loadAiEscalationDisclosureConfig,
 } from '../ai-escalation-disclosure/ai-escalation-disclosure-config.js';
+import { assertAiEscalationDisclosureMessaging } from './messaging-compliance-admin.js';
 import type { AdminAiEscalationDisclosurePutBody } from '../ai-escalation-disclosure/schemas.js';
 
 export type AdminAiEscalationDisclosureDto = AiEscalationDisclosureConfig & {
@@ -76,6 +77,8 @@ export async function updateAdminAiEscalationDisclosureSettings(
     full: mergeLocaleText(current.full, body.full),
     contextual,
   };
+
+  assertAiEscalationDisclosureMessaging(next);
 
   const row = await prisma.setting.upsert({
     where: { key: AI_ESCALATION_DISCLOSURE_SETTING_KEY },

@@ -30,7 +30,7 @@ describe('http metrics', () => {
     resetHttpMetricsForTests();
   });
 
-  it('exports request counters and histograms', () => {
+  it('exports request counters, status codes, and histograms', () => {
     recordHttpRequest({
       method: 'GET',
       path: '/api/mobile/feeds',
@@ -43,11 +43,19 @@ describe('http metrics', () => {
       statusCode: 500,
       durationMs: 120,
     });
+    recordHttpRequest({
+      method: 'POST',
+      path: '/api/mobile/auth/otp/verify',
+      statusCode: 401,
+      durationMs: 10,
+    });
 
     const text = renderHttpPrometheusLines().join('\n');
     expect(text).toContain('pranidoctor_http_requests_total');
     expect(text).toContain('status_class="2xx"');
     expect(text).toContain('status_class="5xx"');
+    expect(text).toContain('pranidoctor_http_status_total');
+    expect(text).toContain('status_code="401"');
     expect(text).toContain('pranidoctor_http_request_duration_seconds_bucket');
   });
 });

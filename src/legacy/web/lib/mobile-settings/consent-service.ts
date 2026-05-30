@@ -134,12 +134,22 @@ export async function withdrawConsentForUser(
 }
 
 export type AdminConsentOverviewDto = {
-  requiredVersions: ConsentStatusDto['requiredVersions'];
+  requiredVersions: ConsentStatusDto['requiredVersions'] & {
+    vetDisclaimerVersion: string;
+    emergencyLimitationVersion: string;
+  };
+  policyUrls: {
+    privacyPolicyUrl: string;
+    termsOfServiceUrl: string;
+  };
+  legalGateEnabled: boolean;
   enforcePrivacyConsent: boolean;
   acceptanceCounts: {
     privacyAccepted: number;
     termsAccepted: number;
     aiConsentAccepted: number;
+    vetDisclaimerAccepted: number;
+    emergencyLimitationAccepted: number;
     totalCustomers: number;
   };
   recentEventsTotal: number;
@@ -156,6 +166,8 @@ export async function getAdminConsentOverview(): Promise<AdminConsentOverviewDto
           privacyAcceptedVersion: true,
           termsAcceptedVersion: true,
           aiAcceptedVersion: true,
+          vetAcceptedVersion: true,
+          emergencyAcceptedVersion: true,
         },
       },
     },
@@ -164,12 +176,18 @@ export async function getAdminConsentOverview(): Promise<AdminConsentOverviewDto
   let privacyAccepted = 0;
   let termsAccepted = 0;
   let aiConsentAccepted = 0;
+  let vetDisclaimerAccepted = 0;
+  let emergencyLimitationAccepted = 0;
 
   for (const user of customers) {
     const s = user.mobileUserSettings;
     if (s?.privacyAcceptedVersion === legal.privacyVersion) privacyAccepted += 1;
     if (s?.termsAcceptedVersion === legal.termsVersion) termsAccepted += 1;
     if (s?.aiAcceptedVersion === legal.aiConsentVersion) aiConsentAccepted += 1;
+    if (s?.vetAcceptedVersion === legal.vetDisclaimerVersion) vetDisclaimerAccepted += 1;
+    if (s?.emergencyAcceptedVersion === legal.emergencyLimitationVersion) {
+      emergencyLimitationAccepted += 1;
+    }
   }
 
   const recentEventsTotal = await prisma.legalConsentEvent.count();
@@ -179,12 +197,21 @@ export async function getAdminConsentOverview(): Promise<AdminConsentOverviewDto
       privacyVersion: legal.privacyVersion,
       termsVersion: legal.termsVersion,
       aiConsentVersion: legal.aiConsentVersion,
+      vetDisclaimerVersion: legal.vetDisclaimerVersion,
+      emergencyLimitationVersion: legal.emergencyLimitationVersion,
     },
+    policyUrls: {
+      privacyPolicyUrl: legal.privacyPolicyUrl,
+      termsOfServiceUrl: legal.termsOfServiceUrl,
+    },
+    legalGateEnabled: legal.legalGateEnabled,
     enforcePrivacyConsent: legal.enforcePrivacyConsent,
     acceptanceCounts: {
       privacyAccepted,
       termsAccepted,
       aiConsentAccepted,
+      vetDisclaimerAccepted,
+      emergencyLimitationAccepted,
       totalCustomers: customers.length,
     },
     recentEventsTotal,

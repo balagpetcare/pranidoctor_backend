@@ -6,7 +6,7 @@
 **Canonical files:**
 
 - `prisma/schema.prisma`
-- `prisma/migrations/` (23 active migrations)
+- `prisma/migrations/` (58 active migrations — run `npm run db:audit` for current count)
 - `prisma/seed.ts` and seed variants
 - `prisma.config.ts`
 

@@ -6,6 +6,7 @@ import {
   UserRole,
 } from '../../generated/prisma/index.js';
 import { getPrisma } from '../../shared/database/prisma.js';
+import { traceWorkflow } from '../../shared/monitoring/workflow-tracing.js';
 
 import { appendTimelineEvent } from '../timeline/timeline.service.js';
 
@@ -104,6 +105,18 @@ export async function createServiceRequestForCustomer(
     eventType: ServiceRequestEventType.CREATED,
     actorRole: UserRole.CUSTOMER,
     note: body.problemOrSymptom.trim(),
+  });
+
+  traceWorkflow({
+    workflow: 'appointment',
+    step: 'service_request_created',
+    outcome: 'completed',
+    resourceType: 'service_request',
+    resourceId: row.id,
+    metadata: {
+      serviceType: body.serviceType,
+      isEmergency,
+    },
   });
 
   return { ok: 'CREATED' as const, request: toServiceRequestDto(row) };

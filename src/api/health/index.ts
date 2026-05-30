@@ -9,6 +9,8 @@ export {
   checkDatabaseHealth,
   checkRedisHealth,
   checkStorageHealth,
+  checkQueueHealth,
+  checkCacheHealth,
 } from './health.service.js';
 export type {
   HealthCheckResult,
