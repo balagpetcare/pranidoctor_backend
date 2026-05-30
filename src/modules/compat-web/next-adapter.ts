@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response as ExpressResponse } from 'express';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { runWithExpressRequest } from '../../compat/next-headers.js';
 
@@ -6,6 +7,13 @@ type WebRouteHandler = (
   request: globalThis.Request,
   context?: { params: Promise<Record<string, string>> },
 ) => Promise<globalThis.Response> | globalThis.Response;
+
+/** Active Fetch Request for the current compat route (survives lazy route `await load()`). */
+const compatWebRequestStore = new AsyncLocalStorage<globalThis.Request>();
+
+export function getCompatWebRequest(): globalThis.Request | undefined {
+  return compatWebRequestStore.getStore();
+}
 
 function readRawBody(req: Request): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -93,7 +101,9 @@ export function wrapNextHandler(handler: WebRouteHandler) {
         if (typeof value === 'string') params[key] = value;
       }
       const context = { params: Promise.resolve(params) };
-      const webRes = await runWithExpressRequest(req, async () => handler(webReq, context));
+      const webRes = await runWithExpressRequest(req, async () =>
+        compatWebRequestStore.run(webReq, async () => handler(webReq, context)),
+      );
       await sendWebResponse(webRes, res);
     } catch (error) {
       next(error);
