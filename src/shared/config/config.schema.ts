@@ -95,6 +95,13 @@ export const configSchema = z
       ]),
       allowedVideoMimes: z.array(z.string()).default(['video/mp4', 'video/webm']),
     }),
+
+    ai: z.object({
+      llmRequired: z.coerce.boolean().default(false),
+      healthProbeEnabled: z.coerce.boolean().default(false),
+      dailyBudgetUsd: z.coerce.number().positive().optional(),
+      monthlyBudgetUsd: z.coerce.number().positive().optional(),
+    }),
   })
   .refine(
     (data) => {

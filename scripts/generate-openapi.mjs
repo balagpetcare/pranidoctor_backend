@@ -118,6 +118,46 @@ function main() {
     };
   }
 
+  const adminAiPaths = [
+    { path: '/api/admin/ai/usage', summary: 'AI usage dashboard (tokens, daily rollups, budget, alerts)' },
+    { path: '/api/admin/ai/costs', summary: 'AI costs dashboard (daily and monthly aggregation)' },
+    { path: '/api/admin/ai/providers', summary: 'AI provider validation, health probes, and metrics' },
+    { path: '/api/admin/ai/health', summary: 'AI platform health and provider probe history' },
+  ];
+  for (const { path, summary } of adminAiPaths) {
+    tags.add('Admin-AI');
+    paths[path] = {
+      get: {
+        tags: ['Admin-AI', 'Compat-Legacy'],
+        summary,
+        parameters:
+          path.includes('usage') || path.includes('costs')
+            ? [{ name: 'sinceDays', in: 'query', schema: { type: 'integer', default: 30 } }]
+            : [],
+        responses: {
+          200: {
+            description: 'Success envelope { ok, data }',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ApiError' } },
+            },
+          },
+          403: {
+            description: 'Forbidden',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ApiError' } },
+            },
+          },
+        },
+      },
+    };
+  }
+
   paths['/health'] = {
     get: { tags: ['Health'], summary: 'Aggregate health (db, redis, storage, queues, memory)' },
   };
@@ -125,6 +165,12 @@ function main() {
   paths['/health/redis'] = { get: { tags: ['Health'], summary: 'Redis health' } };
   paths['/health/storage'] = { get: { tags: ['Health'], summary: 'Object storage health' } };
   paths['/health/modules'] = { get: { tags: ['Health'], summary: 'Mounted API modules' } };
+  paths['/health/ai'] = {
+    get: {
+      tags: ['Health', 'Admin-AI'],
+      summary: 'AI platform health (providers, kill switch, budget)',
+    },
+  };
   paths['/api/ping'] = {
     get: {
       tags: ['Compat-Legacy'],

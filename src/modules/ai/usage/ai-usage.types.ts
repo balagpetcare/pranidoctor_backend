@@ -3,6 +3,10 @@ export type AiUsageAttemptStatus = 'success' | 'failure';
 export interface AiUsageAttemptInput {
   userId?: string;
   customerId?: string;
+  organizationId?: string;
+  branchId?: string;
+  clinicId?: string;
+  doctorId?: string;
   feature: string;
   provider: string;
   model: string;

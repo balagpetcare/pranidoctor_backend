@@ -1,31 +1,51 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAiOrchestratorService } from '../../modules/ai/orchestrator/ai-orchestrator.service.js';
+import { resetAiPlatformConfigCache } from '../../modules/ai/config/ai.config.js';
+import { resetAiHealthProbeForTests } from '../../modules/ai/health/ai-health-probe.service.js';
 
 import { checkAiHealth } from './ai-health.service.js';
+
+const getStatusMock = vi.fn().mockResolvedValue({
+  daily: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
+  monthly: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
+  blocked: false,
+});
+
+vi.mock('../../modules/ai/budget/ai-budget.service.js', () => ({
+  getAiBudgetService: () => ({
+    getStatus: getStatusMock,
+  }),
+}));
 
 describe('checkAiHealth', () => {
   const envBackup = {
     openai: process.env.OPENAI_API_KEY,
     anthropic: process.env.ANTHROPIC_API_KEY,
-    provider: process.env.AI_PROVIDER,
   };
 
   beforeEach(() => {
+    resetAiPlatformConfigCache();
+    resetAiHealthProbeForTests();
     getAiOrchestratorService().enableLlm();
+    process.env.OPENAI_API_KEY = 'sk-test-openai-key-1234567890';
+    getStatusMock.mockResolvedValue({
+      daily: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
+      monthly: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
+      blocked: false,
+    });
   });
 
   afterEach(() => {
     process.env.OPENAI_API_KEY = envBackup.openai;
     process.env.ANTHROPIC_API_KEY = envBackup.anthropic;
-    process.env.AI_PROVIDER = envBackup.provider;
+    resetAiPlatformConfigCache();
     getAiOrchestratorService().enableLlm();
   });
 
-  it('returns healthy when preferred provider is configured', async () => {
-    process.env.OPENAI_API_KEY = 'test-key';
+  it('returns healthy when a provider is configured', async () => {
     delete process.env.ANTHROPIC_API_KEY;
-    process.env.AI_PROVIDER = 'openai';
+    resetAiPlatformConfigCache();
 
     const result = await checkAiHealth();
 
@@ -35,7 +55,6 @@ describe('checkAiHealth', () => {
   });
 
   it('returns degraded when kill switch is active', async () => {
-    process.env.OPENAI_API_KEY = 'test-key';
     getAiOrchestratorService().disableLlm();
 
     const result = await checkAiHealth();
@@ -47,6 +66,7 @@ describe('checkAiHealth', () => {
   it('returns degraded when no LLM keys are configured', async () => {
     delete process.env.OPENAI_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
+    resetAiPlatformConfigCache();
 
     const result = await checkAiHealth();
 
@@ -54,14 +74,16 @@ describe('checkAiHealth', () => {
     expect(result.details?.rulesFallbackAvailable).toBe(true);
   });
 
-  it('returns degraded when preferred provider is missing but fallback exists', async () => {
-    delete process.env.OPENAI_API_KEY;
-    process.env.ANTHROPIC_API_KEY = 'test-key';
-    process.env.AI_PROVIDER = 'openai';
+  it('returns degraded when budget is exceeded', async () => {
+    getStatusMock.mockResolvedValueOnce({
+      daily: { budgetUsd: 10, spentUsd: 12, remainingUsd: 0, exceeded: true },
+      monthly: { budgetUsd: 100, spentUsd: 12, remainingUsd: 88, exceeded: false },
+      blocked: true,
+    });
 
     const result = await checkAiHealth();
 
     expect(result.status).toBe('degraded');
-    expect(result.message).toContain('Preferred provider');
+    expect(result.message).toContain('budget');
   });
 });

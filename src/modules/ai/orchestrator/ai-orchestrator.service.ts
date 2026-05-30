@@ -4,6 +4,7 @@ import { logAiExecution } from '../../../shared/monitoring/structured-logging.js
 import { traceWorkflow } from '../../../shared/monitoring/workflow-tracing.js';
 import { checkRateLimit } from '../../../shared/security/rate-limit/rate-limit.service.js';
 import { RateLimitPresets } from '../../../shared/security/rate-limit/rate-limit.config.js';
+import { getAiBudgetService } from '../budget/ai-budget.service.js';
 import { getAiRepository } from '../ai.repository.js';
 import { getAiUsageService } from '../usage/ai-usage.service.js';
 import { classifyProviderError } from '../usage/ai-usage.errors.js';
@@ -44,20 +45,17 @@ export class AiOrchestratorService {
     return getAiGovernanceService().isLlmDisabled();
   }
 
+  /** Fixed failover chain: OpenAI → Anthropic → rules-based. */
   private resolveChain(feature: string): AiProviderAdapter[] {
     if (shouldUseRulesOnlyForFeature(feature)) {
       return [new RulesBasedProvider()];
     }
 
-    const preferred = (process.env.AI_PROVIDER ?? 'openai').toLowerCase();
-    const ordered = [...this.providers];
-    ordered.sort((a, b) => {
-      if (a.name === preferred) return -1;
-      if (b.name === preferred) return 1;
-      if (a.name === 'rules-based') return 1;
-      if (b.name === 'rules-based') return -1;
-      return 0;
-    });
+    const order: Array<AiProviderAdapter['name']> = ['openai', 'anthropic', 'rules-based'];
+    const ordered = order
+      .map((name) => this.providers.find((p) => p.name === name))
+      .filter((p): p is AiProviderAdapter => p != null);
+
     return ordered.filter(
       (p) => p.name === 'rules-based' || !isProviderGovernanceBlocked(p.name),
     );
@@ -133,6 +131,10 @@ export class AiOrchestratorService {
     const usesLlm = chain.some((p) => p.name !== 'rules-based' && p.isConfigured());
     if (usesLlm) {
       await this.assertDailyLlmQuota(enrichedInput.userId);
+      await getAiBudgetService().assertBudgetAllowsLlm();
+      if (getAiBudgetService().isBudgetBlocked()) {
+        return this.completeRulesOnly(enrichedInput, true);
+      }
     }
 
     let hadLlmFailure = false;
@@ -181,21 +183,33 @@ export class AiOrchestratorService {
           success: false,
           errorCode: classifyProviderError(err),
         });
+        logAiExecution('orchestrator_provider_failed', {
+          feature: input.feature,
+          provider: provider.name,
+          errorCode: classifyProviderError(err),
+        });
       }
     }
 
+    return this.completeRulesOnly(enrichedInput, true);
+  }
+
+  private async completeRulesOnly(
+    input: AiCompletionInput & { userId?: string; customerId?: string },
+    hadLlmFailure: boolean,
+  ): Promise<AiCompletionOutput> {
     const fallback = new RulesBasedProvider();
-    const result = await fallback.complete(enrichedInput);
-    this.recordAttempt(enrichedInput, {
+    const result = await fallback.complete(input);
+    this.recordAttempt(input, omitUndefined({
       provider: result.provider,
       model: result.model,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
       latencyMs: result.latencyMs,
       success: true,
-      isFallback: true,
-      fromProvider: 'llm_chain',
-    });
+      isFallback: hadLlmFailure,
+      fromProvider: hadLlmFailure ? 'llm_chain' : undefined,
+    }));
     return result;
   }
 

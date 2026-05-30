@@ -3767,29 +3767,35 @@ model RegionalOutbreakSignal {
 }
 
 model AiUsageRecord {
-  id           String   @id @default(cuid())
-  userId       String?
-  customerId   String?
-  feature      String
-  provider     String
-  model        String
-  inputTokens  Int      @default(0)
-  outputTokens Int      @default(0)
-  totalTokens  Int      @default(0)
-  costUsd      Decimal? @db.Decimal(10, 6)
-  billable     Boolean  @default(false)
-  rateVersion  String?  @db.VarChar(32)
-  latencyMs    Int      @default(0)
-  success      Boolean  @default(true)
-  errorCode    String?  @db.VarChar(64)
-  isFallback   Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String?
+  customerId     String?
+  organizationId String?  @db.VarChar(64)
+  branchId       String?  @db.VarChar(64)
+  clinicId       String?  @db.VarChar(64)
+  doctorId       String?  @db.VarChar(64)
+  feature        String
+  provider       String
+  model          String
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  totalTokens    Int      @default(0)
+  costUsd        Decimal? @db.Decimal(10, 6)
+  billable       Boolean  @default(false)
+  rateVersion    String?  @db.VarChar(32)
+  latencyMs      Int      @default(0)
+  success        Boolean  @default(true)
+  errorCode      String?  @db.VarChar(64)
+  isFallback     Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
   @@index([createdAt, feature])
   @@index([createdAt, provider, success])
   @@index([userId])
   @@index([userId, createdAt])
   @@index([customerId, createdAt])
+  @@index([doctorId, createdAt])
+  @@index([organizationId, createdAt])
 }
 
 /// Pre-aggregated daily AI usage for efficient admin/reporting queries.
@@ -3855,6 +3861,56 @@ model AiUsageCustomerDailyRollup {
 
   @@unique([bucketDate, customerId, feature, provider, model])
   @@index([customerId, bucketDate])
+}
+
+/// Monthly AI cost rollup by organizational dimension (organization, branch, clinic, doctor).
+model AiUsageMonthlyRollup {
+  id              String   @id @default(cuid())
+  bucketMonth     DateTime @db.Date
+  dimensionType   String   @db.VarChar(32)
+  dimensionId     String?  @db.VarChar(64)
+  provider        String
+  model           String
+  requestCount    Int      @default(0)
+  successCount    Int      @default(0)
+  failureCount    Int      @default(0)
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  totalTokens     Int      @default(0)
+  costUsd         Decimal  @default(0) @db.Decimal(12, 6)
+  latencyMsSum    Int      @default(0)
+  timeoutCount    Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([bucketMonth, dimensionType, dimensionId, provider, model])
+  @@index([bucketMonth, dimensionType])
+  @@index([dimensionType, dimensionId, bucketMonth])
+}
+
+/// Point-in-time LLM provider health probe results.
+model AiProviderHealthSnapshot {
+  id          String   @id @default(cuid())
+  provider    String
+  reachable   Boolean
+  latencyMs   Int
+  errorCode   String?  @db.VarChar(64)
+  probedAt    DateTime @default(now())
+
+  @@index([provider, probedAt])
+}
+
+/// Operational alerts for AI usage, budget, and provider health.
+model AiUsageAlert {
+  id           String   @id @default(cuid())
+  alertType    String   @db.VarChar(64)
+  severity     String   @default("warning") @db.VarChar(16)
+  message      String   @db.Text
+  metadataJson Json?
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([alertType, createdAt])
+  @@index([acknowledged, createdAt])
 }
 
 model AiPromptTemplate {

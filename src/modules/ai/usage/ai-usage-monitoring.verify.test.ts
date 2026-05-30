@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiOrchestratorService } from '../orchestrator/ai-orchestrator.service.js';
 import type { AiProviderAdapter } from '../orchestrator/provider.interface.js';
+import { resetAiPlatformConfigCache } from '../config/ai.config.js';
 import { estimateAiCostUsd } from './ai-usage.cost.js';
 import { classifyProviderError } from './ai-usage.errors.js';
 import {
@@ -43,6 +44,19 @@ vi.mock('../governance/ai-governance.enforcement.js', () => ({
   shouldUseRulesOnlyForFeature: () => false,
   isProviderGovernanceBlocked: () => false,
   assertAiLlmExecutionAllowed: () => undefined,
+}));
+
+vi.mock('../budget/ai-budget.service.js', () => ({
+  getAiBudgetService: () => ({
+    assertBudgetAllowsLlm: vi.fn().mockResolvedValue(undefined),
+    isBudgetBlocked: vi.fn().mockReturnValue(false),
+    getStatus: vi.fn().mockResolvedValue({
+      daily: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
+      monthly: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
+      blocked: false,
+    }),
+    checkBudgetAfterUsage: vi.fn(),
+  }),
 }));
 
 function mockProvider(
@@ -227,11 +241,12 @@ describe('AI usage monitoring verification', () => {
     it('records per-provider failure with default model id', async () => {
       const orchestrator = new AiOrchestratorService();
       (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+        mockProvider('openai', 'skip'),
         mockProvider('anthropic', 'fail'),
         mockProvider('rules-based', 'ok'),
       ];
-      process.env.ANTHROPIC_API_KEY = 'test-key';
-      process.env.AI_PROVIDER = 'anthropic';
+      process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-12345678901234567890';
+      resetAiPlatformConfigCache();
 
       await orchestrator.complete({
         feature: 'FARM_BRIEFING',

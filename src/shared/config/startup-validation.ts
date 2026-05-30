@@ -18,6 +18,8 @@ import {
   isStorageRequired,
   isStrictStartupMode,
 } from './infra.flags.js';
+import { validateAiSecrets } from '../../modules/ai/config/ai.config.js';
+import { validateAllLlmProviders } from '../../modules/ai/orchestrator/providers/provider.validation.js';
 
 export interface ServiceCheckResult {
   name: string;
@@ -198,6 +200,28 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
     warnings.push(
       'Mobile profile modules failed import — GET /api/mobile/me will not work until fixed',
     );
+  }
+
+  const aiSecrets = validateAiSecrets();
+  const aiProviders = validateAllLlmProviders();
+  const aiConfigured = aiProviders.some((p) => p.configured);
+  const aiValid = aiSecrets.ok && aiProviders.every((p) => !p.configured || p.valid);
+
+  checks.push(
+    omitUndefined({
+      name: 'ai-llm-secrets',
+      healthy: aiValid && (!config.ai.llmRequired || aiConfigured),
+      optional: !config.ai.llmRequired,
+      ...((!aiSecrets.ok
+        ? { error: aiSecrets.errors.join('; ') }
+        : !aiConfigured && config.ai.llmRequired
+          ? { error: 'No LLM provider keys configured' }
+          : {}) as { error?: string }),
+    }),
+  );
+
+  if (aiSecrets.warnings.length > 0) {
+    warnings.push(...aiSecrets.warnings.map((w) => `AI: ${w}`));
   }
 
   const requiredChecks = checks.filter((c) => !c.optional);

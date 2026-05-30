@@ -1,20 +1,22 @@
 import type { AiCompletionInput, AiCompletionOutput, AiProviderAdapter } from '../provider.interface.js';
+import { getAiPlatformConfig } from '../../config/ai.config.js';
 import { estimateLlmConfidence } from '../confidence.util.js';
 
 export class OpenAiProvider implements AiProviderAdapter {
   readonly name = 'openai' as const;
 
   isConfigured(): boolean {
-    return Boolean(process.env.OPENAI_API_KEY?.trim());
+    return Boolean(getAiPlatformConfig().openaiApiKey);
   }
 
   async complete(input: AiCompletionInput): Promise<AiCompletionOutput> {
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    const config = getAiPlatformConfig();
+    const apiKey = config.openaiApiKey;
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
+    const model = config.openaiModel;
     const start = Date.now();
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

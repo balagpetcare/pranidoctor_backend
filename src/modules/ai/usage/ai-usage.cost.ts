@@ -28,12 +28,15 @@ const MODEL_RATES: Record<string, Record<string, AiTokenRates>> = {
   },
 };
 
+import { getAiPlatformConfig } from '../config/ai.config.js';
+
 export function resolveDefaultModel(provider: string): string {
+  const config = getAiPlatformConfig();
   switch (provider) {
     case 'openai':
-      return process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
+      return config.openaiModel;
     case 'anthropic':
-      return process.env.ANTHROPIC_MODEL?.trim() || 'claude-3-5-haiku-20241022';
+      return config.anthropicModel;
     case 'rules-based':
       return 'rules-based-v1';
     default:

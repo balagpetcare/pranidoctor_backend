@@ -51,6 +51,14 @@ export function logAiExecution(
   logInfo('AI execution', withCorrelation({ event: 'ai.execution', step, ...data }));
 }
 
+/** Production AI platform events (budget, alerts, health). */
+export function logAiPlatformEvent(
+  event: string,
+  data?: Record<string, unknown>,
+): void {
+  logInfo('AI platform', withCorrelation({ event: 'ai.platform', platformEvent: event, ...data }));
+}
+
 export function logBackgroundJob(
   phase: 'started' | 'completed' | 'failed' | 'retry',
   data: Record<string, unknown>,

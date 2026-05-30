@@ -117,6 +117,23 @@ function loadRawConfig(): Record<string, unknown> {
         env['UPLOAD_ALLOWED_VIDEO_TYPES'] ?? 'video/mp4,video/webm'
       ),
     },
+
+    ai: {
+      llmRequired:
+        env['AI_LLM_REQUIRED'] === 'true' || env['AI_LLM_REQUIRED'] === '1'
+          ? true
+          : env['AI_LLM_REQUIRED'] === 'false' || env['AI_LLM_REQUIRED'] === '0'
+            ? false
+            : env['NODE_ENV'] === 'production',
+      healthProbeEnabled:
+        env['AI_HEALTH_PROBE_ENABLED'] === 'true' || env['AI_HEALTH_PROBE_ENABLED'] === '1',
+      dailyBudgetUsd: env['DAILY_AI_BUDGET_USD']
+        ? Number.parseFloat(env['DAILY_AI_BUDGET_USD'])
+        : undefined,
+      monthlyBudgetUsd: env['MONTHLY_AI_BUDGET_USD']
+        ? Number.parseFloat(env['MONTHLY_AI_BUDGET_USD'])
+        : undefined,
+    },
   };
 }
 

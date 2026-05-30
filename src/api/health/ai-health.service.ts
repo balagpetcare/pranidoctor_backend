@@ -1,19 +1,24 @@
 import { getAiGovernanceService } from '../../modules/ai/governance/ai-governance.service.js';
 import { getAiOrchestratorService } from '../../modules/ai/orchestrator/ai-orchestrator.service.js';
-import { AnthropicProvider } from '../../modules/ai/orchestrator/providers/anthropic.provider.js';
+import { validateAllLlmProviders } from '../../modules/ai/orchestrator/providers/provider.validation.js';
+import { getLatestProviderHealth } from '../../modules/ai/health/ai-health-probe.service.js';
+import { getAiBudgetService } from '../../modules/ai/budget/ai-budget.service.js';
 import { OpenAiProvider } from '../../modules/ai/orchestrator/providers/openai.provider.js';
+import { AnthropicProvider } from '../../modules/ai/orchestrator/providers/anthropic.provider.js';
 
 import type { HealthCheckResult } from './health.types.js';
 
-function listProviderConfig(): Array<{ name: string; configured: boolean }> {
-  return [
-    { name: 'openai', configured: new OpenAiProvider().isConfigured() },
-    { name: 'anthropic', configured: new AnthropicProvider().isConfigured() },
-  ];
+function listProviderConfig(): Array<{ name: string; configured: boolean; valid: boolean }> {
+  const validations = validateAllLlmProviders();
+  return validations.map((v) => ({
+    name: v.provider,
+    configured: v.configured,
+    valid: v.valid,
+  }));
 }
 
 /**
- * Lightweight AI health — configuration and kill-switch only (no external LLM calls).
+ * AI health — configuration, kill-switch, provider validation, and latest probes.
  */
 export async function checkAiHealth(): Promise<HealthCheckResult> {
   const start = Date.now();
@@ -21,11 +26,12 @@ export async function checkAiHealth(): Promise<HealthCheckResult> {
   const governance = getAiGovernanceService();
   const llmDisabled = orchestrator.isLlmDisabled();
   const scopes = governance.getScopeSnapshot();
-  const preferredProvider = (process.env.AI_PROVIDER ?? 'openai').trim().toLowerCase();
   const providers = listProviderConfig();
+  const probeResults = getLatestProviderHealth();
+  const budget = await getAiBudgetService().getStatus().catch(() => null);
+
   const anyLlmConfigured = providers.some((provider) => provider.configured);
-  const preferredConfigured =
-    providers.find((provider) => provider.name === preferredProvider)?.configured ?? false;
+  const anyLlmReachable = probeResults.some((p) => p.configured && p.reachable);
 
   let status: HealthCheckResult['status'] = 'healthy';
   let message: string | undefined;
@@ -36,9 +42,12 @@ export async function checkAiHealth(): Promise<HealthCheckResult> {
   } else if (!anyLlmConfigured) {
     status = 'degraded';
     message = 'No LLM API keys configured — rules-based fallback only';
-  } else if (!preferredConfigured) {
+  } else if (!anyLlmReachable && probeResults.some((p) => p.configured)) {
     status = 'degraded';
-    message = `Preferred provider (${preferredProvider}) not configured — fallback chain active`;
+    message = 'All configured LLM providers failed health probe — fallback chain active';
+  } else if (budget?.blocked) {
+    status = 'degraded';
+    message = 'AI budget exceeded — rules-based mode enforced';
   }
 
   return {
@@ -51,9 +60,12 @@ export async function checkAiHealth(): Promise<HealthCheckResult> {
       governanceHydrated: governance.isHydrated(),
       environment: (process.env.NODE_ENV ?? 'development').trim(),
       scopes,
-      preferredProvider,
       providers,
+      providerProbes: probeResults,
+      budget,
       rulesFallbackAvailable: true,
+      openaiConfigured: new OpenAiProvider().isConfigured(),
+      anthropicConfigured: new AnthropicProvider().isConfigured(),
     },
   };
 }

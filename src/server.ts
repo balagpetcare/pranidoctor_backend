@@ -43,6 +43,10 @@ import {
   bootstrapAiGovernance,
   shutdownAiGovernance,
 } from './modules/ai/governance/ai-governance.service.js';
+import {
+  bootstrapAiPlatform,
+  shutdownAiPlatform,
+} from './modules/ai/bootstrap/ai-platform.bootstrap.js';
 
 let isShuttingDown = false;
 
@@ -171,6 +175,19 @@ async function bootstrap(): Promise<void> {
   }
 
   try {
+    await bootstrapAiPlatform(config);
+    logInfo('AI platform initialized');
+  } catch (error) {
+    if (config.nodeEnv === 'production') {
+      logFatal('AI platform bootstrap failed', error);
+      process.exit(1);
+    }
+    logWarn('AI platform bootstrap failed — continuing with degraded AI', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
     const { seedLegalDocuments } = await import('./modules/legal/legal-document-seed.js');
     await seedLegalDocuments();
     logInfo('Legal document registry seeded');
@@ -234,10 +251,11 @@ async function bootstrap(): Promise<void> {
     stopEscalationMonitoring();
 
     try {
+      await shutdownAiPlatform();
       await shutdownAiGovernance();
-      logInfo('AI governance shutdown complete');
+      logInfo('AI platform shutdown complete');
     } catch (error) {
-      logWarn('AI governance shutdown error', {
+      logWarn('AI platform shutdown error', {
         error: error instanceof Error ? error.message : String(error),
       });
     }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { resetAiPlatformConfigCache } from '../config/ai.config.js';
 import { estimateAiCostUsd, registerProviderRates, resolveDefaultModel } from './ai-usage.cost.js';
 import { classifyProviderError } from './ai-usage.errors.js';
 import { recordAiUsageMetrics, renderAiUsagePrometheusLines } from './ai-usage.metrics.js';
@@ -20,7 +21,9 @@ describe('ai-usage.cost', () => {
   });
 
   it('resolves default models from env fallbacks', () => {
-    expect(resolveDefaultModel('openai')).toMatch(/gpt-4o-mini|/);
+    process.env.OPENAI_MODEL = 'gpt-4o-mini';
+    resetAiPlatformConfigCache();
+    expect(resolveDefaultModel('openai')).toBe('gpt-4o-mini');
     expect(resolveDefaultModel('rules-based')).toBe('rules-based-v1');
   });
 });

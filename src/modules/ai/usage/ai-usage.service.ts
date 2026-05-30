@@ -1,9 +1,12 @@
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { getLogger } from '../../../shared/logger/logger.js';
 
+import { getAiBudgetService } from '../budget/ai-budget.service.js';
+import { getAiUsageAlertService } from '../alerts/ai-usage-alert.service.js';
+import { resolveUsageDimensions } from './ai-usage-dimensions.js';
 import { estimateAiCostUsd } from './ai-usage.cost.js';
 import { recordAiUsageMetrics } from './ai-usage.metrics.js';
-import { buildPlatformRollupFields, buildScopedRollupFields } from './ai-usage.rollups.js';
+import { buildPlatformRollupFields, buildScopedRollupFields, buildMonthlyRollupFields } from './ai-usage.rollups.js';
 import { AI_RATE_VERSION, accountTokens } from './ai-usage.tokens.js';
 import type {
   AiTokenConsumptionSummary,
@@ -13,6 +16,10 @@ import type {
 
 function utcBucketDate(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function utcBucketMonth(date = new Date()): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
 function decimalToNumber(value: { toString(): string } | null | undefined): number {
@@ -56,6 +63,7 @@ export class AiUsageService {
       latencyMs: params.latencyMs,
       ...(params.isFallback !== undefined ? { isFallback: params.isFallback } : {}),
       ...(params.fromProvider !== undefined ? { fromProvider: params.fromProvider } : {}),
+      ...(params.errorCode !== undefined ? { errorCode: params.errorCode } : {}),
     });
 
     void this.persistAttempt(params, costUsd, tokens).catch((err) => {
@@ -78,6 +86,17 @@ export class AiUsageService {
   ): Promise<void> {
     const prisma = getPrisma();
     const bucketDate = utcBucketDate();
+    const bucketMonth = utcBucketMonth();
+    const resolvedDims =
+      params.organizationId || params.doctorId
+        ? {
+            organizationId: params.organizationId,
+            branchId: params.branchId,
+            clinicId: params.clinicId,
+            doctorId: params.doctorId,
+          }
+        : await resolveUsageDimensions(params.userId);
+
     const rollupKey = {
       bucketDate,
       feature: params.feature,
@@ -91,12 +110,33 @@ export class AiUsageService {
       costUsd,
       params.latencyMs,
     );
+    const isTimeout = params.errorCode === 'timeout';
+
+    const monthlyDimensions: Array<{ dimensionType: string; dimensionId: string }> = [
+      { dimensionType: 'platform', dimensionId: 'global' },
+    ];
+    if (resolvedDims.organizationId) {
+      monthlyDimensions.push({ dimensionType: 'organization', dimensionId: resolvedDims.organizationId });
+    }
+    if (resolvedDims.branchId) {
+      monthlyDimensions.push({ dimensionType: 'branch', dimensionId: resolvedDims.branchId });
+    }
+    if (resolvedDims.clinicId) {
+      monthlyDimensions.push({ dimensionType: 'clinic', dimensionId: resolvedDims.clinicId });
+    }
+    if (resolvedDims.doctorId) {
+      monthlyDimensions.push({ dimensionType: 'doctor', dimensionId: resolvedDims.doctorId });
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.aiUsageRecord.create({
         data: {
           userId: params.userId ?? null,
           customerId: params.customerId ?? null,
+          organizationId: resolvedDims.organizationId ?? null,
+          branchId: resolvedDims.branchId ?? null,
+          clinicId: resolvedDims.clinicId ?? null,
+          doctorId: resolvedDims.doctorId ?? null,
           feature: params.feature,
           provider: params.provider,
           model: params.model,
@@ -124,6 +164,36 @@ export class AiUsageService {
         create: platformRollup.create,
         update: platformRollup.update,
       });
+
+      for (const dim of monthlyDimensions) {
+        const monthlyFields = buildMonthlyRollupFields(
+          {
+            bucketMonth,
+            dimensionType: dim.dimensionType,
+            dimensionId: dim.dimensionId,
+            provider: params.provider,
+            model: params.model,
+          },
+          params.success,
+          tokens,
+          costUsd,
+          params.latencyMs,
+          isTimeout,
+        );
+        await tx.aiUsageMonthlyRollup.upsert({
+          where: {
+            bucketMonth_dimensionType_dimensionId_provider_model: {
+              bucketMonth,
+              dimensionType: dim.dimensionType,
+              dimensionId: dim.dimensionId,
+              provider: params.provider,
+              model: params.model,
+            },
+          },
+          create: monthlyFields.create as never,
+          update: monthlyFields.update,
+        });
+      }
 
       if (params.userId) {
         const scoped = buildScopedRollupFields(tokens, costUsd);
@@ -173,6 +243,28 @@ export class AiUsageService {
         });
       }
     });
+
+    if (tokens.billable) {
+      void getAiBudgetService().checkBudgetAfterUsage();
+    }
+    void this.checkUsageSpike().catch((err) => {
+      getLogger().warn({ err }, 'Usage spike check failed');
+    });
+  }
+
+  private async checkUsageSpike(): Promise<void> {
+    const prisma = getPrisma();
+    const now = new Date();
+    const hourAgo = new Date(now.getTime() - 3600_000);
+    const dayAgo = new Date(now.getTime() - 86400_000);
+
+    const [recentHour, lastDay] = await Promise.all([
+      prisma.aiUsageRecord.count({ where: { createdAt: { gte: hourAgo } } }),
+      prisma.aiUsageRecord.count({ where: { createdAt: { gte: dayAgo, lt: hourAgo } } }),
+    ]);
+
+    const baselineHour = lastDay / 23;
+    await getAiUsageAlertService().checkUsageSpike(recentHour, baselineHour);
   }
 
   async getUsageSummary(since: Date): Promise<AiUsageSummary> {
@@ -491,6 +583,117 @@ export class AiUsageService {
       avgLatencyMs:
         row.requestCount > 0 ? Math.round(row.latencyMsSum / row.requestCount) : 0,
     }));
+  }
+
+  /** Daily cost aggregation by provider and model. */
+  async getDailyCostAggregation(since: Date) {
+    const prisma = getPrisma();
+    const rows = await prisma.aiUsageDailyRollup.groupBy({
+      by: ['bucketDate', 'provider', 'model'],
+      where: { bucketDate: { gte: utcBucketDate(since) } },
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+        totalTokens: true,
+        costUsd: true,
+        requestCount: true,
+      },
+      orderBy: { bucketDate: 'desc' },
+    });
+
+    return rows.map((row) => ({
+      date: row.bucketDate.toISOString().slice(0, 10),
+      provider: row.provider,
+      model: row.model,
+      tokens: row._sum.totalTokens ?? 0,
+      inputTokens: row._sum.inputTokens ?? 0,
+      outputTokens: row._sum.outputTokens ?? 0,
+      usdCost: decimalToNumber(row._sum.costUsd as { toString(): string }),
+      requestCount: row._sum.requestCount ?? 0,
+    }));
+  }
+
+  /** Monthly cost aggregation by organizational dimension. */
+  async getMonthlyCostAggregation(sinceMonth: Date) {
+    const prisma = getPrisma();
+    const rows = await prisma.aiUsageMonthlyRollup.findMany({
+      where: { bucketMonth: { gte: utcBucketMonth(sinceMonth) } },
+      orderBy: [{ bucketMonth: 'desc' }, { dimensionType: 'asc' }],
+    });
+
+    const byDimension = {
+      organization: [] as Array<Record<string, unknown>>,
+      branch: [] as Array<Record<string, unknown>>,
+      clinic: [] as Array<Record<string, unknown>>,
+      doctor: [] as Array<Record<string, unknown>>,
+      platform: [] as Array<Record<string, unknown>>,
+    };
+
+    for (const row of rows) {
+      const entry = {
+        month: row.bucketMonth.toISOString().slice(0, 7),
+        dimensionId: row.dimensionId,
+        provider: row.provider,
+        model: row.model,
+        tokens: row.totalTokens,
+        usdCost: decimalToNumber(row.costUsd),
+        requestCount: row.requestCount,
+        successRate: roundRate(row.successCount, row.requestCount),
+        avgLatencyMs:
+          row.requestCount > 0 ? Math.round(row.latencyMsSum / row.requestCount) : 0,
+        timeoutRate: roundRate(row.timeoutCount, row.requestCount),
+      };
+      const key = row.dimensionType as keyof typeof byDimension;
+      if (byDimension[key]) {
+        byDimension[key].push(entry);
+      }
+    }
+
+    return byDimension;
+  }
+
+  /** Provider-level metrics: latency, failures, success rate, timeout rate. */
+  async getProviderMetrics(since: Date) {
+    const prisma = getPrisma();
+    const rows = await prisma.aiUsageRecord.groupBy({
+      by: ['provider'],
+      where: { createdAt: { gte: since }, provider: { not: 'rules-based' } },
+      _count: { id: true },
+      _sum: { latencyMs: true },
+    });
+
+    const successRows = await prisma.aiUsageRecord.groupBy({
+      by: ['provider'],
+      where: { createdAt: { gte: since }, success: true, provider: { not: 'rules-based' } },
+      _count: { id: true },
+    });
+
+    const timeoutRows = await prisma.aiUsageRecord.groupBy({
+      by: ['provider'],
+      where: { createdAt: { gte: since }, errorCode: 'timeout', provider: { not: 'rules-based' } },
+      _count: { id: true },
+    });
+
+    const successMap = new Map(successRows.map((r) => [r.provider, r._count.id]));
+    const timeoutMap = new Map(timeoutRows.map((r) => [r.provider, r._count.id]));
+
+    return rows.map((row) => {
+      const requests = row._count.id;
+      const successes = successMap.get(row.provider) ?? 0;
+      const failures = requests - successes;
+      const timeouts = timeoutMap.get(row.provider) ?? 0;
+      const latencySum = row._sum.latencyMs ?? 0;
+      return {
+        provider: row.provider,
+        requests,
+        successes,
+        failures,
+        successRate: roundRate(successes, requests),
+        failureRate: roundRate(failures, requests),
+        timeoutRate: roundRate(timeouts, requests),
+        avgLatencyMs: requests > 0 ? Math.round(latencySum / requests) : 0,
+      };
+    });
   }
 }
 

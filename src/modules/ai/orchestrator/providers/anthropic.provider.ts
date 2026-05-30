@@ -1,20 +1,22 @@
 import type { AiCompletionInput, AiCompletionOutput, AiProviderAdapter } from '../provider.interface.js';
+import { getAiPlatformConfig } from '../../config/ai.config.js';
 import { estimateLlmConfidence } from '../confidence.util.js';
 
 export class AnthropicProvider implements AiProviderAdapter {
   readonly name = 'anthropic' as const;
 
   isConfigured(): boolean {
-    return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+    return Boolean(getAiPlatformConfig().anthropicApiKey);
   }
 
   async complete(input: AiCompletionInput): Promise<AiCompletionOutput> {
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+    const config = getAiPlatformConfig();
+    const apiKey = config.anthropicApiKey;
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    const model = process.env.ANTHROPIC_MODEL?.trim() || 'claude-3-5-haiku-20241022';
+    const model = config.anthropicModel;
     const start = Date.now();
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {

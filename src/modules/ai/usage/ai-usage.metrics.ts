@@ -5,6 +5,10 @@ const tokensTotal = new Counter();
 const costTotal = new Counter();
 const fallbacksTotal = new Counter();
 const latencyHistogram = new LatencyHistogram([0.1, 0.5, 1, 2, 5, 10, 30]);
+const providerHealthTotal = new Counter();
+const providerHealthLatency = new LatencyHistogram([0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10]);
+
+const providerUp = new Map<string, number>();
 
 let llmDisabled = 0;
 
@@ -19,6 +23,7 @@ export function recordAiUsageMetrics(params: {
   latencyMs: number;
   isFallback?: boolean;
   fromProvider?: string;
+  errorCode?: string;
 }): void {
   const status = params.success ? 'success' : 'failure';
   const base = {
@@ -29,6 +34,10 @@ export function recordAiUsageMetrics(params: {
 
   requestsTotal.inc({ ...base, status });
   latencyHistogram.observe(base, params.latencyMs / 1000);
+
+  if (!params.success && params.errorCode === 'timeout') {
+    requestsTotal.inc({ ...base, status: 'timeout' });
+  }
 
   if (params.success) {
     if (params.inputTokens > 0) {
@@ -50,11 +59,33 @@ export function recordAiUsageMetrics(params: {
   }
 }
 
+export function recordProviderHealthMetric(params: {
+  provider: string;
+  success: boolean;
+  latencyMs: number;
+  errorCode?: string;
+}): void {
+  providerHealthTotal.inc({
+    provider: params.provider,
+    status: params.success ? 'success' : 'failure',
+    ...(params.errorCode ? { error_code: params.errorCode } : {}),
+  });
+  providerHealthLatency.observe({ provider: params.provider }, params.latencyMs / 1000);
+}
+
+export function setProviderUpMetric(provider: string, up: 0 | 1): void {
+  providerUp.set(provider, up);
+}
+
 export function setAiLlmDisabledMetric(disabled: boolean): void {
   llmDisabled = disabled ? 1 : 0;
 }
 
 export function renderAiUsagePrometheusLines(): string[] {
+  const providerUpLines = [...providerUp.entries()].flatMap(([provider, value]) => [
+    `ai_provider_up{provider="${provider}"} ${value}`,
+  ]);
+
   return [
     ...requestsTotal.entries('ai_requests_total', 'Total AI orchestrator attempts'),
     ...latencyHistogram.entries(
@@ -64,18 +95,29 @@ export function renderAiUsagePrometheusLines(): string[] {
     ...tokensTotal.entries('ai_tokens_total', 'Total AI tokens'),
     ...costTotal.entries('ai_cost_usd_total', 'Estimated AI cost in USD'),
     ...fallbacksTotal.entries('ai_fallbacks_total', 'AI provider fallbacks'),
+    ...providerHealthTotal.entries('ai_provider_health_probes_total', 'AI provider health probes'),
+    ...providerHealthLatency.entries(
+      'ai_provider_probe_duration_seconds',
+      'AI provider health probe duration',
+    ),
     '# HELP ai_llm_disabled LLM kill switch (1=disabled)',
     '# TYPE ai_llm_disabled gauge',
     `ai_llm_disabled ${llmDisabled}`,
+    '# HELP ai_provider_up Provider reachability (1=up)',
+    '# TYPE ai_provider_up gauge',
+    ...providerUpLines,
   ];
 }
 
 /** Test helper — reset in-memory series. */
 export function resetAiUsageMetricsForTests(): void {
   llmDisabled = 0;
+  providerUp.clear();
   requestsTotal.clear();
   tokensTotal.clear();
   costTotal.clear();
   fallbacksTotal.clear();
   latencyHistogram.clear();
+  providerHealthTotal.clear();
+  providerHealthLatency.clear();
 }
