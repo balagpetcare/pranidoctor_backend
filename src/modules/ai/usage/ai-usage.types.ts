@@ -17,6 +17,17 @@ export interface AiUsageAttemptInput {
   errorCode?: string;
   isFallback?: boolean;
   fromProvider?: string;
+  /** AIMS analytics extensions */
+  taskType?: string;
+  routeId?: string;
+  providerId?: string;
+  modelId?: string;
+  promptId?: string;
+  failoverRuleId?: string;
+  requestId?: string;
+  correlationId?: string;
+  scopeKey?: string;
+  tenantId?: string;
 }
 
 export interface AiUsageSummaryRow {

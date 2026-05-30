@@ -1,5 +1,8 @@
 import { AiPromptStatus } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { getAiPromptManagementService } from './management/ai-prompt-management.service.js';
+import { resolveAimsPromptKey } from './management/prompt-management.util.js';
+
 const DEFAULT_PROMPTS: Array<{
   key: string;
   name: string;
@@ -46,18 +49,44 @@ export class AiPromptService {
   }
 
   async resolveActive(key: string) {
-    await this.ensureDefaults();
-    const row = await getPrisma().aiPromptTemplate.findFirst({
-      where: { key, status: AiPromptStatus.ACTIVE },
-      orderBy: { version: 'desc' },
-    });
-    if (!row) {
-      throw new Error(`Prompt not found: ${key}`);
+    try {
+      const managed = await getAiPromptManagementService().resolvePublished(key);
+      return {
+        id: managed.id,
+        key: managed.key,
+        name: managed.name,
+        description: managed.description,
+        systemBn: managed.systemBn,
+        systemEn: managed.systemEn,
+        userTemplateBn: managed.userTemplateBn,
+        userTemplateEn: managed.userTemplateEn,
+        version: managed.version,
+        status: managed.status,
+      };
+    } catch {
+      // Fall through to legacy template table.
     }
-    return row;
+
+    await this.ensureDefaults();
+    const legacyKeys = [key, resolveAimsPromptKey(key)];
+    for (const legacyKey of legacyKeys) {
+      const row = await getPrisma().aiPromptTemplate.findFirst({
+        where: { key: legacyKey, status: AiPromptStatus.ACTIVE },
+        orderBy: { version: 'desc' },
+      });
+      if (row) return row;
+    }
+
+    throw new Error(`Prompt not found: ${key}`);
   }
 
   async list(filters?: { status?: AiPromptStatus }) {
+    const managed = await getAiPromptManagementService().list({
+      ...(filters?.status ? { status: filters.status } : {}),
+      includeArchived: filters?.status === AiPromptStatus.ARCHIVED,
+    });
+    if (managed.length > 0) return managed;
+
     return getPrisma().aiPromptTemplate.findMany({
       ...(filters?.status ? { where: { status: filters.status } } : {}),
       orderBy: [{ key: 'asc' }, { version: 'desc' }],
@@ -72,9 +101,19 @@ export class AiPromptService {
     systemEn: string;
     userTemplateBn?: string;
     userTemplateEn?: string;
+    taskType?: string;
+    kind?: 'system' | 'feature';
   }) {
-    return getPrisma().aiPromptTemplate.create({
-      data: { ...data, status: AiPromptStatus.DRAFT },
+    return getAiPromptManagementService().createDraft({
+      promptKey: data.key,
+      name: data.name,
+      description: data.description,
+      systemBn: data.systemBn,
+      systemEn: data.systemEn,
+      userTemplateBn: data.userTemplateBn,
+      userTemplateEn: data.userTemplateEn,
+      taskType: data.taskType,
+      kind: data.kind ?? (data.taskType ? 'feature' : 'system'),
     });
   }
 
@@ -87,20 +126,11 @@ export class AiPromptService {
     userTemplateEn: string;
     status: AiPromptStatus;
   }>) {
-    return getPrisma().aiPromptTemplate.update({ where: { id }, data });
+    return getAiPromptManagementService().updateDraft(id, data);
   }
 
   async activate(id: string) {
-    const row = await getPrisma().aiPromptTemplate.findUnique({ where: { id } });
-    if (!row) throw new Error('Prompt not found');
-    await getPrisma().aiPromptTemplate.updateMany({
-      where: { key: row.key, status: AiPromptStatus.ACTIVE },
-      data: { status: AiPromptStatus.ARCHIVED },
-    });
-    return getPrisma().aiPromptTemplate.update({
-      where: { id },
-      data: { status: AiPromptStatus.ACTIVE },
-    });
+    return getAiPromptManagementService().publish(id);
   }
 }
 
@@ -109,4 +139,8 @@ let service: AiPromptService | null = null;
 export function getAiPromptService(): AiPromptService {
   if (!service) service = new AiPromptService();
   return service;
+}
+
+export function resetAiPromptServiceForTests(): void {
+  service = null;
 }

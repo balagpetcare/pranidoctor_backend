@@ -21,6 +21,7 @@ import {
   apiSpeciesToPrisma,
 } from './symptom-checker/api-species.js';
 import { omitUndefined } from '../../shared/types/object.utils.js';
+import { parseAnalyticsDateRange } from './analytics/usage/ai-usage-analytics.util.js';
 
 function userId(req: Request): string {
   if (!req.user?.id) {
@@ -321,32 +322,130 @@ export class AiAdminController {
     sendSuccess(res, result);
   }
 
-  async listPrompts(_req: Request, res: Response): Promise<void> {
-    const { getAiPromptService } = await import('./prompts/ai-prompt.service.js');
-    const result = await getAiPromptService().list();
+  async listPrompts(req: Request, res: Response): Promise<void> {
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const { AiPromptStatus } = await import('../../generated/prisma/index.js');
+    const statusRaw = typeof req.query.status === 'string' ? req.query.status.toUpperCase() : undefined;
+    const status =
+      statusRaw && (Object.values(AiPromptStatus) as string[]).includes(statusRaw)
+        ? (statusRaw as (typeof AiPromptStatus)[keyof typeof AiPromptStatus])
+        : undefined;
+
+    const result = await getAiPromptManagementService().list(
+      omitUndefined({
+        kind: req.query.kind === 'system' || req.query.kind === 'feature' ? req.query.kind : undefined,
+        taskType: typeof req.query.taskType === 'string' ? req.query.taskType : undefined,
+        promptKey: typeof req.query.promptKey === 'string' ? req.query.promptKey : undefined,
+        status,
+        includeArchived: req.query.includeArchived === 'true',
+      }),
+    );
+    sendSuccess(res, result);
+  }
+
+  async getPrompt(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().getById(id);
+    sendSuccess(res, result);
+  }
+
+  async listPromptVersions(req: Request, res: Response): Promise<void> {
+    const promptKey = z.string().parse(req.params.promptKey);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().listVersions(promptKey);
     sendSuccess(res, result);
   }
 
   async createPrompt(req: Request, res: Response): Promise<void> {
     const body = z
       .object({
-        key: z.string(),
-        name: z.string(),
-        systemBn: z.string(),
-        systemEn: z.string(),
-        description: z.string().optional(),
+        key: z.string().min(1).max(64),
+        promptKey: z.string().min(1).max(64).optional(),
+        name: z.string().min(1).max(128),
+        description: z.string().max(500).optional(),
+        kind: z.enum(['system', 'feature']).optional(),
+        taskType: z.string().max(64).optional(),
+        systemBn: z.string().min(1),
+        systemEn: z.string().min(1),
+        userTemplateBn: z.string().optional(),
+        userTemplateEn: z.string().optional(),
+        trafficPercent: z.number().int().min(0).max(100).optional(),
       })
       .parse(req.body);
-    const { getAiPromptService } = await import('./prompts/ai-prompt.service.js');
-    const result = await getAiPromptService().create(omitUndefined(body));
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().createDraft(
+      omitUndefined({
+        promptKey: body.promptKey ?? body.key,
+        name: body.name,
+        description: body.description,
+        kind: body.kind,
+        taskType: body.taskType,
+        systemBn: body.systemBn,
+        systemEn: body.systemEn,
+        userTemplateBn: body.userTemplateBn,
+        userTemplateEn: body.userTemplateEn,
+        trafficPercent: body.trafficPercent,
+        actor: adminActorFromRequest(req),
+      }),
+    );
     sendCreated(res, result);
   }
 
-  async activatePrompt(req: Request, res: Response): Promise<void> {
+  async createPromptDraftFromPublished(req: Request, res: Response): Promise<void> {
+    const promptKey = z.string().parse(req.params.promptKey);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().createDraftFromPublished(promptKey, {
+      actor: adminActorFromRequest(req),
+    });
+    sendCreated(res, result);
+  }
+
+  async updatePrompt(req: Request, res: Response): Promise<void> {
     const id = z.string().parse(req.params.id);
-    const { getAiPromptService } = await import('./prompts/ai-prompt.service.js');
-    const result = await getAiPromptService().activate(id);
+    const body = z
+      .object({
+        name: z.string().min(1).max(128).optional(),
+        description: z.string().max(500).nullable().optional(),
+        taskType: z.string().max(64).nullable().optional(),
+        systemBn: z.string().min(1).optional(),
+        systemEn: z.string().min(1).optional(),
+        userTemplateBn: z.string().nullable().optional(),
+        userTemplateEn: z.string().nullable().optional(),
+        trafficPercent: z.number().int().min(0).max(100).optional(),
+      })
+      .parse(req.body);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().updateDraft(
+      id,
+      omitUndefined({ ...body, actor: adminActorFromRequest(req) }),
+    );
     sendSuccess(res, result);
+  }
+
+  async publishPrompt(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().publish(id, adminActorFromRequest(req));
+    sendSuccess(res, result);
+  }
+
+  async rollbackPrompt(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    const result = await getAiPromptManagementService().rollback(id, adminActorFromRequest(req));
+    sendSuccess(res, result);
+  }
+
+  async deletePromptDraft(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const { getAiPromptManagementService } = await import('./prompts/management/ai-prompt-management.service.js');
+    await getAiPromptManagementService().softDeleteDraft(id, adminActorFromRequest(req));
+    sendSuccess(res, { deleted: true, id });
+  }
+
+  async activatePrompt(req: Request, res: Response): Promise<void> {
+    await this.publishPrompt(req, res);
   }
 
   async listEscalations(_req: Request, res: Response): Promise<void> {
@@ -407,4 +506,201 @@ export class AiAdminController {
     const result = await getAiUsageService().getCustomerConsumption(customerId, since);
     sendSuccess(res, result);
   }
+
+  async usageAnalyticsDashboard(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const { getAiUsageAnalyticsService } = await import('./analytics/usage/ai-usage-analytics.service.js');
+    const result = await getAiUsageAnalyticsService().getDashboard(filters);
+    sendSuccess(res, result);
+  }
+
+  async usageDailyCost(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const { getAiUsageAnalyticsService } = await import('./analytics/usage/ai-usage-analytics.service.js');
+    const result = await getAiUsageAnalyticsService().getDailyCost(filters);
+    sendSuccess(res, { range: filters, dailyCost: result });
+  }
+
+  async usageMonthlyCost(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const { getAiUsageAnalyticsService } = await import('./analytics/usage/ai-usage-analytics.service.js');
+    const result = await getAiUsageAnalyticsService().getMonthlyCost(filters);
+    sendSuccess(res, { range: filters, monthlyCost: result });
+  }
+
+  async usageProviderComparison(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const { getAiUsageAnalyticsService } = await import('./analytics/usage/ai-usage-analytics.service.js');
+    const result = await getAiUsageAnalyticsService().getProviderComparison(filters);
+    sendSuccess(res, { range: filters, providers: result });
+  }
+
+  async usageFeatureComparison(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const { getAiUsageAnalyticsService } = await import('./analytics/usage/ai-usage-analytics.service.js');
+    const result = await getAiUsageAnalyticsService().getFeatureComparison(filters);
+    sendSuccess(res, { range: filters, features: result });
+  }
+
+  async usageCostTrends(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const granularity = req.query.granularity === 'week' ? 'week' : 'day';
+    const { getAiUsageAnalyticsService } = await import('./analytics/usage/ai-usage-analytics.service.js');
+    const result = await getAiUsageAnalyticsService().getCostTrends(filters, granularity);
+    sendSuccess(res, { range: filters, granularity, trends: result });
+  }
+
+  async usageReport(req: Request, res: Response): Promise<void> {
+    const filters = parseUsageAnalyticsQuery(req);
+    const format = String(req.query.format ?? 'json').toLowerCase();
+    const limit = Math.min(10_000, Math.max(1, Number(req.query.limit ?? 5000)));
+
+    if (format === 'csv') {
+      const { getAiUsageReportService } = await import('./analytics/usage/ai-usage-report.service.js');
+      const csv = await getAiUsageReportService().generateCsv(filters, { limit });
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="ai-usage-report-${new Date().toISOString().slice(0, 10)}.csv"`,
+      );
+      res.status(200).send(csv);
+      return;
+    }
+
+    const { getAiUsageReportService } = await import('./analytics/usage/ai-usage-report.service.js');
+    const result = await getAiUsageReportService().generateReport(filters, { limit });
+    sendSuccess(res, result);
+  }
+
+  async listSecrets(_req: Request, res: Response): Promise<void> {
+    const { getAiSecretService } = await import('./vault/ai-secret.service.js');
+    const result = await getAiSecretService().listKeys();
+    sendSuccess(res, result);
+  }
+
+  async addSecret(req: Request, res: Response): Promise<void> {
+    const body = z
+      .object({
+        providerKey: z.string().min(1).max(32),
+        name: z.string().min(1).max(128),
+        secret: z.string().min(20),
+        expiresAt: z.string().datetime().optional(),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(req.body);
+    const { getAiSecretService } = await import('./vault/ai-secret.service.js');
+    const result = await getAiSecretService().addKey(
+      omitUndefined({
+        providerKey: body.providerKey,
+        name: body.name,
+        secret: body.secret,
+        expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+        reason: body.reason,
+        actor: adminActorFromRequest(req),
+      }),
+    );
+    sendCreated(res, result);
+  }
+
+  async updateSecret(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const body = z
+      .object({
+        name: z.string().min(1).max(128).optional(),
+        secret: z.string().min(20).optional(),
+        expiresAt: z.string().datetime().nullable().optional(),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(req.body);
+    const { getAiSecretService } = await import('./vault/ai-secret.service.js');
+    const result = await getAiSecretService().updateKey(
+      id,
+      omitUndefined({
+        name: body.name,
+        secret: body.secret,
+        expiresAt: body.expiresAt === null ? null : body.expiresAt ? new Date(body.expiresAt) : undefined,
+        reason: body.reason,
+        actor: adminActorFromRequest(req),
+      }),
+    );
+    sendSuccess(res, result);
+  }
+
+  async disableSecret(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const body = z.object({ reason: z.string().max(500).optional() }).parse(req.body ?? {});
+    const { getAiSecretService } = await import('./vault/ai-secret.service.js');
+    const result = await getAiSecretService().disableKey(id, adminActorFromRequest(req), body.reason);
+    sendSuccess(res, result);
+  }
+
+  async testSecret(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const { getAiSecretService } = await import('./vault/ai-secret.service.js');
+    const result = await getAiSecretService().testKey(id, adminActorFromRequest(req));
+    sendSuccess(res, result);
+  }
+
+  async rotateSecret(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const body = z
+      .object({
+        secret: z.string().min(20),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(req.body);
+    const { getKeyRotationService } = await import('./vault/key-rotation.service.js');
+    const result = await getKeyRotationService().rotateKey(
+      id,
+      body.secret,
+      adminActorFromRequest(req),
+      body.reason,
+    );
+    sendSuccess(res, result);
+  }
+
+  async listSecretAudit(req: Request, res: Response): Promise<void> {
+    const id = z.string().parse(req.params.id);
+    const { getAiSecretService } = await import('./vault/ai-secret.service.js');
+    const result = await getAiSecretService().listAuditLog(id);
+    sendSuccess(res, result);
+  }
+}
+
+function adminActorFromRequest(req: Request): { userId?: string; role?: string; ipAddress?: string } {
+  const user = req.user as { id?: string; role?: string } | undefined;
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip =
+    typeof forwarded === 'string'
+      ? forwarded.split(',')[0]?.trim()
+      : Array.isArray(forwarded)
+        ? forwarded[0]
+        : req.ip;
+  return omitUndefined({
+    userId: user?.id,
+    role: user?.role,
+    ipAddress: ip,
+  });
+}
+
+function parseUsageAnalyticsQuery(req: Request) {
+  const rangeInput: { from?: string; to?: string; sinceDays?: number } = {};
+  if (typeof req.query.from === 'string') rangeInput.from = req.query.from;
+  if (typeof req.query.to === 'string') rangeInput.to = req.query.to;
+  if (req.query.sinceDays != null) rangeInput.sinceDays = Number(req.query.sinceDays);
+
+  const { from, to } = parseAnalyticsDateRange(rangeInput);
+
+  return omitUndefined({
+    from,
+    to,
+    branchId: typeof req.query.branchId === 'string' ? req.query.branchId : undefined,
+    organizationId:
+      typeof req.query.organizationId === 'string' ? req.query.organizationId : undefined,
+    tenantId: typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined,
+    userId: typeof req.query.userId === 'string' ? req.query.userId : undefined,
+    feature: typeof req.query.feature === 'string' ? req.query.feature : undefined,
+    provider: typeof req.query.provider === 'string' ? req.query.provider : undefined,
+    taskType: typeof req.query.taskType === 'string' ? req.query.taskType : undefined,
+  });
 }

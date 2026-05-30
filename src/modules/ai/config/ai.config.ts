@@ -1,10 +1,12 @@
+import { getEncryptionService } from '../vault/encryption.service.js';
+import { getAiSecretService } from '../vault/ai-secret.service.js';
+
 export interface AiPlatformConfig {
-  openaiApiKey: string | undefined;
   openaiModel: string;
-  anthropicApiKey: string | undefined;
   anthropicModel: string;
   preferredProvider: 'openai' | 'anthropic';
   llmRequired: boolean;
+  vaultMasterKeyConfigured: boolean;
   healthProbeEnabled: boolean;
   healthProbeIntervalSec: number;
   dailyBudgetUsd: number | null;
@@ -42,12 +44,11 @@ export function loadAiPlatformConfig(): AiPlatformConfig {
   const llmRequiredDefault = isNodeProduction() && !isNodeTest();
 
   return {
-    openaiApiKey: env.OPENAI_API_KEY?.trim() || undefined,
     openaiModel: env.OPENAI_MODEL?.trim() || 'gpt-4o-mini',
-    anthropicApiKey: env.ANTHROPIC_API_KEY?.trim() || undefined,
     anthropicModel: env.ANTHROPIC_MODEL?.trim() || 'claude-3-5-haiku-20241022',
     preferredProvider: env.AI_PROVIDER?.trim().toLowerCase() === 'anthropic' ? 'anthropic' : 'openai',
     llmRequired: parseBoolean(env.AI_LLM_REQUIRED, llmRequiredDefault),
+    vaultMasterKeyConfigured: getEncryptionService().isMasterKeyConfigured(),
     healthProbeEnabled: parseBoolean(env.AI_HEALTH_PROBE_ENABLED, isNodeProduction() && !isNodeTest()),
     healthProbeIntervalSec: Math.max(60, Number.parseInt(env.AI_HEALTH_PROBE_INTERVAL_SEC ?? '300', 10) || 300),
     dailyBudgetUsd: parseOptionalUsd(env.DAILY_AI_BUDGET_USD),
@@ -69,50 +70,49 @@ export function resetAiPlatformConfigCache(): void {
   cached = null;
 }
 
-/** Validates AI secrets and provider config at startup. */
-export function validateAiSecrets(config: AiPlatformConfig = getAiPlatformConfig()): {
+/** Validates AI vault + provider config at startup. */
+export async function validateAiSecrets(
+  config: AiPlatformConfig = getAiPlatformConfig(),
+): Promise<{
   ok: boolean;
   errors: string[];
   warnings: string[];
-} {
+}> {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const hasOpenAi = Boolean(config.openaiApiKey);
-  const hasAnthropic = Boolean(config.anthropicApiKey);
-
-  if (config.llmRequired && !hasOpenAi && !hasAnthropic) {
+  if (config.llmRequired && !config.vaultMasterKeyConfigured) {
     errors.push(
-      'At least one LLM provider key is required (OPENAI_API_KEY or ANTHROPIC_API_KEY). Set AI_LLM_REQUIRED=false to disable.',
+      'AI_VAULT_MASTER_KEY is required when AI_LLM_REQUIRED=true. Provider API keys are stored encrypted in the database vault.',
     );
   }
 
-  if (hasOpenAi) {
-    const key = config.openaiApiKey!;
-    if (key.length < 20) {
-      errors.push('OPENAI_API_KEY appears invalid (too short)');
-    } else if (!key.startsWith('sk-')) {
-      warnings.push('OPENAI_API_KEY does not start with sk- — verify key format');
-    }
-    if (!config.openaiModel.trim()) {
-      errors.push('OPENAI_MODEL must not be empty when OPENAI_API_KEY is set');
-    }
+  await getAiSecretService().refreshConfigurationCache();
+  const hasOpenAi = getAiSecretService().isProviderConfigured('openai');
+  const hasAnthropic = getAiSecretService().isProviderConfigured('anthropic');
+
+  if (config.llmRequired && !hasOpenAi && !hasAnthropic) {
+    errors.push(
+      'At least one active provider API key is required in the vault (openai or anthropic). Add keys via admin AI secrets API.',
+    );
   }
 
-  if (hasAnthropic) {
-    const key = config.anthropicApiKey!;
-    if (key.length < 20) {
-      errors.push('ANTHROPIC_API_KEY appears invalid (too short)');
-    } else if (!key.startsWith('sk-ant-')) {
-      warnings.push('ANTHROPIC_API_KEY does not start with sk-ant- — verify key format');
-    }
-    if (!config.anthropicModel.trim()) {
-      errors.push('ANTHROPIC_MODEL must not be empty when ANTHROPIC_API_KEY is set');
-    }
+  if (hasOpenAi && !config.openaiModel.trim()) {
+    errors.push('OPENAI_MODEL must not be empty when OpenAI vault key is active');
+  }
+
+  if (hasAnthropic && !config.anthropicModel.trim()) {
+    errors.push('ANTHROPIC_MODEL must not be empty when Anthropic vault key is active');
   }
 
   if (!hasOpenAi && !hasAnthropic && !config.llmRequired) {
-    warnings.push('No LLM API keys configured — rules-based fallback only');
+    warnings.push('No active vault API keys — rules-based fallback only');
+  }
+
+  if (process.env.OPENAI_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim()) {
+    warnings.push(
+      'OPENAI_API_KEY / ANTHROPIC_API_KEY in environment are ignored — use the AI vault (admin API or db:seed:ai-management with AI_VAULT_MASTER_KEY).',
+    );
   }
 
   if (config.dailyBudgetUsd == null && isNodeProduction()) {

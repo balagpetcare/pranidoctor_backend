@@ -58,7 +58,7 @@ export async function handleAdminLogin(request: Request): Promise<Response> {
 }
 
 export async function handleAdminLogout(request: Request): Promise<Response> {
-  const session = await getAdminSession();
+  const session = await getAdminSession(request);
   await getIdentityAuthService().admin.logout(request, session?.sub, session?.sid);
   const res = compatJsonOk({ signedOut: true });
   clearAdminSessionCookie(res);
@@ -66,7 +66,7 @@ export async function handleAdminLogout(request: Request): Promise<Response> {
 }
 
 export async function handleAdminMe(request: Request): Promise<Response> {
-  const session = await getAdminSession();
+  const session = await getAdminSession(request);
   if (!session) {
     return compatAuthJsonError(request, 'UNAUTHORIZED', 401, { messageKey: 'UNAUTHORIZED' });
   }

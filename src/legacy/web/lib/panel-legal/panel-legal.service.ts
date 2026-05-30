@@ -1,11 +1,14 @@
 import type { UserRole } from '@/generated/prisma/client';
 
-import { authRequestContext } from '../../../modules/auth/auth-audit.service.js';
+import { authRequestContext } from '../../../../modules/auth/auth-audit.service.js';
 import {
   getDocumentForRole,
   getLegalStatusForUser,
+  getPublishedDocument,
+  LegalDocumentNotPublishedError,
+  recordLegalAcceptance,
   recordLegalAcceptanceFireAndForget,
-} from '../../../modules/legal/legal-acceptance.service.js';
+} from '../../../../modules/legal/legal-acceptance.service.js';
 
 export async function getPanelLegalStatus(userId: string, role: UserRole, locale?: string | null) {
   return getLegalStatusForUser(userId, role, locale);
@@ -21,18 +24,36 @@ export async function acceptPanelLegalDocument(input: {
   appSurface?: string;
   method?: 'EXPLICIT_BUTTON' | 'PROVIDER_ONBOARDING' | 'FORCED_RECONSENT';
 }) {
+  const published = await getPublishedDocument(
+    input.documentKey,
+    input.locale?.trim() || 'bn-BD',
+  );
+  if (!published) {
+    throw new LegalDocumentNotPublishedError(input.documentKey, input.version);
+  }
+
+  const version =
+    input.version === 'UNPUBLISHED' || input.version !== published.version
+      ? published.version
+      : input.version;
+
   const ctx = input.request ? authRequestContext(input.request) : {};
-  recordLegalAcceptanceFireAndForget({
+  const saved = await recordLegalAcceptance({
     userId: input.userId,
     role: input.role,
     documentKey: input.documentKey,
-    version: input.version,
-    locale: input.locale,
+    version,
+    locale: published.locale,
     ipAddress: ctx.ipAddress ?? null,
     userAgent: ctx.userAgent ?? null,
     appSurface: input.appSurface,
     method: input.method ?? 'EXPLICIT_BUTTON',
   });
+
+  if (!saved) {
+    throw new LegalDocumentNotPublishedError(input.documentKey, version);
+  }
+
   return getLegalStatusForUser(input.userId, input.role, input.locale);
 }
 

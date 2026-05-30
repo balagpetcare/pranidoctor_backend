@@ -7,6 +7,18 @@ import {
   validateAnthropicProvider,
 } from './orchestrator/providers/provider.validation.js';
 import { resetAiPlatformConfigCache } from './config/ai.config.js';
+import { resetAiSecretServiceForTests } from './vault/ai-secret.service.js';
+
+const secretConfiguredMock = vi.fn().mockReturnValue(false);
+
+vi.mock('./vault/ai-secret.service.js', () => ({
+  getAiSecretService: () => ({
+    isProviderConfigured: secretConfiguredMock,
+    refreshConfigurationCache: vi.fn(),
+    resolveProviderSecret: vi.fn(),
+  }),
+  resetAiSecretServiceForTests: vi.fn(),
+}));
 
 const recordAttemptMock = vi.fn();
 
@@ -96,28 +108,26 @@ function mockProvider(
 describe('AI provider validation', () => {
   beforeEach(() => {
     resetAiPlatformConfigCache();
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
+    resetAiSecretServiceForTests();
+    secretConfiguredMock.mockReset();
+    secretConfiguredMock.mockReturnValue(false);
   });
 
-  it('validates OpenAI key format', () => {
-    process.env.OPENAI_API_KEY = 'sk-test-openai-key-1234567890';
-    resetAiPlatformConfigCache();
+  it('validates OpenAI when vault key is active', () => {
+    secretConfiguredMock.mockImplementation((key: string) => key === 'openai');
     const result = validateOpenAiProvider();
     expect(result.configured).toBe(true);
     expect(result.valid).toBe(true);
   });
 
-  it('rejects invalid OpenAI key length', () => {
-    process.env.OPENAI_API_KEY = 'short';
-    resetAiPlatformConfigCache();
+  it('reports unconfigured OpenAI when vault has no key', () => {
     const result = validateOpenAiProvider();
-    expect(result.valid).toBe(false);
+    expect(result.configured).toBe(false);
+    expect(result.valid).toBe(true);
   });
 
-  it('validates Anthropic key format', () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-12345678901234567890';
-    resetAiPlatformConfigCache();
+  it('validates Anthropic when vault key is active', () => {
+    secretConfiguredMock.mockImplementation((key: string) => key === 'anthropic');
     const result = validateAnthropicProvider();
     expect(result.configured).toBe(true);
     expect(result.valid).toBe(true);
@@ -128,7 +138,7 @@ describe('AI orchestrator fallback chain', () => {
   beforeEach(() => {
     recordAttemptMock.mockClear();
     resetAiPlatformConfigCache();
-    process.env.OPENAI_API_KEY = 'sk-test-openai-key-1234567890';
+    secretConfiguredMock.mockReturnValue(true);
   });
 
   it('falls back OpenAI → Anthropic → rules on failures', async () => {

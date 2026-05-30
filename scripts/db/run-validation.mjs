@@ -158,7 +158,7 @@ async function main() {
         summary.exitCode = 1;
       }
     } else {
-      const driftMd = schemaDriftMarkdown([]);
+      let driftMd = schemaDriftMarkdown([]);
       driftMd +=
         '\n\n## How to run comparisons\n\nSet `DATABASE_URL_LOCAL`, `DATABASE_URL_STAGING`, `DATABASE_URL_PRODUCTION` (or use `npm run db:snapshot` + `db:compare-schema`).\n';
       fs.writeFileSync(`${REPORTS_DIR}/schema-drift-report.md`, driftMd);

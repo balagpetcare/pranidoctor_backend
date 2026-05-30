@@ -7,6 +7,7 @@ import { resolveUsageDimensions } from './ai-usage-dimensions.js';
 import { estimateAiCostUsd } from './ai-usage.cost.js';
 import { recordAiUsageMetrics } from './ai-usage.metrics.js';
 import { buildPlatformRollupFields, buildScopedRollupFields, buildMonthlyRollupFields } from './ai-usage.rollups.js';
+import { writeAimsUsageLog } from '../analytics/usage/ai-usage-log.writer.js';
 import { AI_RATE_VERSION, accountTokens } from './ai-usage.tokens.js';
 import type {
   AiTokenConsumptionSummary,
@@ -243,6 +244,16 @@ export class AiUsageService {
         });
       }
     });
+
+    void writeAimsUsageLog(
+      {
+        ...params,
+        organizationId: resolvedDims.organizationId ?? params.organizationId,
+        branchId: resolvedDims.branchId ?? params.branchId,
+      },
+      costUsd,
+      tokens.totalTokens,
+    );
 
     if (tokens.billable) {
       void getAiBudgetService().checkBudgetAfterUsage();

@@ -4,7 +4,7 @@ import { listDuplicateLocationSamples } from "@/lib/locations/location-master-ad
 import { adminLocationListQuerySchema } from "@/lib/locations/location-master-schemas";
 
 export async function GET(request: Request) {
-  const authError = await requireAdminPanelApiAccess();
+  const authError = await requireAdminPanelApiAccess(request);
   if (authError) return authError;
 
   const url = new URL(request.url);

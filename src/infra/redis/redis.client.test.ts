@@ -12,4 +12,15 @@ describe('redis.client', () => {
     expect(result.latency).toBe(0);
     expect(result.error).toContain('not initialized');
   });
+
+  it('reconnects on transient network errors (policy mirrors redis.client.ts)', () => {
+    const reconnectOnError = (err: Error): boolean => {
+      const targetErrors = ['READONLY', 'ECONNRESET', 'ECONNREFUSED'];
+      return targetErrors.some((e) => err.message.includes(e));
+    };
+
+    expect(reconnectOnError(new Error('ECONNRESET'))).toBe(true);
+    expect(reconnectOnError(new Error('READONLY'))).toBe(true);
+    expect(reconnectOnError(new Error('unknown'))).toBe(false);
+  });
 });

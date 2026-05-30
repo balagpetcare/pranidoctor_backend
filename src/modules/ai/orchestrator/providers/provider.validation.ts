@@ -1,4 +1,5 @@
 import { getAiPlatformConfig } from '../../config/ai.config.js';
+import { getAiSecretService } from '../../vault/ai-secret.service.js';
 
 export type ProviderValidationResult = {
   provider: 'openai' | 'anthropic';
@@ -10,16 +11,14 @@ export type ProviderValidationResult = {
 
 export function validateOpenAiProvider(): ProviderValidationResult {
   const config = getAiPlatformConfig();
-  const key = config.openaiApiKey;
+  const configured = getAiSecretService().isProviderConfigured('openai');
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!key) {
+  if (!configured) {
     return { provider: 'openai', configured: false, valid: true, errors, warnings };
   }
 
-  if (key.length < 20) errors.push('OPENAI_API_KEY too short');
-  if (!key.startsWith('sk-')) warnings.push('OPENAI_API_KEY format unexpected');
   if (!config.openaiModel.trim()) errors.push('OPENAI_MODEL is required');
 
   return {
@@ -33,16 +32,14 @@ export function validateOpenAiProvider(): ProviderValidationResult {
 
 export function validateAnthropicProvider(): ProviderValidationResult {
   const config = getAiPlatformConfig();
-  const key = config.anthropicApiKey;
+  const configured = getAiSecretService().isProviderConfigured('anthropic');
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!key) {
+  if (!configured) {
     return { provider: 'anthropic', configured: false, valid: true, errors, warnings };
   }
 
-  if (key.length < 20) errors.push('ANTHROPIC_API_KEY too short');
-  if (!key.startsWith('sk-ant-')) warnings.push('ANTHROPIC_API_KEY format unexpected');
   if (!config.anthropicModel.trim()) errors.push('ANTHROPIC_MODEL is required');
 
   return {

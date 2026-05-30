@@ -23,14 +23,39 @@ function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
+/** Mutates in place — Express 5 exposes `req.query` as a read-only getter. */
+function sanitizeInPlace(obj: Record<string, unknown>): void {
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (typeof val === 'string') {
+      obj[key] = val.replace(NULL_BYTE, '').trim();
+      continue;
+    }
+    if (Array.isArray(val)) {
+      for (let i = 0; i < val.length; i++) {
+        const item = val[i];
+        if (typeof item === 'string') {
+          val[i] = item.replace(NULL_BYTE, '').trim();
+        } else if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+          sanitizeInPlace(item as Record<string, unknown>);
+        }
+      }
+      continue;
+    }
+    if (val !== null && typeof val === 'object') {
+      sanitizeInPlace(val as Record<string, unknown>);
+    }
+  }
+}
+
 /** Trims strings and strips null bytes from JSON body and query (light XSS hardening). */
 export function sanitizeInputMiddleware(): RequestHandler {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    if (req.body && typeof req.body === 'object') {
+    if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
       req.body = sanitizeObject(req.body as Record<string, unknown>);
     }
     if (req.query && typeof req.query === 'object') {
-      req.query = sanitizeObject(req.query as Record<string, unknown>) as typeof req.query;
+      sanitizeInPlace(req.query as Record<string, unknown>);
     }
     next();
   };

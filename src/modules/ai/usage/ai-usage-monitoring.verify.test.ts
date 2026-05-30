@@ -91,10 +91,6 @@ describe('AI usage monitoring verification', () => {
     delete process.env.ANTHROPIC_API_KEY;
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe('request tracking', () => {
     it('records a successful provider attempt with feature and model labels', async () => {
       const orchestrator = new AiOrchestratorService();
@@ -102,7 +98,7 @@ describe('AI usage monitoring verification', () => {
         mockProvider('openai', 'ok'),
         mockProvider('rules-based', 'ok'),
       ];
-      process.env.OPENAI_API_KEY = 'test-key';
+      resetAiPlatformConfigCache();
 
       await orchestrator.complete({
         feature: 'CHAT',
@@ -152,7 +148,7 @@ describe('AI usage monitoring verification', () => {
         mockProvider('openai', 'fail'),
         mockProvider('rules-based', 'ok'),
       ];
-      process.env.OPENAI_API_KEY = 'test-key';
+      resetAiPlatformConfigCache();
 
       const result = await orchestrator.complete({
         feature: 'CHAT',
@@ -245,7 +241,6 @@ describe('AI usage monitoring verification', () => {
         mockProvider('anthropic', 'fail'),
         mockProvider('rules-based', 'ok'),
       ];
-      process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-12345678901234567890';
       resetAiPlatformConfigCache();
 
       await orchestrator.complete({

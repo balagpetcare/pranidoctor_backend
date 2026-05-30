@@ -38,6 +38,7 @@
     "db:seed:feed-catalog": "tsx prisma/seeds/feed_catalog.seed.ts",
     "db:seed:phase4-feed": "tsx prisma/seeds/phase4_feed_items.seed.ts",
     "db:seed:phase4-vendors": "tsx prisma/seeds/phase4_vendors.seed.ts",
+    "db:seed:ai-management": "tsx prisma/seeds/ai_management_foundation.seed.ts",
     "db:seed:admin": "tsx prisma/seed-admin.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:seed:reset-demo": "tsx prisma/seed-demo-reset.ts",

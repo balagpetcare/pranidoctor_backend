@@ -611,6 +611,22 @@ async function main(): Promise<void> {
     } catch (err) {
       console.warn('[seed] Phase 8 AI seed skipped:', err);
     }
+
+    try {
+      const { seedAiManagementFoundation } = await import('./seeds/ai_management_foundation.seed.js');
+      await seedAiManagementFoundation();
+      console.info('[seed] AIMS foundation (providers, routes, prompts, settings) seeded.');
+    } catch (err) {
+      console.warn('[seed] AIMS foundation seed skipped:', err);
+    }
+
+    try {
+      const { seedAiMarketplaceExtensions } = await import('./seeds/ai_marketplace.seed.js');
+      await seedAiMarketplaceExtensions();
+      console.info('[seed] AI marketplace extensions seeded.');
+    } catch (err) {
+      console.warn('[seed] AI marketplace seed skipped:', err);
+    }
   }
 
   if (!isProduction()) {

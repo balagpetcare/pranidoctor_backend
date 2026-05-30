@@ -2,8 +2,8 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 import { requireAdminPanelApiAccess } from "@/lib/admin-auth/api-guard";
 import { getLocationAdminStats } from "@/lib/locations/location-master-admin";
 
-export async function GET() {
-  const authError = await requireAdminPanelApiAccess();
+export async function GET(request: Request) {
+  const authError = await requireAdminPanelApiAccess(request);
   if (authError) return authError;
 
   try {

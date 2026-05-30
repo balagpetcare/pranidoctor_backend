@@ -1,4 +1,5 @@
-import { getRedis, isRedisInitialized } from '../../infra/redis/redis.client.js';
+import { isRedisInitialized } from '../../infra/redis/redis.client.js';
+import { probeRedisHealth } from '../../infra/redis/redis.health.js';
 import {
   degradeStorageRuntime,
   getStorage,
@@ -81,21 +82,52 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
     });
   }
 
-  if (isRedisEnabled(config) && isRedisInitialized()) {
+  if (config.nodeEnv === 'production' && !isRedisEnabled(config)) {
+    checks.push({
+      name: 'redis-config',
+      healthy: false,
+      optional: false,
+      error: 'REDIS_ENABLED must be true in production',
+    });
+    warnings.push('Production requires Redis — set REDIS_ENABLED=true and REDIS_URL');
+  } else if (!isRedisEnabled(config)) {
+    checks.push({
+      name: 'redis',
+      healthy: true,
+      optional: true,
+      error: 'Redis disabled (REDIS_ENABLED=false)',
+    });
+    warnings.push('Redis disabled — auth OTP and background jobs require Redis when enabled');
+  } else if (!isRedisInitialized()) {
+    const required = isRedisRequired(config);
+    checks.push({
+      name: 'redis',
+      healthy: false,
+      optional: !required,
+      warning: !required,
+      error: 'Redis enabled but client not initialized',
+    });
+    if (required) {
+      warnings.push('Redis is required but the client failed to initialize — check REDIS_URL');
+    } else {
+      warnings.push('Redis unavailable — OTP, sessions, and queues disabled until Redis is up');
+    }
+  } else {
     const redisStart = Date.now();
     try {
-      const redis = getRedis();
-      const pong = await redis.ping();
-      const healthy = pong === 'PONG';
+      const probe = await probeRedisHealth(config);
       const required = isRedisRequired(config);
-      checks.push({
-        name: 'redis',
-        healthy,
-        latencyMs: Date.now() - redisStart,
-        optional: !required,
-        warning: !healthy && !required,
-      });
-      if (!healthy && !required) {
+      checks.push(
+        omitUndefined({
+          name: 'redis',
+          healthy: probe.healthy,
+          latencyMs: probe.latency || Date.now() - redisStart,
+          error: probe.error,
+          optional: !required,
+          warning: !probe.healthy && !required,
+        }),
+      );
+      if (!probe.healthy && !required) {
         warnings.push('Redis unavailable — OTP, sessions, and queues disabled until Redis is up');
       }
     } catch (error) {
@@ -112,14 +144,6 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
         warnings.push('Redis unavailable — continuing in development without cache');
       }
     }
-  } else {
-    checks.push({
-      name: 'redis',
-      healthy: true,
-      optional: true,
-      error: 'Redis disabled (REDIS_ENABLED=false)',
-    });
-    warnings.push('Redis disabled — auth OTP and background jobs require Redis when enabled');
   }
 
   if (!config.storage.enabled) {
@@ -202,7 +226,7 @@ export async function validateStartup(config: AppConfig): Promise<StartupValidat
     );
   }
 
-  const aiSecrets = validateAiSecrets();
+  const aiSecrets = await validateAiSecrets();
   const aiProviders = validateAllLlmProviders();
   const aiConfigured = aiProviders.some((p) => p.configured);
   const aiValid = aiSecrets.ok && aiProviders.every((p) => !p.configured || p.valid);

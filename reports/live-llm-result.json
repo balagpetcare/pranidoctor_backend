@@ -1,0 +1,160 @@
+{
+  "generatedAt": "2026-05-30T11:22:26.373Z",
+  "environment": {
+    "nodeEnv": "development",
+    "openaiApiKey": "(not set)",
+    "anthropicApiKey": "(not set)",
+    "openaiModel": "gpt-4o-mini",
+    "anthropicModel": "claude-3-5-haiku-20241022",
+    "dailyBudgetUsd": null,
+    "monthlyBudgetUsd": null,
+    "healthProbeEnabled": false,
+    "redisEnabled": false,
+    "llmRequired": false
+  },
+  "secretsValidation": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      "No LLM API keys configured — rules-based fallback only"
+    ]
+  },
+  "providerValidation": {
+    "openAi": {
+      "provider": "openai",
+      "configured": false,
+      "valid": true,
+      "errors": [],
+      "warnings": []
+    },
+    "anthropic": {
+      "provider": "anthropic",
+      "configured": false,
+      "valid": true,
+      "errors": [],
+      "warnings": []
+    }
+  },
+  "providerStatus": {
+    "openai": {
+      "configured": false,
+      "reachable": false,
+      "errorCode": "not_configured"
+    },
+    "anthropic": {
+      "configured": false,
+      "reachable": false,
+      "errorCode": "not_configured"
+    }
+  },
+  "checks": [
+    {
+      "name": "openai_connectivity",
+      "pass": false,
+      "detail": "OPENAI_API_KEY not set in environment"
+    },
+    {
+      "name": "anthropic_connectivity",
+      "pass": false,
+      "detail": "ANTHROPIC_API_KEY not set in environment"
+    },
+    {
+      "name": "provider_failover",
+      "pass": true,
+      "detail": "With openai governance-blocked, chain returned provider=rules-based",
+      "latencyMs": 8,
+      "metadata": {
+        "provider": "rules-based",
+        "model": "rules-based-v1"
+      }
+    },
+    {
+      "name": "budget_enforcement",
+      "pass": true,
+      "detail": "Budget blocked (spent $1 / cap $0.001) → rules-based",
+      "latencyMs": 39,
+      "metadata": {
+        "budgetStatus": {
+          "daily": {
+            "budgetUsd": 0.001,
+            "spentUsd": 1,
+            "remainingUsd": 0,
+            "exceeded": true
+          },
+          "monthly": {
+            "budgetUsd": null,
+            "spentUsd": 1,
+            "remainingUsd": null,
+            "exceeded": false
+          },
+          "blocked": true
+        },
+        "resultProvider": "rules-based"
+      }
+    },
+    {
+      "name": "usage_tracking",
+      "pass": true,
+      "detail": "AiUsageRecord 0→3; provider=rules-based",
+      "latencyMs": 821,
+      "metadata": {
+        "provider": "rules-based",
+        "inputTokens": 15,
+        "outputTokens": 33,
+        "success": true
+      }
+    },
+    {
+      "name": "cost_tracking",
+      "pass": true,
+      "detail": "record costUsd=0; rollup billableCostUsd=0",
+      "metadata": {
+        "recordCostUsd": "0",
+        "rollupBillableCostUsd": "0",
+        "estimatedCostUsd": 0
+      }
+    },
+    {
+      "name": "governance_rules",
+      "pass": true,
+      "detail": "DB governance row present — llmDisabled=false, version=3",
+      "metadata": {
+        "llmDisabled": false,
+        "version": 3
+      }
+    },
+    {
+      "name": "kill_switch",
+      "pass": true,
+      "detail": "LLM disabled via applyLocalState → orchestrator returned rules-based",
+      "latencyMs": 12
+    },
+    {
+      "name": "health_monitoring",
+      "pass": true,
+      "detail": "Probes ran; snapshots 0→0",
+      "metadata": {
+        "probes": [
+          {
+            "provider": "openai",
+            "configured": false,
+            "reachable": false,
+            "latencyMs": 0,
+            "errorCode": "not_configured",
+            "lastProbedAt": "2026-05-30T11:22:26.053Z"
+          },
+          {
+            "provider": "anthropic",
+            "configured": false,
+            "reachable": false,
+            "latencyMs": 0,
+            "errorCode": "not_configured",
+            "lastProbedAt": "2026-05-30T11:22:26.053Z"
+          }
+        ]
+      }
+    }
+  ],
+  "readinessScore": 70,
+  "verdict": "DEGRADED"
+}

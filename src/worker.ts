@@ -5,6 +5,7 @@ loadEnv();
 import { createRedisClient, disconnectRedis } from './infra/redis/redis.client.js';
 import { initializeQueueConnection, closeAllQueues } from './infra/queue/queue.service.js';
 import { loadConfig, type AppConfig } from './shared/config/index.js';
+import { isRedisEnabled } from './shared/config/infra.flags.js';
 import { createPrismaClient, disconnectPrisma } from './shared/database/prisma.js';
 import { createLogger, getLogger } from './shared/logger/logger.js';
 import { captureException } from './shared/monitoring/error-tracking.js';
@@ -31,6 +32,14 @@ async function bootstrap(): Promise<void> {
     logger.info({ msg: 'Database client initialized' });
   } catch (error) {
     logger.error({ msg: 'Failed to initialize database', error });
+    process.exit(1);
+  }
+
+  if (!isRedisEnabled(config)) {
+    logger.error({
+      msg: 'Worker requires Redis — set REDIS_ENABLED=true',
+      env: config.nodeEnv,
+    });
     process.exit(1);
   }
 

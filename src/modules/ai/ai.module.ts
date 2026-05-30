@@ -16,6 +16,7 @@ import { getAiKnowledgeService } from './knowledge/ai-knowledge.service.js';
 import { getNotificationIntelligenceService } from './notifications/notification-intelligence.service.js';
 import { getAiOrchestratorService } from './orchestrator/ai-orchestrator.service.js';
 import { getAiPromptService } from './prompts/ai-prompt.service.js';
+import { getAiPromptManagementService } from './prompts/management/ai-prompt-management.service.js';
 import { getSmartRecommendationService } from './recommendations/smart-recommendation.service.js';
 import { getRiskScoringService } from './risk/risk-scoring.service.js';
 import { getSymptomCheckerService } from './symptom-checker/symptom-checker.service.js';
@@ -43,6 +44,7 @@ export class AiModule extends BaseModule {
     this.registerService(getAiOrchestratorService());
     this.registerService(getAiUsageService());
     this.registerService(getAiPromptService());
+    this.registerService(getAiPromptManagementService());
     this.registerService(getAiAuditService());
     this.registerService(getAiKnowledgeService());
     this.registerService(getSymptomCheckerService());
@@ -78,6 +80,7 @@ export class AiAdminModule extends BaseModule {
     this.registerService(getAiAnalyticsService());
     this.registerService(getAiKnowledgeService());
     this.registerService(getAiPromptService());
+    this.registerService(getAiPromptManagementService());
     this.registerService(getAiAuditService());
     this.registerService(getAiOrchestratorService());
   }

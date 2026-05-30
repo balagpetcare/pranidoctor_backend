@@ -128,6 +128,14 @@ function providerDocs(): SeedDoc[] {
       publicUrl: 'https://pranidoctor.com/legal/acceptable-use',
     },
     {
+      documentKey: LEGAL_DOCUMENT_KEYS.TOS_ADMIN,
+      locale: 'bn-BD',
+      title: 'অ্যাডমিন গ্রহণযোগ্য ব্যবহার নীতি',
+      summary: ADMIN_AUP_SUMMARY,
+      contentMarkdown: ADMIN_AUP_SUMMARY,
+      publicUrl: 'https://pranidoctor.com/legal/acceptable-use',
+    },
+    {
       documentKey: LEGAL_DOCUMENT_KEYS.TOS_ENTERPRISE,
       locale: 'en-US',
       title: 'Enterprise Listing Terms',

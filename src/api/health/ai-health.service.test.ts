@@ -12,6 +12,16 @@ const getStatusMock = vi.fn().mockResolvedValue({
   blocked: false,
 });
 
+const secretConfiguredMock = vi.fn().mockReturnValue(false);
+
+vi.mock('../../modules/ai/vault/ai-secret.service.js', () => ({
+  getAiSecretService: () => ({
+    isProviderConfigured: secretConfiguredMock,
+    refreshConfigurationCache: vi.fn(),
+    resolveProviderSecret: vi.fn(),
+  }),
+}));
+
 vi.mock('../../modules/ai/budget/ai-budget.service.js', () => ({
   getAiBudgetService: () => ({
     getStatus: getStatusMock,
@@ -19,16 +29,12 @@ vi.mock('../../modules/ai/budget/ai-budget.service.js', () => ({
 }));
 
 describe('checkAiHealth', () => {
-  const envBackup = {
-    openai: process.env.OPENAI_API_KEY,
-    anthropic: process.env.ANTHROPIC_API_KEY,
-  };
-
   beforeEach(() => {
     resetAiPlatformConfigCache();
     resetAiHealthProbeForTests();
     getAiOrchestratorService().enableLlm();
-    process.env.OPENAI_API_KEY = 'sk-test-openai-key-1234567890';
+    secretConfiguredMock.mockReset();
+    secretConfiguredMock.mockReturnValue(false);
     getStatusMock.mockResolvedValue({
       daily: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
       monthly: { budgetUsd: null, spentUsd: 0, remainingUsd: null, exceeded: false },
@@ -37,15 +43,12 @@ describe('checkAiHealth', () => {
   });
 
   afterEach(() => {
-    process.env.OPENAI_API_KEY = envBackup.openai;
-    process.env.ANTHROPIC_API_KEY = envBackup.anthropic;
     resetAiPlatformConfigCache();
     getAiOrchestratorService().enableLlm();
   });
 
   it('returns healthy when a provider is configured', async () => {
-    delete process.env.ANTHROPIC_API_KEY;
-    resetAiPlatformConfigCache();
+    secretConfiguredMock.mockImplementation((key: string) => key === 'openai');
 
     const result = await checkAiHealth();
 
@@ -64,9 +67,7 @@ describe('checkAiHealth', () => {
   });
 
   it('returns degraded when no LLM keys are configured', async () => {
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
-    resetAiPlatformConfigCache();
+    secretConfiguredMock.mockReturnValue(false);
 
     const result = await checkAiHealth();
 
@@ -75,6 +76,7 @@ describe('checkAiHealth', () => {
   });
 
   it('returns degraded when budget is exceeded', async () => {
+    secretConfiguredMock.mockReturnValue(true);
     getStatusMock.mockResolvedValueOnce({
       daily: { budgetUsd: 10, spentUsd: 12, remainingUsd: 0, exceeded: true },
       monthly: { budgetUsd: 100, spentUsd: 12, remainingUsd: 88, exceeded: false },

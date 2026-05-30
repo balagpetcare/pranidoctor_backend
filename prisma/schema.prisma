@@ -3973,3 +3973,439 @@ model AiFollowUpSuggestion {
   @@index([userId, dismissed])
   @@index([customerId])
 }
+
+// ---------------------------------------------------------------------------
+// AIMS — AI Management System database foundation (Phase 1)
+// Separate from legacy runtime tables (AiUsageRecord, AiPromptTemplate, etc.)
+// ---------------------------------------------------------------------------
+
+enum AiApiKeyStatus {
+  ACTIVE
+  ROTATED
+  REVOKED
+  EXPIRED
+}
+
+enum AiApiKeyAuditAction {
+  CREATED
+  UPDATED
+  DISABLED
+  ENABLED
+  ROTATED
+  TESTED
+  REVOKED
+  IMPORTED
+}
+
+enum AiFailoverTriggerType {
+  HTTP_5XX
+  HTTP_429
+  TIMEOUT
+  RATE_LIMIT
+  BUDGET_EXCEEDED
+  HEALTH_SCORE_LOW
+  CONTENT_POLICY
+  PROVIDER_DISABLED
+}
+
+enum AiFailoverActionType {
+  NEXT_PROVIDER
+  DOWNGRADE_MODEL
+  RULES_ONLY
+  RETRY_SAME
+  ABORT
+}
+
+enum AiModelSource {
+  BUILTIN
+  MARKETPLACE
+  EXTERNAL
+  VETERINARY
+  SELF_HOSTED
+}
+
+enum AiExtensionStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+  DISABLED
+}
+
+enum AiSettingsCategory {
+  ROUTING
+  BUDGET
+  SECURITY
+  GOVERNANCE
+  FEATURE_FLAGS
+  ENCRYPTION
+}
+
+/// LLM provider registry — multi-tenant, branch-scoped, encryption-ready.
+model AiProvider {
+  id                String    @id @default(cuid())
+  scopeKey          String    @default("platform") @db.VarChar(128)
+  tenantId          String?   @db.VarChar(64)
+  branchId          String?   @db.VarChar(64)
+  providerKey       String    @db.VarChar(32)
+  displayName       String
+  description       String?
+  enabled           Boolean   @default(true)
+  priority          Int       @default(100)
+  adapterType       String    @default("openai_compatible") @db.VarChar(32)
+  baseUrl           String?
+  capabilitiesJson  Json      @default("[]")
+  configJson        Json?
+  healthScore       Float     @default(1.0)
+  lastHealthCheckAt DateTime?
+  costTier          String    @default("standard") @db.VarChar(16)
+  version           Int       @default(1)
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime?
+  deletedByUserId   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  models            AiModel[]
+  apiKeys           AiApiKey[]
+  usageLogs         AiUsageLog[]
+  primaryRoutes     AiRoute[]        @relation("AiRoutePrimaryProvider")
+  failoverRulesFrom AiFailoverRule[] @relation("AiFailoverFromProvider")
+  failoverRulesTo   AiFailoverRule[] @relation("AiFailoverToProvider")
+
+  @@index([scopeKey, providerKey])
+  @@index([tenantId, branchId])
+  @@index([enabled, deletedAt])
+  @@index([deletedAt])
+  @@map("ai_providers")
+}
+
+/// Provider model catalog with cost rates and capability metadata.
+model AiModel {
+  id                 String    @id @default(cuid())
+  scopeKey           String    @default("platform") @db.VarChar(128)
+  tenantId           String?   @db.VarChar(64)
+  branchId           String?   @db.VarChar(64)
+  providerId         String
+  modelKey           String    @db.VarChar(128)
+  displayName        String
+  modelType          String    @default("chat") @db.VarChar(32)
+  contextWindow      Int?
+  maxOutputTokens    Int?
+  inputCostPerToken  Decimal   @default(0) @db.Decimal(16, 12)
+  outputCostPerToken Decimal   @default(0) @db.Decimal(16, 12)
+  enabled            Boolean   @default(true)
+  isDefault          Boolean   @default(false)
+  source             AiModelSource @default(BUILTIN)
+  externalModelId    String?   @db.VarChar(256)
+  modelCategory      String    @default("general_chat") @db.VarChar(64)
+  extensionId        String?
+  capabilitiesJson   Json      @default("[]")
+  metadataJson       Json?
+  version            Int       @default(1)
+  createdByUserId    String?
+  updatedByUserId      String?
+  deletedAt          DateTime?
+  deletedByUserId    String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  provider           AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  extension          AiMarketplaceExtension? @relation(fields: [extensionId], references: [id])
+  usageLogs          AiUsageLog[]
+  primaryRoutes      AiRoute[]  @relation("AiRoutePrimaryModel")
+  failoverRulesFrom  AiFailoverRule[] @relation("AiFailoverFromModel")
+  failoverRulesTo    AiFailoverRule[] @relation("AiFailoverToModel")
+
+  @@unique([scopeKey, providerId, modelKey])
+  @@index([providerId, enabled])
+  @@index([source, modelCategory])
+  @@index([extensionId])
+  @@index([deletedAt])
+  @@map("ai_models")
+}
+
+/// Encrypted API credentials — plaintext never stored.
+model AiApiKey {
+  id                  String         @id @default(cuid())
+  scopeKey            String         @default("platform") @db.VarChar(128)
+  tenantId            String?        @db.VarChar(64)
+  branchId            String?        @db.VarChar(64)
+  providerId          String
+  name                String
+  status              AiApiKeyStatus @default(ACTIVE)
+  encryptedSecret     String         @db.Text
+  encryptionKeyId     String         @default("env:v1") @db.VarChar(64)
+  encryptionAlgorithm String         @default("aes-256-gcm") @db.VarChar(32)
+  secretHint          String?        @db.VarChar(16)
+  expiresAt           DateTime?
+  rotatedAt           DateTime?
+  revokedAt           DateTime?
+  lastUsedAt          DateTime?
+  metadataJson        Json?
+  version             Int            @default(1)
+  createdByUserId     String?
+  updatedByUserId     String?
+  deletedAt           DateTime?
+  deletedByUserId     String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  provider            AiProvider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  auditLogs           AiApiKeyAuditLog[]
+
+  @@index([providerId, status])
+  @@index([scopeKey, providerId])
+  @@index([deletedAt])
+  @@map("ai_api_keys")
+}
+
+/// Task-type routing rules with ordered provider/model chains.
+model AiRoute {
+  id                  String    @id @default(cuid())
+  scopeKey            String    @default("platform") @db.VarChar(128)
+  tenantId            String?   @db.VarChar(64)
+  branchId            String?   @db.VarChar(64)
+  routeKey            String    @db.VarChar(64)
+  name                String
+  taskType            String    @db.VarChar(64)
+  description         String?
+  enabled             Boolean   @default(true)
+  priority            Int       @default(100)
+  conditionsJson      Json?
+  primaryProviderId   String?
+  primaryModelId      String?
+  providerChainJson   Json      @default("[]")
+  maxRetries          Int       @default(2)
+  timeoutMs           Int       @default(30000)
+  asyncRequired       Boolean   @default(false)
+  maxCostUsd          Decimal?  @db.Decimal(10, 6)
+  fallbackToRules     Boolean   @default(true)
+  version             Int       @default(1)
+  createdByUserId     String?
+  updatedByUserId     String?
+  deletedAt           DateTime?
+  deletedByUserId     String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  primaryProvider     AiProvider?      @relation("AiRoutePrimaryProvider", fields: [primaryProviderId], references: [id])
+  primaryModel        AiModel?         @relation("AiRoutePrimaryModel", fields: [primaryModelId], references: [id])
+  failoverRules       AiFailoverRule[]
+  usageLogs           AiUsageLog[]
+
+  @@index([scopeKey, routeKey])
+  @@index([taskType, enabled, priority])
+  @@index([tenantId, branchId])
+  @@index([deletedAt])
+  @@map("ai_routes")
+}
+
+/// Versioned prompt templates for the AIMS prompt registry.
+model AiPrompt {
+  id                  String         @id @default(cuid())
+  scopeKey            String         @default("platform") @db.VarChar(128)
+  tenantId            String?        @db.VarChar(64)
+  branchId            String?        @db.VarChar(64)
+  promptKey           String         @db.VarChar(64)
+  version             Int            @default(1)
+  taskType            String?        @db.VarChar(64)
+  name                String
+  description         String?
+  systemBn            String         @db.Text
+  systemEn            String         @db.Text
+  userTemplateBn      String?        @db.Text
+  userTemplateEn      String?        @db.Text
+  status              AiPromptStatus @default(DRAFT)
+  trafficPercent      Int            @default(100)
+  parentVersionId     String?
+  variablesSchemaJson Json?
+  testCasesJson       Json?
+  approvedByUserId    String?
+  approvedAt          DateTime?
+  metadataJson        Json?
+  createdByUserId     String?
+  updatedByUserId     String?
+  deletedAt           DateTime?
+  deletedByUserId     String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  usageLogs           AiUsageLog[]
+
+  @@unique([scopeKey, promptKey, version])
+  @@index([scopeKey, promptKey, status])
+  @@index([taskType, status])
+  @@index([deletedAt])
+  @@map("ai_prompts")
+}
+
+/// Per-request usage log for AIMS cost tracking and analytics.
+model AiUsageLog {
+  id              String    @id @default(cuid())
+  scopeKey        String    @default("platform") @db.VarChar(128)
+  tenantId        String?   @db.VarChar(64)
+  branchId        String?   @db.VarChar(64)
+  organizationId  String?   @db.VarChar(64)
+  userId          String?
+  customerId      String?
+  providerId      String?
+  modelId         String?
+  routeId         String?
+  promptId        String?
+  failoverRuleId  String?
+  taskType        String    @db.VarChar(64)
+  feature         String?   @db.VarChar(64)
+  providerKey     String    @db.VarChar(32)
+  modelKey        String    @db.VarChar(128)
+  inputTokens     Int       @default(0)
+  outputTokens    Int       @default(0)
+  totalTokens     Int       @default(0)
+  costUsd         Decimal?  @db.Decimal(10, 6)
+  billable        Boolean   @default(false)
+  rateVersion     String?   @db.VarChar(32)
+  latencyMs       Int       @default(0)
+  success         Boolean   @default(true)
+  errorCode       String?   @db.VarChar(64)
+  isFallback      Boolean   @default(false)
+  fromProviderKey String?   @db.VarChar(32)
+  requestId       String?   @db.VarChar(64)
+  correlationId   String?   @db.VarChar(64)
+  metadataJson    Json?
+  createdAt       DateTime  @default(now())
+
+  provider        AiProvider?    @relation(fields: [providerId], references: [id])
+  model           AiModel?       @relation(fields: [modelId], references: [id])
+  route           AiRoute?       @relation(fields: [routeId], references: [id])
+  prompt          AiPrompt?      @relation(fields: [promptId], references: [id])
+  failoverRule    AiFailoverRule? @relation(fields: [failoverRuleId], references: [id])
+
+  @@index([createdAt, taskType])
+  @@index([tenantId, branchId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+  @@index([providerId, createdAt])
+  @@index([routeId, createdAt])
+  @@map("ai_usage_logs")
+}
+
+/// Failover behavior rules — global or bound to a route.
+model AiFailoverRule {
+  id                String               @id @default(cuid())
+  scopeKey          String               @default("platform") @db.VarChar(128)
+  tenantId          String?              @db.VarChar(64)
+  branchId          String?              @db.VarChar(64)
+  routeId           String?
+  name              String
+  enabled           Boolean              @default(true)
+  priority          Int                  @default(100)
+  triggerType       AiFailoverTriggerType
+  triggerConfigJson Json?
+  fromProviderId    String?
+  toProviderId      String?
+  fromModelId       String?
+  toModelId         String?
+  action            AiFailoverActionType
+  actionConfigJson  Json?
+  version           Int                  @default(1)
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime?
+  deletedByUserId   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  route             AiRoute?             @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  fromProvider      AiProvider?          @relation("AiFailoverFromProvider", fields: [fromProviderId], references: [id])
+  toProvider        AiProvider?          @relation("AiFailoverToProvider", fields: [toProviderId], references: [id])
+  fromModel         AiModel?             @relation("AiFailoverFromModel", fields: [fromModelId], references: [id])
+  toModel           AiModel?             @relation("AiFailoverToModel", fields: [toModelId], references: [id])
+  usageLogs         AiUsageLog[]
+
+  @@index([routeId, enabled, priority])
+  @@index([scopeKey, enabled])
+  @@index([deletedAt])
+  @@map("ai_failover_rules")
+}
+
+/// Scoped AI platform settings — supports encrypted sensitive values.
+model AiSettings {
+  id                String             @id @default(cuid())
+  scopeKey          String             @db.VarChar(128)
+  tenantId          String?            @db.VarChar(64)
+  branchId          String?            @db.VarChar(64)
+  settingsKey       String             @db.VarChar(64)
+  category          AiSettingsCategory @default(ROUTING)
+  settingsJson      Json               @default("{}")
+  encryptedSettings String?            @db.Text
+  encryptionKeyId   String?            @db.VarChar(64)
+  version           Int                @default(1)
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime?
+  deletedByUserId   String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([scopeKey, settingsKey])
+  @@index([tenantId, branchId])
+  @@index([category])
+  @@index([deletedAt])
+  @@map("ai_settings")
+}
+
+/// Append-only audit trail for AI API key lifecycle events.
+model AiApiKeyAuditLog {
+  id           String             @id @default(cuid())
+  apiKeyId     String
+  providerKey  String             @db.VarChar(32)
+  action       AiApiKeyAuditAction
+  actorUserId  String?
+  actorRole    String?            @db.VarChar(32)
+  reason       String?
+  metadataJson Json?
+  ipAddress    String?            @db.VarChar(64)
+  createdAt    DateTime           @default(now())
+
+  apiKey       AiApiKey           @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt])
+  @@index([providerKey, createdAt])
+  @@index([action, createdAt])
+  @@map("ai_api_key_audit_logs")
+}
+
+/// Marketplace plugin manifest — third-party and first-party AI extensions.
+model AiMarketplaceExtension {
+  id                String            @id @default(cuid())
+  scopeKey          String            @default("platform") @db.VarChar(128)
+  tenantId          String?           @db.VarChar(64)
+  branchId          String?           @db.VarChar(64)
+  extensionKey      String            @db.VarChar(64)
+  name              String
+  version           String            @db.VarChar(32)
+  publisher         String?           @db.VarChar(128)
+  description       String?
+  adapterType       String            @db.VarChar(32)
+  providerKey       String?           @db.VarChar(64)
+  manifestJson      Json
+  status            AiExtensionStatus @default(DRAFT)
+  enabled           Boolean           @default(true)
+  signature         String?           @db.VarChar(128)
+  installedAt       DateTime?
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime?
+  deletedByUserId   String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  models            AiModel[]
+
+  @@unique([scopeKey, extensionKey, version])
+  @@index([scopeKey, status, enabled])
+  @@index([adapterType])
+  @@index([providerKey])
+  @@index([deletedAt])
+  @@map("ai_marketplace_extensions")
+}

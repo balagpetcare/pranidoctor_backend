@@ -2,18 +2,18 @@ import {
   AiKnowledgeContentType,
   AiKnowledgeStatus,
   LivestockSpecies,
-} from '../../generated/prisma/index.js';
-import { getPrisma } from '../../shared/database/prisma.js';
+} from '../../src/generated/prisma/index.js';
+import { prisma } from '../../src/lib/prisma.js';
 
 const SYMPTOM_SEED = [
-  { code: 'cattle_bloat', species: [LivestockSpecies.CATTLE, LivestockSpecies.BUFFALO], bodySystem: 'digestive', labelBn: 'পেট ফোলা/আধমরা', labelEn: 'Bloat/distended abdomen', redFlag: true, weight: 0.95 },
-  { code: 'cattle_milk_drop', species: [LivestockSpecies.CATTLE, LivestockSpecies.BUFFALO], bodySystem: 'general', labelBn: 'দুধ কমে যাওয়া', labelEn: 'Milk production drop', redFlag: false, weight: 0.6 },
-  { code: 'cattle_fever', species: [LivestockSpecies.CATTLE, LivestockSpecies.BUFFALO], bodySystem: 'general', labelBn: 'উচ্চ জ্বর', labelEn: 'High fever', redFlag: true, weight: 0.85 },
-  { code: 'cattle_lameness', species: [LivestockSpecies.CATTLE, LivestockSpecies.BUFFALO], bodySystem: 'locomotion', labelBn: 'খোঁচাখুঁটি/অঙ্গবিকল', labelEn: 'Lameness', redFlag: false, weight: 0.65 },
+  { code: 'cattle_bloat', species: [LivestockSpecies.COW, LivestockSpecies.BUFFALO], bodySystem: 'digestive', labelBn: 'পেট ফোলা/আধমরা', labelEn: 'Bloat/distended abdomen', redFlag: true, weight: 0.95 },
+  { code: 'cattle_milk_drop', species: [LivestockSpecies.COW, LivestockSpecies.BUFFALO], bodySystem: 'general', labelBn: 'দুধ কমে যাওয়া', labelEn: 'Milk production drop', redFlag: false, weight: 0.6 },
+  { code: 'cattle_fever', species: [LivestockSpecies.COW, LivestockSpecies.BUFFALO], bodySystem: 'general', labelBn: 'উচ্চ জ্বর', labelEn: 'High fever', redFlag: true, weight: 0.85 },
+  { code: 'cattle_lameness', species: [LivestockSpecies.COW, LivestockSpecies.BUFFALO], bodySystem: 'locomotion', labelBn: 'খোঁচাখুঁটি/অঙ্গবিকল', labelEn: 'Lameness', redFlag: false, weight: 0.65 },
   { code: 'goat_scours', species: [LivestockSpecies.GOAT], bodySystem: 'digestive', labelBn: 'ডায়রিয়া/পাতলা পায়খানা', labelEn: 'Scours/diarrhea', redFlag: false, weight: 0.7 },
   { code: 'goat_respiratory', species: [LivestockSpecies.GOAT], bodySystem: 'respiratory', labelBn: 'শ্বাসকষ্ট/কাশি', labelEn: 'Breathing difficulty/cough', redFlag: true, weight: 0.8 },
-  { code: 'poultry_drop_eggs', species: [LivestockSpecies.POULTRY], bodySystem: 'production', labelBn: 'ডিম উৎপাদন কমে যাওয়া', labelEn: 'Drop in egg production', redFlag: false, weight: 0.55 },
-  { code: 'poultry_unconscious', species: [LivestockSpecies.POULTRY, LivestockSpecies.DUCK], bodySystem: 'general', labelBn: 'অচেতন/পড়ে যাওয়া', labelEn: 'Unconscious/collapse', redFlag: true, weight: 0.95 },
+  { code: 'poultry_drop_eggs', species: [LivestockSpecies.CHICKEN], bodySystem: 'production', labelBn: 'ডিম উৎপাদন কমে যাওয়া', labelEn: 'Drop in egg production', redFlag: false, weight: 0.55 },
+  { code: 'poultry_unconscious', species: [LivestockSpecies.CHICKEN, LivestockSpecies.DUCK], bodySystem: 'general', labelBn: 'অচেতন/পড়ে যাওয়া', labelEn: 'Unconscious/collapse', redFlag: true, weight: 0.95 },
 ];
 
 const KNOWLEDGE_SEED = [
@@ -24,7 +24,7 @@ const KNOWLEDGE_SEED = [
     titleEn: 'Bloat in cattle/buffalo',
     bodyBn: 'পেট ফোলা জরুরি অবস্থা হতে পারে। পশুকে শান্ত রাখুন, চিকিৎসক ডাকুন।',
     bodyEn: 'Abdominal distension may be an emergency. Keep the animal calm and call a veterinarian.',
-    species: [LivestockSpecies.CATTLE, LivestockSpecies.BUFFALO],
+    species: [LivestockSpecies.COW, LivestockSpecies.BUFFALO],
   },
   {
     slug: 'goat-enterotoxemia',
@@ -42,7 +42,7 @@ const KNOWLEDGE_SEED = [
     titleEn: 'Newcastle disease (poultry)',
     bodyBn: 'শ্বাসকষ্ট, স্নায়বিক লক্ষণ — Изоляция ও টিকা পরিকল্পনা গুরুত্বপূর্ণ।',
     bodyEn: 'Respiratory and nervous signs — isolation and vaccination planning are important.',
-    species: [LivestockSpecies.POULTRY],
+    species: [LivestockSpecies.CHICKEN],
   },
   {
     slug: 'emergency-heat-stress',
@@ -51,13 +51,11 @@ const KNOWLEDGE_SEED = [
     titleEn: 'Heat stress',
     bodyBn: 'ছায়া, পর্যাপ্ত পানি, বায়ু চলাচল নিশ্চিত করুন। গুরুতর হলে চিকিৎসক ডাকুন।',
     bodyEn: 'Provide shade, water, and ventilation. Call a vet if severe.',
-    species: [LivestockSpecies.CATTLE, LivestockSpecies.BUFFALO, LivestockSpecies.GOAT],
+    species: [LivestockSpecies.COW, LivestockSpecies.BUFFALO, LivestockSpecies.GOAT],
   },
 ];
 
 export async function seedPhase8AiEcosystem(): Promise<void> {
-  const prisma = getPrisma();
-
   for (const s of SYMPTOM_SEED) {
     await prisma.aiSymptomNode.upsert({
       where: { code: s.code },

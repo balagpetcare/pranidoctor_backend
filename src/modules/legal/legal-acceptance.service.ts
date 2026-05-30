@@ -11,7 +11,11 @@ import { prisma } from '@/lib/prisma';
 import { AuthAuditAction } from '@/generated/prisma/client';
 import { recordAuthAuditFireAndForget } from '../auth/auth-audit.service.js';
 
-import { LEGAL_DOCUMENT_KEYS, type LegalDocumentKey } from './document-keys.js';
+import {
+  LEGAL_DOCUMENT_KEYS,
+  PLATFORM_LEGAL_TENANT_ID,
+  type LegalDocumentKey,
+} from './document-keys.js';
 import {
   appSurfaceForRole,
   hashLegalContent,
@@ -52,7 +56,7 @@ const FALLBACK_LOCALE = 'en-US';
 export async function getPublishedDocument(
   documentKey: string,
   locale: string,
-  tenantId: string | null = null,
+  tenantId: string = PLATFORM_LEGAL_TENANT_ID,
 ): Promise<LegalDocument | null> {
   const locales = locale === FALLBACK_LOCALE ? [locale] : [locale, FALLBACK_LOCALE];
   for (const loc of locales) {
@@ -60,7 +64,7 @@ export async function getPublishedDocument(
       where: {
         documentKey,
         locale: loc,
-        tenantId,
+        tenantId: tenantId || PLATFORM_LEGAL_TENANT_ID,
         publishedAt: { not: null },
       },
       orderBy: [{ effectiveAt: 'desc' }, { publishedAt: 'desc' }],
@@ -180,8 +184,17 @@ export type RecordLegalAcceptanceInput = {
   metadata?: Prisma.InputJsonValue;
 };
 
-/** Append immutable acceptance + auth audit. Never throws. */
-export async function recordLegalAcceptance(input: RecordLegalAcceptanceInput): Promise<void> {
+export class LegalDocumentNotPublishedError extends Error {
+  readonly code = 'LEGAL_DOCUMENT_UNAVAILABLE';
+
+  constructor(documentKey: string, version: string) {
+    super(`No published legal document for ${documentKey}@${version}`);
+    this.name = 'LegalDocumentNotPublishedError';
+  }
+}
+
+/** Append immutable acceptance + auth audit. Returns false when the document version is not published. */
+export async function recordLegalAcceptance(input: RecordLegalAcceptanceInput): Promise<boolean> {
   try {
     const locale = input.locale?.trim() || DEFAULT_LOCALE;
     const doc = await prisma.legalDocument.findFirst({
@@ -189,6 +202,8 @@ export async function recordLegalAcceptance(input: RecordLegalAcceptanceInput): 
         documentKey: input.documentKey,
         version: input.version,
         locale: { in: [locale, FALLBACK_LOCALE] },
+        tenantId: PLATFORM_LEGAL_TENANT_ID,
+        publishedAt: { not: null },
       },
       orderBy: { effectiveAt: 'desc' },
     });
@@ -197,7 +212,7 @@ export async function recordLegalAcceptance(input: RecordLegalAcceptanceInput): 
       console.warn(
         `[legal] acceptance skipped — document not found key=${input.documentKey} version=${input.version}`,
       );
-      return;
+      return false;
     }
 
     const event = await prisma.legalAcceptanceEvent.create({
@@ -230,9 +245,11 @@ export async function recordLegalAcceptance(input: RecordLegalAcceptanceInput): 
         version: input.version,
       },
     });
+    return true;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.warn(`[legal] acceptance write failed user=${input.userId} ${msg}`);
+    return false;
   }
 }
 
@@ -254,7 +271,7 @@ export async function upsertLegalDocument(input: {
 }): Promise<void> {
   const contentHash = hashLegalContent(input.contentMarkdown);
   const effectiveAt = input.effectiveAt ?? new Date();
-  const tenantId = input.tenantId ?? null;
+  const tenantId = input.tenantId ?? PLATFORM_LEGAL_TENANT_ID;
 
   await prisma.legalDocument.upsert({
     where: {
@@ -262,7 +279,7 @@ export async function upsertLegalDocument(input: {
         documentKey: input.documentKey,
         version: input.version,
         locale: input.locale,
-        tenantId: tenantId as unknown as string,
+        tenantId,
       },
     },
     create: {

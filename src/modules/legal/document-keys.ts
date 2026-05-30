@@ -1,3 +1,8 @@
+/**
+ * Platform-wide legal rows use empty tenant id — Prisma composite uniques cannot use `null`.
+ */
+export const PLATFORM_LEGAL_TENANT_ID = '';
+
 /** Canonical legal document identifiers (versioned registry keys). */
 export const LEGAL_DOCUMENT_KEYS = {
   TOS_CUSTOMER: 'TOS-CUSTOMER',

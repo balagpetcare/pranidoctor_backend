@@ -7,9 +7,11 @@ import {
   startAiHealthProbeScheduler,
   stopAiHealthProbeScheduler,
 } from '../health/ai-health-probe.service.js';
+import { getMarketplaceBootstrapService } from '../marketplace/marketplace-bootstrap.service.js';
+import { ensureAiProvidersBootstrapped } from '../providers/provider-factory.js';
 
 export async function bootstrapAiPlatform(_config: AppConfig): Promise<void> {
-  const secretCheck = validateAiSecrets();
+  const secretCheck = await validateAiSecrets();
   for (const w of secretCheck.warnings) {
     logWarn('AI platform config warning', { warning: w });
   }
@@ -39,6 +41,10 @@ export async function bootstrapAiPlatform(_config: AppConfig): Promise<void> {
     openai: providers.find((p) => p.provider === 'openai')?.configured ?? false,
     anthropic: providers.find((p) => p.provider === 'anthropic')?.configured ?? false,
   });
+
+  ensureAiProvidersBootstrapped();
+  const marketplace = await getMarketplaceBootstrapService().bootstrap();
+  logInfo('AI marketplace extensions loaded', marketplace);
 
   const isTest = (_config.nodeEnv ?? 'development') === 'test';
   await runAiProviderHealthProbes({ persist: !isTest, skipNetwork: isTest });

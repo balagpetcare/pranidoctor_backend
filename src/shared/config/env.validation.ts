@@ -123,10 +123,15 @@ export function validateInfrastructureEnv(
     );
   }
 
-  if (env.NODE_ENV === 'production') {
+  if (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging') {
     if (!env.REDIS_ENABLED) {
-      errors.push('REDIS_ENABLED: Redis is required in production (set REDIS_URL)');
+      errors.push(
+        `REDIS_ENABLED: Redis is required in ${env.NODE_ENV} (set REDIS_ENABLED=true and REDIS_URL)`,
+      );
     }
+  }
+
+  if (env.NODE_ENV === 'production') {
     if (env.STORAGE_DRIVER === 'disabled') {
       errors.push('STORAGE_DRIVER: cannot be disabled in production');
     }

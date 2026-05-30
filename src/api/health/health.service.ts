@@ -10,6 +10,7 @@ import {
 } from '../../shared/monitoring/metrics/index.js';
 import { recordQueueDepth, recordQueueHealthProbe } from '../../shared/monitoring/metrics/queue.metrics.js';
 import { checkRedisConnection } from '../../infra/redis/redis.client.js';
+import { probeRedisHealth } from '../../infra/redis/redis.health.js';
 import { getQueue, getQueueStats, QueueNames } from '../../infra/queue/index.js';
 import {
   getStorage,
@@ -163,43 +164,58 @@ export function getModulesHealth(): ModulesHealthResponse {
 }
 
 async function checkRedis(config?: AppConfig): Promise<HealthCheckResult> {
-  const start = Date.now();
+  if (!config) {
+    const start = Date.now();
+    try {
+      const result = await checkRedisConnection();
+      const up = result.healthy;
+      recordRedisProbe({ up, latencyMs: result.latency });
+      const status = result.healthy
+        ? 'healthy'
+        : result.error?.includes('not initialized')
+          ? 'degraded'
+          : 'unhealthy';
 
-  if (config && !isRedisEnabled(config)) {
-    return {
-      name: 'redis',
-      status: 'degraded',
-      latency: 0,
-      message: 'Redis disabled (REDIS_ENABLED=false)',
-    };
+      return {
+        name: 'redis',
+        status,
+        latency: result.latency,
+        ...(result.error && { message: result.error }),
+      };
+    } catch (error) {
+      const latency = Date.now() - start;
+      recordRedisProbe({ up: false, latencyMs: latency });
+      return {
+        name: 'redis',
+        status: 'unhealthy',
+        latency,
+        message: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 
-  try {
-    const result = await checkRedisConnection();
-    const up = result.healthy;
-    recordRedisProbe({ up, latencyMs: result.latency });
-    const status = result.healthy
-      ? 'healthy'
-      : result.error?.includes('not initialized')
-        ? 'degraded'
-        : 'unhealthy';
+  const probe = await probeRedisHealth(config);
+  const up = probe.healthy;
+  recordRedisProbe({ up, latencyMs: probe.latency });
 
-    return {
-      name: 'redis',
-      status,
-      latency: result.latency,
-      ...(result.error && { message: result.error }),
-    };
-  } catch (error) {
-    const latency = Date.now() - start;
-    recordRedisProbe({ up: false, latencyMs: latency });
-    return {
-      name: 'redis',
-      status: 'unhealthy',
-      latency,
-      message: error instanceof Error ? error.message : 'Unknown error',
-    };
+  let status: HealthCheckResult['status'];
+  if (probe.healthy) {
+    status = 'healthy';
+  } else if (!probe.details.enabled) {
+    status = 'degraded';
+  } else if (!probe.details.initialized) {
+    status = isRedisEnabled(config) ? 'unhealthy' : 'degraded';
+  } else {
+    status = 'unhealthy';
   }
+
+  return {
+    name: 'redis',
+    status,
+    latency: probe.latency,
+    ...(probe.error && { message: probe.error }),
+    details: { ...probe.details },
+  };
 }
 
 async function checkQueues(): Promise<HealthCheckResult> {
