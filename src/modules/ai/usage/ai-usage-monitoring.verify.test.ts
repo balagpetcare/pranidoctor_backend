@@ -40,6 +40,17 @@ vi.mock('../ai.repository.js', () => ({
   }),
 }));
 
+vi.mock('../routing/ai-router.service.js', () => ({
+  getAIRouterService: () => ({
+    resolve: vi.fn().mockRejectedValue(new Error('no route in test')),
+  }),
+}));
+
+vi.mock('../security/ai-prompt-security.service.js', () => ({
+  assertAiPromptAllowed: (_msg: string) => _msg,
+  filterAiResponseOutput: (msg: string) => msg,
+}));
+
 vi.mock('../governance/ai-governance.enforcement.js', () => ({
   shouldUseRulesOnlyForFeature: () => false,
   isProviderGovernanceBlocked: () => false,
@@ -85,6 +96,7 @@ function mockProvider(
 
 describe('AI usage monitoring verification', () => {
   beforeEach(() => {
+    process.env.AI_REGISTRY_ORCHESTRATOR_ENABLED = 'false';
     recordAttemptMock.mockClear();
     setAiLlmDisabledMetric(false);
     delete process.env.OPENAI_API_KEY;
@@ -94,7 +106,7 @@ describe('AI usage monitoring verification', () => {
   describe('request tracking', () => {
     it('records a successful provider attempt with feature and model labels', async () => {
       const orchestrator = new AiOrchestratorService();
-      (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+      (orchestrator as unknown as { legacyProviders: AiProviderAdapter[] }).legacyProviders = [
         mockProvider('openai', 'ok'),
         mockProvider('rules-based', 'ok'),
       ];
@@ -144,7 +156,7 @@ describe('AI usage monitoring verification', () => {
   describe('failure tracking', () => {
     it('records failed LLM attempt before fallback success', async () => {
       const orchestrator = new AiOrchestratorService();
-      (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+      (orchestrator as unknown as { legacyProviders: AiProviderAdapter[] }).legacyProviders = [
         mockProvider('openai', 'fail'),
         mockProvider('rules-based', 'ok'),
       ];
@@ -236,7 +248,7 @@ describe('AI usage monitoring verification', () => {
   describe('provider visibility', () => {
     it('records per-provider failure with default model id', async () => {
       const orchestrator = new AiOrchestratorService();
-      (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+      (orchestrator as unknown as { legacyProviders: AiProviderAdapter[] }).legacyProviders = [
         mockProvider('openai', 'skip'),
         mockProvider('anthropic', 'fail'),
         mockProvider('rules-based', 'ok'),

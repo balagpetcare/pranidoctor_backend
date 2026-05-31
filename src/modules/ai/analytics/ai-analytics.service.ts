@@ -1,11 +1,20 @@
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { withAiAdminDiagnostics } from '../admin/ai-admin-diagnostics.js';
 import { getAiUsageService } from '../usage/ai-usage.service.js';
-import { getAiAuditService } from '../audit/ai-audit.service.js';
 
 export class AiAnalyticsService {
   readonly name = 'AiAnalyticsService';
 
   async getOverview(sinceDays = 30) {
+    return withAiAdminDiagnostics(
+      {
+        layer: 'service',
+        route: 'GET /api/admin/ai-ops/overview',
+        service: this.name,
+        operation: 'getOverview',
+        requestPayload: { sinceDays },
+      },
+      async () => {
     const since = new Date();
     since.setDate(since.getDate() - sinceDays);
     const prisma = getPrisma();
@@ -43,6 +52,8 @@ export class AiAnalyticsService {
       avgHerdHealth,
       riskSnapshotCount: riskSnapshots.length,
     };
+      },
+    );
   }
 
   async getRiskMonitoring() {

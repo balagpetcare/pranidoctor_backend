@@ -18,6 +18,13 @@ function resolveConfig(providerKey: string, baseUrl?: string | null): ProviderRu
   return config;
 }
 
+function sanitizeProbeError(status: number, _raw: string): string {
+  if (status === 401 || status === 403) return 'Authentication failed — verify API key';
+  if (status === 429) return 'Rate limited by upstream provider';
+  if (status >= 500) return 'Upstream provider error';
+  return 'Connection test failed';
+}
+
 async function probeOpenAiCompatible(
   config: ProviderRuntimeConfig,
   secret: string,
@@ -33,7 +40,7 @@ async function probeOpenAiCompatible(
       ok: false,
       latencyMs: Date.now() - start,
       errorCode: `HTTP_${response.status}`,
-      message: (await response.text()).slice(0, 200),
+      message: sanitizeProbeError(response.status, await response.text()),
     };
   }
   return { ok: true, latencyMs: Date.now() - start };
@@ -59,7 +66,7 @@ async function probeAnthropic(
       ok: false,
       latencyMs: Date.now() - start,
       errorCode: `HTTP_${response.status}`,
-      message: (await response.text()).slice(0, 200),
+      message: sanitizeProbeError(response.status, await response.text()),
     };
   }
   return { ok: true, latencyMs: Date.now() - start };
@@ -88,7 +95,7 @@ async function probeGemini(
       ok: false,
       latencyMs: Date.now() - start,
       errorCode: `HTTP_${response.status}`,
-      message: (await response.text()).slice(0, 200),
+      message: sanitizeProbeError(response.status, await response.text()),
     };
   }
   return { ok: true, latencyMs: Date.now() - start };

@@ -3,12 +3,12 @@ import { GeminiProvider } from './implementations/gemini.provider.js';
 import {
   DeepSeekProvider,
   GrokProvider,
+  GroqProvider,
   OpenAIProvider,
   OpenRouterProvider,
 } from './implementations/openai-compatible.providers.js';
 import { createSelfHostedProvider } from '../marketplace/adapters/self-hosted.provider.js';
 import type { IAIProvider } from './core/ai-provider.interface.js';
-import type { AiProviderKey } from './core/ai-provider.types.js';
 import { allProviderKeys } from './provider-config.js';
 import { getAiProviderRegistry } from './provider-registry.js';
 
@@ -16,6 +16,7 @@ const PROVIDER_CTORS: Record<string, () => IAIProvider> = {
   openai: () => new OpenAIProvider(),
   anthropic: () => new AnthropicProvider(),
   gemini: () => new GeminiProvider(),
+  groq: () => new GroqProvider(),
   grok: () => new GrokProvider(),
   deepseek: () => new DeepSeekProvider(),
   openrouter: () => new OpenRouterProvider(),

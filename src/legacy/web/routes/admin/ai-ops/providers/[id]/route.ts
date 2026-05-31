@@ -1,7 +1,8 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../../modules/ai/admin/ai-admin.guard.js';
 import {
-  getAiRegistryAdminService,
+  assertAiAdminCan,
+  getAiProviderManagementService,
+  requireAiAdminActor,
   updateProviderSchema,
 } from '../../../../../../../modules/ai/admin/index.js';
 
@@ -11,9 +12,11 @@ export async function GET(
 ) {
   const auth = await requireAiAdminActor();
   if (!auth.ok) return auth.response;
+  const denied = assertAiAdminCan(auth.actor, 'ai.ops.view');
+  if (denied) return denied;
   const { id } = await context.params;
   try {
-    const data = await getAiRegistryAdminService().getProvider(id);
+    const data = await getAiProviderManagementService().getProvider(id);
     return jsonOk(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Provider not found';
@@ -27,6 +30,8 @@ export async function PUT(
 ) {
   const auth = await requireAiAdminActor();
   if (!auth.ok) return auth.response;
+  const denied = assertAiAdminCan(auth.actor, 'ai.registry.manage');
+  if (denied) return denied;
   const { id } = await context.params;
   let json: unknown;
   try {
@@ -36,7 +41,7 @@ export async function PUT(
   }
   try {
     const body = updateProviderSchema.parse(json);
-    const data = await getAiRegistryAdminService().updateProvider(id, body, auth.actor.id);
+    const data = await getAiProviderManagementService().updateProvider(id, body, auth.actor);
     return jsonOk(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update provider';

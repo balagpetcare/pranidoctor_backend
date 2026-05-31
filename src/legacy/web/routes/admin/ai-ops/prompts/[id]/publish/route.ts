@@ -1,0 +1,18 @@
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { adminErrorMessage, requireAiAdminCapability } from '../../../../../../../../modules/ai/admin/index.js';
+import { publishPromptAdmin } from '../../../../../../../../modules/ai/admin/ai-prompt-admin.service.js';
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const auth = await requireAiAdminCapability('ai.registry.manage');
+  if (!auth.ok) return auth.response;
+  const { id } = await context.params;
+  try {
+    const data = await publishPromptAdmin(request, auth.actor, id);
+    return jsonOk(data);
+  } catch (error) {
+    return jsonError('AI_ADMIN_ERROR', adminErrorMessage(error, 'Failed to publish prompt'), 400);
+  }
+}

@@ -59,12 +59,29 @@ export async function POST(request: Request) {
   }
 
   try {
-    const animal = await createAnimalForCustomer(
+    const result = await createAnimalForCustomer(
       auth.ctx.customerProfileId,
       parsed.data,
     );
-    return jsonOk({ animal }, { status: 201 });
-  } catch {
-    return jsonError("DATABASE_ERROR", "Could not create animal", 500);
+    return jsonOk(result, { status: 201 });
+  } catch (e) {
+    return mapAnimalWeightError(e) ?? jsonError("DATABASE_ERROR", "Could not create animal", 500);
   }
+}
+
+function mapAnimalWeightError(e: unknown) {
+  if (!(e instanceof Error)) return null;
+  if (e.message === "TAPE_NOT_SUPPORTED") {
+    return jsonError("TAPE_NOT_SUPPORTED", "Tape weight not supported for this species", 422);
+  }
+  if (e.message === "TAPE_OUT_OF_RANGE") {
+    return jsonError("VALIDATION_ERROR", "Measurements out of valid range", 422);
+  }
+  if (e.message === "DUPLICATE_CLIENT_MEASUREMENT") {
+    const existing = (e as Error & { existing?: unknown }).existing;
+    return jsonError("DUPLICATE_CLIENT_MEASUREMENT", "Measurement already recorded", 409, {
+      existing,
+    });
+  }
+  return null;
 }

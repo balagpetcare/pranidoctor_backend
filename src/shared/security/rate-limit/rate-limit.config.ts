@@ -90,6 +90,13 @@ export const RateLimitPresets = {
     keyPrefix: 'rl:search:',
   },
 
+  AI_ANALYTICS: {
+    points: 60,
+    duration: 60,
+    blockDuration: 60,
+    keyPrefix: 'rl:ai:analytics:',
+  },
+
   EXPORT: {
     points: 5,
     duration: 3600,

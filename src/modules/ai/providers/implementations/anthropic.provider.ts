@@ -1,6 +1,5 @@
 import { getAiSecretService } from '../../vault/ai-secret.service.js';
 import type { IAIProvider } from '../core/ai-provider.interface.js';
-import { AiProviderNotConfiguredError } from '../core/ai-provider.errors.js';
 import type {
   AiChatInput,
   AiChatOutput,

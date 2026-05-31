@@ -1,12 +1,11 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../modules/ai/admin/ai-admin.guard.js';
 import {
   createFailoverRuleSchema,
-  getAiRegistryAdminService,
+  requireAiAdminCapability, getAiRegistryAdminService,
 } from '../../../../../../modules/ai/admin/index.js';
 
 export async function GET(request: Request) {
-  const auth = await requireAiAdminActor();
+  const auth = await requireAiAdminCapability('ai.ops.view');
   if (!auth.ok) return auth.response;
   const url = new URL(request.url);
   const routeId = url.searchParams.get('routeId') ?? undefined;
@@ -20,7 +19,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAiAdminActor();
+  const auth = await requireAiAdminCapability('ai.registry.manage');
   if (!auth.ok) return auth.response;
   let json: unknown;
   try {

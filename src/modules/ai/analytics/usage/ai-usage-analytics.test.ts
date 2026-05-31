@@ -102,35 +102,68 @@ describe('AiUsageAnalyticsService', () => {
   });
 
   it('compares providers with cost share', async () => {
-    aiUsageRecordGroupBy
-      .mockResolvedValueOnce([
-        {
-          provider: 'openai',
-          _count: { id: 10 },
-          _sum: {
-            inputTokens: 1000,
-            outputTokens: 500,
-            totalTokens: 1500,
-            costUsd: { toString: () => '0.03' },
-            latencyMs: 8000,
-          },
-        },
-        {
-          provider: 'anthropic',
-          _count: { id: 5 },
-          _sum: {
-            inputTokens: 400,
-            outputTokens: 200,
-            totalTokens: 600,
-            costUsd: { toString: () => '0.01' },
-            latencyMs: 3000,
-          },
-        },
-      ])
-      .mockResolvedValueOnce([
-        { provider: 'openai', _count: { id: 9 } },
-        { provider: 'anthropic', _count: { id: 5 } },
-      ]);
+    aiUsageLogFindMany.mockResolvedValue([
+      {
+        feature: 'CHAT',
+        providerKey: 'openai',
+        modelKey: 'gpt-4o-mini',
+        providerId: null,
+        modelId: null,
+        organizationId: null,
+        branchId: null,
+        userId: 'u1',
+        success: true,
+        isFallback: false,
+        errorCode: null,
+        inputTokens: 800,
+        outputTokens: 200,
+        totalTokens: 1000,
+        costUsd: { toString: () => '0.03' },
+        billable: true,
+        latencyMs: 800,
+        createdAt: new Date('2026-05-10T10:00:00.000Z'),
+      },
+      {
+        feature: 'CHAT',
+        providerKey: 'openai',
+        modelKey: 'gpt-4o-mini',
+        providerId: null,
+        modelId: null,
+        organizationId: null,
+        branchId: null,
+        userId: 'u2',
+        success: false,
+        isFallback: false,
+        errorCode: 'timeout',
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        costUsd: { toString: () => '0' },
+        billable: false,
+        latencyMs: 5000,
+        createdAt: new Date('2026-05-11T10:00:00.000Z'),
+      },
+      {
+        feature: 'CHAT',
+        providerKey: 'anthropic',
+        modelKey: 'claude-3-haiku',
+        providerId: null,
+        modelId: null,
+        organizationId: null,
+        branchId: null,
+        userId: 'u3',
+        success: true,
+        isFallback: false,
+        errorCode: null,
+        inputTokens: 300,
+        outputTokens: 300,
+        totalTokens: 600,
+        costUsd: { toString: () => '0.01' },
+        billable: true,
+        latencyMs: 500,
+        createdAt: new Date('2026-05-12T10:00:00.000Z'),
+      },
+    ]);
 
     const service = new AiUsageAnalyticsService();
     const providers = await service.getProviderComparison({ from, to });
@@ -141,24 +174,66 @@ describe('AiUsageAnalyticsService', () => {
   });
 
   it('compares features and identifies top provider per feature', async () => {
-    aiUsageRecordGroupBy.mockResolvedValueOnce([
+    aiUsageLogFindMany.mockResolvedValue([
       {
         feature: 'CHAT',
-        provider: 'openai',
-        _count: { id: 8 },
-        _sum: { totalTokens: 900, costUsd: { toString: () => '0.02' } },
+        providerKey: 'openai',
+        modelKey: 'gpt-4o-mini',
+        providerId: null,
+        modelId: null,
+        organizationId: null,
+        branchId: null,
+        userId: 'u1',
+        success: true,
+        isFallback: false,
+        errorCode: null,
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+        costUsd: { toString: () => '0.02' },
+        billable: true,
+        latencyMs: 400,
+        createdAt: new Date('2026-05-10T10:00:00.000Z'),
       },
       {
         feature: 'CHAT',
-        provider: 'anthropic',
-        _count: { id: 2 },
-        _sum: { totalTokens: 200, costUsd: { toString: () => '0.005' } },
+        providerKey: 'anthropic',
+        modelKey: 'claude-3-haiku',
+        providerId: null,
+        modelId: null,
+        organizationId: null,
+        branchId: null,
+        userId: 'u2',
+        success: true,
+        isFallback: false,
+        errorCode: null,
+        inputTokens: 5,
+        outputTokens: 5,
+        totalTokens: 10,
+        costUsd: { toString: () => '0.005' },
+        billable: true,
+        latencyMs: 300,
+        createdAt: new Date('2026-05-10T11:00:00.000Z'),
       },
       {
         feature: 'FARM_BRIEFING',
-        provider: 'openai',
-        _count: { id: 3 },
-        _sum: { totalTokens: 300, costUsd: { toString: () => '0.004' } },
+        providerKey: 'openai',
+        modelKey: 'gpt-4o-mini',
+        providerId: null,
+        modelId: null,
+        organizationId: null,
+        branchId: null,
+        userId: 'u3',
+        success: true,
+        isFallback: false,
+        errorCode: null,
+        inputTokens: 8,
+        outputTokens: 4,
+        totalTokens: 12,
+        costUsd: { toString: () => '0.004' },
+        billable: true,
+        latencyMs: 350,
+        createdAt: new Date('2026-05-10T12:00:00.000Z'),
       },
     ]);
 
@@ -174,12 +249,7 @@ describe('AiUsageAnalyticsService', () => {
     aiUsageDailyRollupGroupBy.mockResolvedValue([]);
     aiUsageDailyRollupFindMany.mockResolvedValue([]);
     aiUsageMonthlyRollupFindMany.mockResolvedValue([]);
-    aiUsageRecordGroupBy.mockResolvedValue([]);
-    aiUsageRecordAggregate.mockResolvedValue({
-      _count: { id: 0 },
-      _sum: { totalTokens: 0, costUsd: { toString: () => '0' } },
-    });
-    aiUsageRecordCount.mockResolvedValue(0);
+    aiUsageLogFindMany.mockResolvedValue([]);
 
     const service = new AiUsageAnalyticsService();
     const dashboard = await service.getDashboard({ from, to });

@@ -36,7 +36,11 @@ function purposeMaxBytes(env: StorageEnv, purpose: MobileUploadPurpose): number 
     case MobileUploadPurpose.CUSTOMER_COVER_IMAGE:
       return mb("UPLOAD_MAX_CUSTOMER_COVER_MB", 5);
     case MobileUploadPurpose.ANIMAL_PHOTO:
+    case MobileUploadPurpose.ANIMAL_WEIGHT_SCALE_PHOTO:
+    case MobileUploadPurpose.ANIMAL_WEIGHT_AI_IMAGE:
       return mb("UPLOAD_MAX_IMAGE_MB", 5);
+    case MobileUploadPurpose.ANIMAL_WEIGHT_AI_VIDEO:
+      return mb("UPLOAD_MAX_ANIMAL_WEIGHT_VIDEO_MB", 30);
     case MobileUploadPurpose.AI_TECHNICIAN_PROFILE_PHOTO:
       return mb("UPLOAD_MAX_AI_TECHNICIAN_PROFILE_MB", 3);
     case MobileUploadPurpose.AI_TECHNICIAN_COVER_IMAGE:
@@ -78,7 +82,8 @@ function parseMbEnv(name: string, fallback: number): number {
 function allowedMimeForPurpose(env: StorageEnv, purpose: MobileUploadPurpose): Set<string> {
   if (
     purpose === MobileUploadPurpose.ADMIN_SEMEN_TEMPLATE_VIDEO ||
-    purpose === MobileUploadPurpose.AI_SERVICE_INSTANCE_VIDEO
+    purpose === MobileUploadPurpose.AI_SERVICE_INSTANCE_VIDEO ||
+    purpose === MobileUploadPurpose.ANIMAL_WEIGHT_AI_VIDEO
   ) {
     return env.allowedVideoMimes;
   }

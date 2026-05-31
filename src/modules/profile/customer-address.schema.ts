@@ -44,14 +44,20 @@ export function readAreaLabel(addressJson: unknown): string | null {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
 }
 
+export function readUnionId(addressJson: unknown): string | null {
+  if (addressJson == null || typeof addressJson !== 'object' || Array.isArray(addressJson)) {
+    return null;
+  }
+  const unionId = (addressJson as Record<string, unknown>).unionId;
+  return typeof unionId === 'string' && unionId.trim().length > 0 ? unionId.trim() : null;
+}
+
 export function isProfileComplete(args: {
   displayName: string;
   addressJson: unknown;
   primaryVillageId: string | null;
 }): boolean {
   const nameOk = args.displayName.trim().length > 0;
-  const areaOk =
-    args.primaryVillageId != null ||
-    readAreaLabel(args.addressJson) != null;
-  return nameOk && areaOk;
+  const unionOk = readUnionId(args.addressJson) != null;
+  return nameOk && unionOk;
 }

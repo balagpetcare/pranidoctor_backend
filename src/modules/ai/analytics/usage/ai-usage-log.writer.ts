@@ -1,5 +1,6 @@
 import { getPrisma } from '../../../../shared/database/prisma.js';
 import { getLogger } from '../../../../shared/logger/logger.js';
+import { toInputJson } from '../../../../shared/database/prisma-json.js';
 import type { AiUsageAttemptInput } from '../../usage/ai-usage.types.js';
 import { AI_RATE_VERSION } from '../../usage/ai-usage.tokens.js';
 
@@ -12,6 +13,7 @@ export interface AimsUsageLogInput extends AiUsageAttemptInput {
   failoverRuleId?: string;
   requestId?: string;
   correlationId?: string;
+  sessionId?: string;
   scopeKey?: string;
   tenantId?: string;
 }
@@ -63,6 +65,10 @@ export async function writeAimsUsageLog(
         fromProviderKey: params.fromProvider ?? null,
         requestId: params.requestId ?? null,
         correlationId: params.correlationId ?? null,
+        sessionId: params.sessionId ?? null,
+        ...(params.retrievalMetadataJson
+          ? { retrievalMetadataJson: toInputJson(params.retrievalMetadataJson) }
+          : {}),
       },
     });
   } catch (err) {

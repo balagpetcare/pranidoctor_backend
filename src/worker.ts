@@ -70,7 +70,27 @@ async function bootstrap(): Promise<void> {
     process.exit(1);
   }
 
-  logger.info({ msg: 'Worker ready - No job processors registered yet (Phase 1 foundation)' });
+  try {
+    const { bootstrapAiAnalyticsWorkers } = await import(
+      './modules/ai/analytics/jobs/ai-analytics-worker.bootstrap.js'
+    );
+    await bootstrapAiAnalyticsWorkers(config);
+  } catch (error) {
+    logger.error({ msg: 'Failed to bootstrap AI analytics workers', error });
+    process.exit(1);
+  }
+
+  try {
+    const { bootstrapKnowledgeEmbeddingWorkers } = await import(
+      './modules/ai/knowledge-retrieval/embedding/knowledge-embedding-worker.bootstrap.js'
+    );
+    await bootstrapKnowledgeEmbeddingWorkers(config);
+  } catch (error) {
+    logger.error({ msg: 'Failed to bootstrap knowledge embedding workers', error });
+    process.exit(1);
+  }
+
+  logger.info({ msg: 'Worker ready' });
 
   const shutdown = async (signal: string): Promise<void> => {
     if (isShuttingDown) {

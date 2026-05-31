@@ -5,7 +5,6 @@ import type {
   AiEmbedOutput,
   AiProviderCapability,
   AiProviderHealthResult,
-  AiProviderKey,
   AiVisionInput,
   AiVisionOutput,
 } from './ai-provider.types.js';

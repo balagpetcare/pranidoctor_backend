@@ -25,3 +25,12 @@ export {
   resetAiUsageReportServiceForTests,
 } from './ai-usage-report.service.js';
 export { writeAimsUsageLog, type AimsUsageLogInput } from './ai-usage-log.writer.js';
+export {
+  getAiUsageAnalyticsSummaryService,
+  getAiCostAnalyticsService,
+  getAiProviderAnalyticsService,
+  getAiModelAnalyticsService,
+  getAiPerformanceAnalyticsService,
+  getAiMetricsAggregatorService,
+} from '../metrics/index.js';
+export { runDailyMetricsJob, runMonthlyMetricsJob } from '../jobs/index.js';

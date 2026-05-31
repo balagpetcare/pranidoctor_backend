@@ -1,5 +1,6 @@
 import { jsonError } from '../../../legacy/web/lib/api-response.js';
 import { requireAdminApiActor } from '../../../legacy/web/lib/admin-auth/api-guard.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 export type AiAdminActor = {
   id: string;
@@ -33,9 +34,9 @@ export function actorContext(
   actor: AiAdminActor,
 ): { userId: string; role: string; ipAddress?: string } {
   const forwarded = request.headers.get('x-forwarded-for');
-  return {
+  return omitUndefined({
     userId: actor.id,
     role: actor.role,
     ipAddress: forwarded?.split(',')[0]?.trim() ?? undefined,
-  };
+  });
 }

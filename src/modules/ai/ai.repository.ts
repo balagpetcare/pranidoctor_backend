@@ -1,5 +1,26 @@
+import type { PaginatedResult } from '../../shared/types/api.types.js';
 import { ForbiddenError } from '../../shared/errors/http.errors.js';
 import { getPrisma } from '../../shared/database/prisma.js';
+import type { StartConversationDto } from './ai.dto.js';
+import type { AiConversation, AiMessage, ConversationFilter } from './ai.types.js';
+
+/** @deprecated Legacy conversation API — not wired to platform orchestrator. Interface exported for compile-time contract only. */
+export interface AiRepositoryInterface {
+  createConversation(data: StartConversationDto, sessionId: string): Promise<AiConversation>;
+  findConversationById(id: string): Promise<AiConversation | null>;
+  addMessage(
+    conversationId: string,
+    role: AiMessage['role'],
+    content: string,
+  ): Promise<AiMessage>;
+  endConversation(conversationId: string): Promise<AiConversation>;
+  getMessages(conversationId: string): Promise<AiMessage[]>;
+  listConversations(
+    filter: ConversationFilter,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<AiConversation>>;
+}
 
 export class AiRepository {
   readonly name = 'AiRepository';

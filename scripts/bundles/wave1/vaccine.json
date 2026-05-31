@@ -1,0 +1,486 @@
+{
+  "rows": [
+    {
+      "slug": "fmd-vaccine",
+      "domain": "VACCINE",
+      "entityType": "Vaccine",
+      "titleBn": "FMD ভ্যাকসিন",
+      "titleEn": "FMD Vaccine",
+      "bodyBn": "## Storage\n\nFMD ভ্যাকসিন ২–৮°C এ সংরক্ষণ করুন।\n\n## Handling\n\nহিমায়িত/তাপ থেকে রক্ষা করুন।",
+      "bodyEn": "## Storage\n\nStore FMD Vaccine at 2–8°C.\n\n## Handling\n\nProtect from freezing and heat.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "structuredJson": {
+        "antigen": "FMD",
+        "route": "IM/SC",
+        "doseMl": 2,
+        "storageTempC": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "hs-vaccine",
+      "domain": "VACCINE",
+      "entityType": "Vaccine",
+      "titleBn": "HS ভ্যাকসিন",
+      "titleEn": "HS Vaccine",
+      "bodyBn": "## Storage\n\nHS ভ্যাকসিন ২–৮°C এ সংরক্ষণ করুন।\n\n## Handling\n\nহিমায়িত/তাপ থেকে রক্ষা করুন।",
+      "bodyEn": "## Storage\n\nStore HS Vaccine at 2–8°C.\n\n## Handling\n\nProtect from freezing and heat.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "structuredJson": {
+        "antigen": "HS",
+        "route": "IM/SC",
+        "doseMl": 2,
+        "storageTempC": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "bq-vaccine",
+      "domain": "VACCINE",
+      "entityType": "Vaccine",
+      "titleBn": "BQ ভ্যাকসিন",
+      "titleEn": "BQ Vaccine",
+      "bodyBn": "## Storage\n\nBQ ভ্যাকসিন ২–৮°C এ সংরক্ষণ করুন।\n\n## Handling\n\nহিমায়িত/তাপ থেকে রক্ষা করুন।",
+      "bodyEn": "## Storage\n\nStore BQ Vaccine at 2–8°C.\n\n## Handling\n\nProtect from freezing and heat.",
+      "species": [
+        "COW"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "structuredJson": {
+        "antigen": "BQ",
+        "route": "IM/SC",
+        "doseMl": 2,
+        "storageTempC": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "ppr-vaccine",
+      "domain": "VACCINE",
+      "entityType": "Vaccine",
+      "titleBn": "PPR ভ্যাকসিন",
+      "titleEn": "PPR Vaccine",
+      "bodyBn": "## Storage\n\nPPR ভ্যাকসিন ২–৮°C এ সংরক্ষণ করুন।\n\n## Handling\n\nহিমায়িত/তাপ থেকে রক্ষা করুন।",
+      "bodyEn": "## Storage\n\nStore PPR Vaccine at 2–8°C.\n\n## Handling\n\nProtect from freezing and heat.",
+      "species": [
+        "GOAT"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "structuredJson": {
+        "antigen": "PPR",
+        "route": "IM/SC",
+        "doseMl": 2,
+        "storageTempC": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "nd-vaccine",
+      "domain": "VACCINE",
+      "entityType": "Vaccine",
+      "titleBn": "Newcastle ভ্যাকসিন",
+      "titleEn": "Newcastle Vaccine",
+      "bodyBn": "## Storage\n\nNewcastle ভ্যাকসিন ২–৮°C এ সংরক্ষণ করুন।\n\n## Handling\n\nহিমায়িত/তাপ থেকে রক্ষা করুন।",
+      "bodyEn": "## Storage\n\nStore Newcastle Vaccine at 2–8°C.\n\n## Handling\n\nProtect from freezing and heat.",
+      "species": [
+        "CHICKEN"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "structuredJson": {
+        "antigen": "ND",
+        "route": "IM/SC",
+        "doseMl": 2,
+        "storageTempC": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "ibd-vaccine",
+      "domain": "VACCINE",
+      "entityType": "Vaccine",
+      "titleBn": "Gumboro ভ্যাকসিন",
+      "titleEn": "IBD Vaccine",
+      "bodyBn": "## Storage\n\nGumboro ভ্যাকসিন ২–৮°C এ সংরক্ষণ করুন।\n\n## Handling\n\nহিমায়িত/তাপ থেকে রক্ষা করুন।",
+      "bodyEn": "## Storage\n\nStore IBD Vaccine at 2–8°C.\n\n## Handling\n\nProtect from freezing and heat.",
+      "species": [
+        "CHICKEN"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "structuredJson": {
+        "antigen": "IBD",
+        "route": "IM/SC",
+        "doseMl": 2,
+        "storageTempC": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "cattle-fmd-schedule",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "গরুর FMD টিকা সূচি",
+      "titleEn": "Cattle FMD Schedule",
+      "bodyBn": "## Schedule\n\nবয়স: ৩–৬ মাস। বুস্টার: 180 দিন। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: ৩–৬ মাস. Booster interval: 180 days. Follow DLS national calendar.",
+      "species": [
+        "COW"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "FMD",
+        "ageWindow": "৩–৬ মাস",
+        "boosterIntervalDays": 180,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "cattle-hs-bq-schedule",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "গরুর HS/BQ সূচি",
+      "titleEn": "Cattle HS/BQ Schedule",
+      "bodyBn": "## Schedule\n\nবয়স: ৪–৬ মাস। বুস্টার: 365 দিন। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: ৪–৬ মাস. Booster interval: 365 days. Follow DLS national calendar.",
+      "species": [
+        "COW"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "HS/BQ",
+        "ageWindow": "৪–৬ মাস",
+        "boosterIntervalDays": 365,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "buffalo-fmd-schedule",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "মহিষ FMD সূচি",
+      "titleEn": "Buffalo FMD Schedule",
+      "bodyBn": "## Schedule\n\nবয়স: ৬ মাস। বুস্টার: 180 দিন। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: ৬ মাস. Booster interval: 180 days. Follow DLS national calendar.",
+      "species": [
+        "BUFFALO"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "FMD",
+        "ageWindow": "৬ মাস",
+        "boosterIntervalDays": 180,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "goat-ppr-schedule",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "ছাগল PPR সূচি",
+      "titleEn": "Goat PPR Schedule",
+      "bodyBn": "## Schedule\n\nবয়স: ৩–৪ মাস। বুস্টার: 365 দিন। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: ৩–৪ মাস. Booster interval: 365 days. Follow DLS national calendar.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "PPR",
+        "ageWindow": "৩–৪ মাস",
+        "boosterIntervalDays": 365,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "poultry-nd-schedule",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "মুরগি ND সূচি",
+      "titleEn": "Poultry ND Schedule",
+      "bodyBn": "## Schedule\n\nবয়স: ১–৭ দিন। বুস্টার: 60 দিন। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: ১–৭ দিন. Booster interval: 60 days. Follow DLS national calendar.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "ND",
+        "ageWindow": "১–৭ দিন",
+        "boosterIntervalDays": 60,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "poultry-ibd-schedule",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "মুরগি IBD সূচি",
+      "titleEn": "Poultry IBD Schedule",
+      "bodyBn": "## Schedule\n\nবয়স: ১৪–২১ দিন। বুস্টার: প্রয়োজন অনুযায়ী। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: ১৪–২১ দিন. Booster interval: as required. Follow DLS national calendar.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "IBD",
+        "ageWindow": "১৪–২১ দিন",
+        "boosterIntervalDays": 0,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "farm-annual-vaccination-calendar",
+      "domain": "VACCINE",
+      "entityType": "VaccinationSchedule",
+      "titleBn": "বার্ষিক টিকা ক্যালেন্ডার",
+      "titleEn": "Annual Vaccination Calendar",
+      "bodyBn": "## Schedule\n\nবয়স: বছরে ২ বার। বুস্টার: 180 দিন। DLS জাতীয় সূচি অনুসরণ করুন।",
+      "bodyEn": "## Schedule\n\nAge window: বছরে ২ বার. Booster interval: 180 days. Follow DLS national calendar.",
+      "species": [
+        "COW"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "VACCINE_BY_SCHEDULE_ROW",
+      "colloquialBn": [
+        "টিকা",
+        "vaccination",
+        "vaccine schedule",
+        "গরুর টিকা কখন"
+      ],
+      "keywordsBn": [
+        "টিকা",
+        "vaccination schedule"
+      ],
+      "structuredJson": {
+        "antigen": "MULTI",
+        "ageWindow": "বছরে ২ বার",
+        "boosterIntervalDays": 180,
+        "route": "IM/SC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    }
+  ]
+}

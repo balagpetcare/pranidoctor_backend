@@ -68,9 +68,14 @@ export function buildUsageRecordWhere(filters: UsageAnalyticsFilters): Prisma.Ai
   return where;
 }
 
-export function buildUsageLogWhere(filters: UsageAnalyticsFilters): Prisma.AiUsageLogWhereInput {
+export function buildUsageLogWhere(
+  filters: UsageAnalyticsFilters,
+  options?: { exclusiveEnd?: boolean },
+): Prisma.AiUsageLogWhereInput {
   const where: Prisma.AiUsageLogWhereInput = {
-    createdAt: { gte: filters.from, lte: filters.to },
+    createdAt: options?.exclusiveEnd
+      ? { gte: filters.from, lt: filters.to }
+      : { gte: filters.from, lte: filters.to },
   };
   if (filters.branchId) where.branchId = filters.branchId;
   if (filters.organizationId) where.organizationId = filters.organizationId;

@@ -4,8 +4,9 @@ import { omitUndefined } from '../../types/object.utils.js';
 import { getConfig } from '../../config/index.js';
 import { getRequestContext } from '../../context/request-context.js';
 import { logInfo, logWarn, logError } from '../../logger/logger.js';
-import { getRedis } from '../../../infra/redis/redis.client.js';
+import { getRedis, isRedisInitialized } from '../../../infra/redis/redis.client.js';
 import { addJob, QueueNames } from '../../../infra/queue/index.js';
+import { isRedisEnabled } from '../../config/infra.flags.js';
 
 import type {
   AuditLogEntry,
@@ -44,6 +45,17 @@ function getSeverityForAction(action: AuditAction): AuditSeverity {
     'PERMISSION_REVOKE',
     'SYSTEM_CONFIG_CHANGE',
     'AI_EMERGENCY_ESCALATE',
+    'AI_SETTINGS_UPDATE',
+    'AI_SECRET_ROTATE',
+    'AI_PROVIDER_ENABLED',
+    'AI_PROVIDER_DISABLED',
+    'AI_PROVIDER_PRIORITY_CHANGED',
+    'AI_MODEL_ENABLED',
+    'AI_MODEL_DISABLED',
+    'AI_MODEL_RATE_CHANGED',
+    'AI_MODEL_DEFAULT_CHANGED',
+    'AI_MODEL_CATALOG_SYNC',
+    'AI_REGISTRY_CHANGE',
   ];
 
   const warningActions: AuditAction[] = [
@@ -52,6 +64,8 @@ function getSeverityForAction(action: AuditAction): AuditSeverity {
     'PERMISSION_GRANT',
     'DATA_EXPORT',
     'SETTINGS_UPDATE',
+    'AI_ANALYTICS_SCOPE_DENIED',
+    'AI_ANALYTICS_EXPORT',
   ];
 
   if (criticalActions.includes(action)) return 'CRITICAL';
@@ -62,6 +76,17 @@ function getSeverityForAction(action: AuditAction): AuditSeverity {
 export async function createAuditLog(options: CreateAuditLogOptions): Promise<AuditLogEntry> {
   const ctx = getRequestContext();
   const config = getConfig();
+  if (!isRedisEnabled(config) || !isRedisInitialized()) {
+    logWarn('Audit log skipped — Redis unavailable', { action: options.action });
+    return {
+      id: nanoid(21),
+      timestamp: new Date(),
+      action: options.action,
+      severity: options.severity ?? getSeverityForAction(options.action),
+      outcome: options.outcome ?? 'SUCCESS',
+      actorType: options.actorType ?? (ctx?.userId ? 'user' : 'system'),
+    };
+  }
   const redis = getRedis();
   const prefix = config.redis.prefix;
 
@@ -138,6 +163,11 @@ export async function createAuditLog(options: CreateAuditLogOptions): Promise<Au
 }
 
 export async function createAuditLogAsync(options: CreateAuditLogOptions): Promise<void> {
+  const config = getConfig();
+  if (!isRedisEnabled(config) || !isRedisInitialized()) {
+    logWarn('Async audit log skipped — Redis unavailable', { action: options.action });
+    return;
+  }
   try {
     await addJob(QueueNames.SCHEDULED, 'audit-log', options);
   } catch {

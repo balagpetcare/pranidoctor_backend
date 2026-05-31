@@ -7,6 +7,8 @@ import {
   PregnancyStatus,
 } from "@/generated/prisma/client";
 
+import { weightCaptureSchema } from "./animal-weight-schemas.js";
+
 const animalTypeSchema = z.nativeEnum(AnimalType);
 const genderSchema = z.nativeEnum(Gender);
 const animalCategorySchema = z.nativeEnum(AnimalCategory);
@@ -48,9 +50,17 @@ export const createAnimalBodySchema = z
     notes: optionalTrimmed(8000),
     photoUrl: optionalPhotoUrl,
     weightKg: z.coerce.number().positive().max(99999).optional(),
+    weightCapture: weightCaptureSchema.optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
+    if (data.weightCapture != null && data.weightKg != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide weightCapture or weightKg, not both",
+        path: ["weightKg"],
+      });
+    }
     const nameOk = data.name != null && data.name.length > 0;
     const tagOk = data.tag != null && data.tag.length > 0;
     if (!nameOk && !tagOk) {
@@ -104,10 +114,18 @@ export const patchAnimalBodySchema = z
     weightKg: z
       .union([z.number().positive().max(99999), z.null()])
       .optional(),
+    weightCapture: weightCaptureSchema.optional(),
     active: z.boolean().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
+    if (data.weightCapture != null && data.weightKg != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide weightCapture or weightKg, not both",
+        path: ["weightKg"],
+      });
+    }
     const hasDob =
       data.dateOfBirth !== undefined &&
       data.dateOfBirth !== null &&

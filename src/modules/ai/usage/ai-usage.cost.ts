@@ -50,6 +50,16 @@ export function estimateAiCostUsd(
   inputTokens: number,
   outputTokens: number,
 ): number {
+  return estimateAiCostUsdLegacy(provider, model, inputTokens, outputTokens);
+}
+
+/** Legacy hard-coded fallback — prefer AiCostRateService for DB rates. */
+export function estimateAiCostUsdLegacy(
+  provider: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+): number {
   const modelRates = MODEL_RATES[provider]?.[model];
   const rates = modelRates ?? PROVIDER_RATES[provider] ?? { inputPerToken: 0, outputPerToken: 0 };
   return inputTokens * rates.inputPerToken + outputTokens * rates.outputPerToken;

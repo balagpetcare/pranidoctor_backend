@@ -1,5 +1,6 @@
 import { getAiSecretService } from '../vault/ai-secret.service.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { PLATFORM_SCOPE_KEY } from '../prompts/management/prompt-management.types.js';
 import type { OpenRouterModelCatalogEntry } from './marketplace.types.js';
 import { getExternalModelRegistrationService } from './external-model.service.js';
@@ -54,22 +55,24 @@ export class OpenRouterCatalogService {
       const promptCost = entry.pricing?.prompt ? Number.parseFloat(entry.pricing.prompt) : 0;
       const completionCost = entry.pricing?.completion ? Number.parseFloat(entry.pricing.completion) : 0;
 
-      await this.externalModels.register({
-        providerId: provider.id,
-        modelKey,
-        displayName: entry.name,
-        externalModelId: entry.id,
-        source: 'EXTERNAL',
-        modelCategory: options.defaultCategory ?? 'general_chat',
-        contextWindow: entry.context_length,
-        inputCostPerToken: promptCost,
-        outputCostPerToken: completionCost,
-        metadataJson: {
-          openRouterId: entry.id,
-          description: entry.description,
-          syncedAt: new Date().toISOString(),
-        },
-      });
+      await this.externalModels.register(
+        omitUndefined({
+          providerId: provider.id,
+          modelKey,
+          displayName: entry.name,
+          externalModelId: entry.id,
+          source: 'EXTERNAL' as const,
+          modelCategory: options.defaultCategory ?? 'general_chat',
+          contextWindow: entry.context_length,
+          inputCostPerToken: promptCost,
+          outputCostPerToken: completionCost,
+          metadataJson: {
+            openRouterId: entry.id,
+            description: entry.description,
+            syncedAt: new Date().toISOString(),
+          },
+        }),
+      );
       registered += 1;
     }
 
@@ -79,7 +82,8 @@ export class OpenRouterCatalogService {
 
   private async resolveOpenRouterKey(): Promise<string> {
     if (getAiSecretService().isProviderConfigured('openrouter')) {
-      return getAiSecretService().resolveProviderSecret('openrouter');
+      const secret = await getAiSecretService().resolveProviderSecret('openrouter');
+      if (secret) return secret;
     }
     const envKey = process.env.OPENROUTER_API_KEY?.trim();
     if (envKey) return envKey;

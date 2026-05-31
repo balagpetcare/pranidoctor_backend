@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pranidoctor.local/schemas/knowledge/disease.template.schema.json",
+  "title": "PraniDoctor Disease Knowledge Import Row",
+  "description": "Production import structure for VKL DISEASE domain entities (Phase 6E). Populate from authoritative sources only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "slug",
+    "domain",
+    "titleBn",
+    "titleEn",
+    "bodyBn",
+    "bodyEn",
+    "sourceSpanRefs",
+    "structuredJson"
+  ],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "domain": { "const": "DISEASE" },
+    "entityType": { "type": "string", "default": "Disease" },
+    "titleBn": { "type": "string", "minLength": 1 },
+    "titleEn": { "type": "string", "minLength": 1 },
+    "summaryBn": { "type": "string" },
+    "summaryEn": { "type": "string" },
+    "bodyBn": { "type": "string", "minLength": 1 },
+    "bodyEn": { "type": "string", "minLength": 1 },
+    "species": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "audience": { "enum": ["FARMER", "DOCTOR", "BOTH"] },
+    "regionScope": { "enum": ["BD", "GLOBAL"], "default": "BD" },
+    "clinicalRiskTier": { "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    "chunkPolicyId": { "const": "DISEASE_BY_HEADING" },
+    "keywordsBn": { "type": "array", "items": { "type": "string" } },
+    "keywordsEn": { "type": "array", "items": { "type": "string" } },
+    "colloquialBn": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "structuredJson": {
+      "type": "object",
+      "required": ["diseaseCode"],
+      "properties": {
+        "diseaseCode": { "type": "string" },
+        "endemicBd": { "type": "boolean" },
+        "zoonotic": { "type": "boolean" },
+        "transmissionMode": { "type": "string" },
+        "mortalityRisk": { "type": "string" }
+      }
+    },
+    "sourceSpanRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer" },
+          "sectionId": { "type": "string" },
+          "paragraphIndex": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

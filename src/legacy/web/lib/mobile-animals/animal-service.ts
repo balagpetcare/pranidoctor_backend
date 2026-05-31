@@ -9,7 +9,10 @@ import {
   toAnimalJsonDto,
   type AnimalJsonDto,
 } from "./animal-mapper";
-import type { CreateAnimalBody, PatchAnimalBody } from "./schemas";
+import { AnimalWeightMeasurementSource } from "@/generated/prisma/client";
+
+import { createMeasurementFromCapture } from "./animal-weight-service.js";
+import type { CreateAnimalBody, PatchAnimalBody } from "./schemas.js";
 
 export async function listAnimalsForCustomer(
   customerProfileId: string,
@@ -25,10 +28,18 @@ export async function listAnimalsForCustomer(
   return rows.map(toAnimalJsonDto);
 }
 
+export type CreateAnimalResult = {
+  animal: AnimalJsonDto;
+  weightMeasurement?: Awaited<
+    ReturnType<typeof createMeasurementFromCapture>
+  >["measurement"];
+  aiJob?: Awaited<ReturnType<typeof createMeasurementFromCapture>>["aiJob"];
+};
+
 export async function createAnimalForCustomer(
   customerProfileId: string,
   body: CreateAnimalBody,
-): Promise<AnimalJsonDto> {
+): Promise<CreateAnimalResult> {
   const tag = body.tag?.trim();
   const namePart = body.name?.trim();
   const resolvedName = namePart || tag || "";
@@ -42,29 +53,54 @@ export async function createAnimalForCustomer(
 
   const category = body.category ?? categoryFromAnimalType(body.animalType);
 
-  const row = await prisma.animalProfile.create({
-    data: {
-      customerId: customerProfileId,
-      name: resolvedName,
-      species: speciesLabelFromAnimalType(body.animalType),
-      category,
-      animalType: body.animalType,
-      breed: body.breed?.trim() || undefined,
-      microchipOrTag: tag || undefined,
-      dateOfBirth,
-      sex: body.sex?.trim() || undefined,
-      gender: body.gender,
-      pregnancyStatus: body.pregnancyStatus,
-      notes: body.notes?.trim() || undefined,
-      photoUrl: body.photoUrl?.trim() || undefined,
-      weightKg:
-        body.weightKg !== undefined
-          ? new Prisma.Decimal(body.weightKg.toFixed(3))
-          : undefined,
-    },
+  const row = await prisma.$transaction(async (tx) => {
+    const created = await tx.animalProfile.create({
+      data: {
+        customerId: customerProfileId,
+        name: resolvedName,
+        species: speciesLabelFromAnimalType(body.animalType),
+        category,
+        animalType: body.animalType,
+        breed: body.breed?.trim() || undefined,
+        microchipOrTag: tag || undefined,
+        dateOfBirth,
+        sex: body.sex?.trim() || undefined,
+        gender: body.gender,
+        pregnancyStatus: body.pregnancyStatus,
+        notes: body.notes?.trim() || undefined,
+        photoUrl: body.photoUrl?.trim() || undefined,
+        weightKg:
+          body.weightCapture == null && body.weightKg !== undefined
+            ? new Prisma.Decimal(body.weightKg.toFixed(3))
+            : undefined,
+      },
+    });
+    return created;
   });
 
-  return toAnimalJsonDto(row);
+  let weightResult:
+    | Awaited<ReturnType<typeof createMeasurementFromCapture>>
+    | undefined;
+
+  if (body.weightCapture) {
+    weightResult = await createMeasurementFromCapture(
+      customerProfileId,
+      row.id,
+      body.animalType,
+      body.weightCapture,
+      AnimalWeightMeasurementSource.REGISTRATION,
+    );
+  }
+
+  const refreshed = await prisma.animalProfile.findUniqueOrThrow({
+    where: { id: row.id },
+  });
+
+  return {
+    animal: toAnimalJsonDto(refreshed),
+    weightMeasurement: weightResult?.measurement,
+    aiJob: weightResult?.aiJob,
+  };
 }
 
 export async function getAnimalForCustomer(
@@ -146,7 +182,7 @@ function buildPatchUpdateInput(body: PatchAnimalBody): Prisma.AnimalProfileUpdat
         : body.photoUrl.trim();
   }
 
-  if (body.weightKg !== undefined) {
+  if (body.weightKg !== undefined && body.weightCapture === undefined) {
     data.weightKg =
       body.weightKg === null
         ? null
@@ -170,9 +206,22 @@ export async function patchAnimalForCustomer(
   });
   if (!existing) return null;
 
+  if (body.weightCapture) {
+    await createMeasurementFromCapture(
+      customerProfileId,
+      animalId,
+      existing.animalType,
+      body.weightCapture,
+      AnimalWeightMeasurementSource.ANIMAL_DETAIL,
+    );
+  }
+
   const data = buildPatchUpdateInput(body);
   if (Object.keys(data).length === 0) {
-    return toAnimalJsonDto(existing);
+    const refreshed = await prisma.animalProfile.findUniqueOrThrow({
+      where: { id: animalId },
+    });
+    return toAnimalJsonDto(refreshed);
   }
 
   const row = await prisma.animalProfile.update({

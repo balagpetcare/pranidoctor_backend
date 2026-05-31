@@ -1,0 +1,1761 @@
+{
+  "rows": [
+    {
+      "slug": "mastitis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "গরুর Mastitis (আদরের প্রদাহ)",
+      "titleEn": "Bovine Mastitis",
+      "summaryBn": "আদর ফোলা, গরম, ব্যথা; দুধে ফোঁটা/পুঁজ; দুধ উৎপাদন কমে; গরু অস্বস্তি ও খাবার কম খায়।",
+      "summaryEn": "Swollen, hot, painful udder; clots/pus in milk; reduced yield; discomfort and inappetence.",
+      "bodyBn": "## Signs\n\nআদর ফোলা, গরম, ব্যথা; দুধে ফোঁটা/পুঁজ; দুধ উৎপাদন কমে; গরু অস্বস্তি ও খাবার কম খায়।\n\n## Diagnosis\n\nগরুর Mastitis (আদরের প্রদাহ) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nগরুর Mastitis (আদরের প্রদাহ) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nগরুর Mastitis (আদরের প্রদাহ) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nSwollen, hot, painful udder; clots/pus in milk; reduced yield; discomfort and inappetence.\n\n## Diagnosis\n\nDiagnosis of Bovine Mastitis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Bovine Mastitis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Bovine Mastitis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "দুধ গলে",
+        "আদর ফোলা",
+        "দুধে ফোঁটা",
+        "দুধ কমে",
+        "গাভীর mastitis"
+      ],
+      "keywordsBn": [
+        "গরুর Mastitis (আদরের প্রদাহ)",
+        "দুধ গলে",
+        "আদর ফোলা",
+        "দুধে ফোঁটা",
+        "দুধ কমে",
+        "গাভীর mastitis"
+      ],
+      "keywordsEn": [
+        "Bovine Mastitis",
+        "BOV-MAST"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-MAST",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "hemorrhagic-septicemia",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "হেমরেজিক সেপ্টিসেমিয়া (HS)",
+      "titleEn": "Hemorrhagic Septicemia",
+      "summaryBn": "উচ্চ জ্বর, ঠোট/গলা ফোলা, শ্বাসকষ্ট, বুকে শব্দ; হঠাৎ পতন ও মৃত্যু হতে পারে।",
+      "summaryEn": "High fever, swollen throat/lips, dyspnea, chest sounds; sudden collapse possible.",
+      "bodyBn": "## Signs\n\nউচ্চ জ্বর, ঠোট/গলা ফোলা, শ্বাসকষ্ট, বুকে শব্দ; হঠাৎ পতন ও মৃত্যু হতে পারে।\n\n## Diagnosis\n\nহেমরেজিক সেপ্টিসেমিয়া (HS) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nহেমরেজিক সেপ্টিসেমিয়া (HS) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nহেমরেজিক সেপ্টিসেমিয়া (HS) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nHigh fever, swollen throat/lips, dyspnea, chest sounds; sudden collapse possible.\n\n## Diagnosis\n\nDiagnosis of Hemorrhagic Septicemia relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Hemorrhagic Septicemia with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Hemorrhagic Septicemia, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "এইচএস",
+        "গরু জ্বর",
+        "ঠোট ফোলা",
+        "হঠাৎ মৃত্যু"
+      ],
+      "keywordsBn": [
+        "হেমরেজিক সেপ্টিসেমিয়া (HS)",
+        "এইচএস",
+        "গরু জ্বর",
+        "ঠোট ফোলা",
+        "হঠাৎ মৃত্যু"
+      ],
+      "keywordsEn": [
+        "Hemorrhagic Septicemia",
+        "BOV-HS"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-HS",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "foot-and-mouth-disease",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ফুট অ্যান্ড মাউথ রোগ (FMD)",
+      "titleEn": "Foot and Mouth Disease",
+      "summaryBn": "মুখ, জিহ্বা ও খুরে ফোসকা; লালা ঝরা; জ্বর; দুধ/খাদ্য intake কমে; লম্বা দুর্বল।",
+      "summaryEn": "Blisters on mouth, tongue, feet; salivation; fever; reduced intake; prolonged weakness.",
+      "bodyBn": "## Signs\n\nমুখ, জিহ্বা ও খুরে ফোসকা; লালা ঝরা; জ্বর; দুধ/খাদ্য intake কমে; লম্বা দুর্বল।\n\n## Diagnosis\n\nফুট অ্যান্ড মাউথ রোগ (FMD) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nফুট অ্যান্ড মাউথ রোগ (FMD) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nফুট অ্যান্ড মাউথ রোগ (FMD) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nBlisters on mouth, tongue, feet; salivation; fever; reduced intake; prolonged weakness.\n\n## Diagnosis\n\nDiagnosis of Foot and Mouth Disease relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Foot and Mouth Disease with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Foot and Mouth Disease, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "খুর-মুখ রোগ",
+        "মুখে ফোসকা",
+        "লালা ঝরা"
+      ],
+      "keywordsBn": [
+        "ফুট অ্যান্ড মাউথ রোগ (FMD)",
+        "খুর-মুখ রোগ",
+        "মুখে ফোসকা",
+        "লালা ঝরা"
+      ],
+      "keywordsEn": [
+        "Foot and Mouth Disease",
+        "BOV-FMD"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-FMD",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "blackleg",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ব্ল্যাকলেগ",
+      "titleEn": "Blackleg",
+      "summaryBn": "হঠাৎ জ্বর, লাথিতে ফোলা ও ব্যথা, গ্যাংগ্রিন; প্রায়ই দ্রুত মৃত্যু।",
+      "summaryEn": "Sudden fever, hot painful swelling in leg, gangrene; often rapid death.",
+      "bodyBn": "## Signs\n\nহঠাৎ জ্বর, লাথিতে ফোলা ও ব্যথা, গ্যাংগ্রিন; প্রায়ই দ্রুত মৃত্যু।\n\n## Diagnosis\n\nব্ল্যাকলেগ নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nব্ল্যাকলেগ প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nব্ল্যাকলেগ সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nSudden fever, hot painful swelling in leg, gangrene; often rapid death.\n\n## Diagnosis\n\nDiagnosis of Blackleg relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Blackleg with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Blackleg, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "হঠাৎ লাথি ফোলা",
+        "গ্যাংগ্রিন"
+      ],
+      "keywordsBn": [
+        "ব্ল্যাকলেগ",
+        "হঠাৎ লাথি ফোলা",
+        "গ্যাংগ্রিন"
+      ],
+      "keywordsEn": [
+        "Blackleg",
+        "BOV-BLG"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-BLG",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "milk-fever",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "মিল্ক ফিভার (হাইপোক্যালসেমিয়া)",
+      "titleEn": "Milk Fever (Hypocalcemia)",
+      "summaryBn": "বাছা দেওয়ার পর গরু পড়ে যায়, কাঁপুনি, দুর্বল; জিহ্বা বাইরে; জরুরি অবস্থা।",
+      "summaryEn": "Post-calving downer cow, tremors, weakness, protruding tongue; emergency.",
+      "bodyBn": "## Signs\n\nবাছা দেওয়ার পর গরু পড়ে যায়, কাঁপুনি, দুর্বল; জিহ্বা বাইরে; জরুরি অবস্থা।\n\n## Diagnosis\n\nমিল্ক ফিভার (হাইপোক্যালসেমিয়া) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nমিল্ক ফিভার (হাইপোক্যালসেমিয়া) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nমিল্ক ফিভার (হাইপোক্যালসেমিয়া) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nPost-calving downer cow, tremors, weakness, protruding tongue; emergency.\n\n## Diagnosis\n\nDiagnosis of Milk Fever (Hypocalcemia) relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Milk Fever (Hypocalcemia) with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Milk Fever (Hypocalcemia), contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "গরু পড়ে গেছে",
+        "বাছা দেওয়ার পর পড়ে"
+      ],
+      "keywordsBn": [
+        "মিল্ক ফিভার (হাইপোক্যালসেমিয়া)",
+        "গরু পড়ে গেছে",
+        "বাছা দেওয়ার পর পড়ে"
+      ],
+      "keywordsEn": [
+        "Milk Fever (Hypocalcemia)",
+        "BOV-MF"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-MF",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "ketosis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "কেটোসিস",
+      "titleEn": "Ketosis",
+      "summaryBn": "দুধ কমে, খাবার intake কম, ওজন কমে; মাঝে মাঝে অ্যাসিটোন গন্ধ; দুর্বলতা।",
+      "summaryEn": "Reduced milk, inappetence, weight loss; acetone breath possible; weakness.",
+      "bodyBn": "## Signs\n\nদুধ কমে, খাবার intake কম, ওজন কমে; মাঝে মাঝে অ্যাসিটোন গন্ধ; দুর্বলতা।\n\n## Diagnosis\n\nকেটোসিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nকেটোসিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nকেটোসিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nReduced milk, inappetence, weight loss; acetone breath possible; weakness.\n\n## Diagnosis\n\nDiagnosis of Ketosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Ketosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Ketosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "দুধ কম",
+        "খায় না",
+        "অ্যাসিটোন গন্ধ"
+      ],
+      "keywordsBn": [
+        "কেটোসিস",
+        "দুধ কম",
+        "খায় না",
+        "অ্যাসিটোন গন্ধ"
+      ],
+      "keywordsEn": [
+        "Ketosis",
+        "BOV-KET"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-KET",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "retained-placenta",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "আটকে থাকা প্ল্যাসেন্টা",
+      "titleEn": "Retained Placenta",
+      "summaryBn": "বাছা দেওয়ার ২৪ ঘণ্টার পরেও প্ল্যাসেন্টা ঝরে না; জ্বর, দুগ্ধ গন্ধ।",
+      "summaryEn": "Placenta not expelled >24h post-calving; fever, foul discharge.",
+      "bodyBn": "## Signs\n\nবাছা দেওয়ার ২৪ ঘণ্টার পরেও প্ল্যাসেন্টা ঝরে না; জ্বর, দুগ্ধ গন্ধ।\n\n## Diagnosis\n\nআটকে থাকা প্ল্যাসেন্টা নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nআটকে থাকা প্ল্যাসেন্টা প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nআটকে থাকা প্ল্যাসেন্টা সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nPlacenta not expelled >24h post-calving; fever, foul discharge.\n\n## Diagnosis\n\nDiagnosis of Retained Placenta relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Retained Placenta with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Retained Placenta, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "ঝরা",
+        "প্ল্যাসেন্টা আটকে",
+        "বাছা দেওয়ার পর"
+      ],
+      "keywordsBn": [
+        "আটকে থাকা প্ল্যাসেন্টা",
+        "ঝরা",
+        "প্ল্যাসেন্টা আটকে",
+        "বাছা দেওয়ার পর"
+      ],
+      "keywordsEn": [
+        "Retained Placenta",
+        "BOV-RP"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-RP",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "metritis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "মেট্রাইটিস",
+      "titleEn": "Metritis",
+      "summaryBn": "জরায় পুঁজ/দুর্গন্ধ স্রাব, জ্বর, দুধ কম, দুর্বলতা।",
+      "summaryEn": "Uterine discharge with odor, fever, reduced milk, weakness.",
+      "bodyBn": "## Signs\n\nজরায় পুঁজ/দুর্গন্ধ স্রাব, জ্বর, দুধ কম, দুর্বলতা।\n\n## Diagnosis\n\nমেট্রাইটিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nমেট্রাইটিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nমেট্রাইটিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nUterine discharge with odor, fever, reduced milk, weakness.\n\n## Diagnosis\n\nDiagnosis of Metritis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Metritis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Metritis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "জরায় প্রদাহ",
+        "দুর্গন্ধ স্রাব"
+      ],
+      "keywordsBn": [
+        "মেট্রাইটিস",
+        "জরায় প্রদাহ",
+        "দুর্গন্ধ স্রাব"
+      ],
+      "keywordsEn": [
+        "Metritis",
+        "BOV-MET"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-MET",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "foot-rot",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ফুট রট",
+      "titleEn": "Foot Rot",
+      "summaryBn": "খুরের ফাটল, পচা গন্ধ, ফোলা, খাবার কম; লঙ্গুর।",
+      "summaryEn": "Interdigital lesion, foul odor, swelling, lameness, reduced intake.",
+      "bodyBn": "## Signs\n\nখুরের ফাটল, পচা গন্ধ, ফোলা, খাবার কম; লঙ্গুর।\n\n## Diagnosis\n\nফুট রট নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nফুট রট প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nফুট রট সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nInterdigital lesion, foul odor, swelling, lameness, reduced intake.\n\n## Diagnosis\n\nDiagnosis of Foot Rot relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Foot Rot with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Foot Rot, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "খুর পচা",
+        "খুর ব্যথা",
+        "লঙ্গুর"
+      ],
+      "keywordsBn": [
+        "ফুট রট",
+        "খুর পচা",
+        "খুর ব্যথা",
+        "লঙ্গুর"
+      ],
+      "keywordsEn": [
+        "Foot Rot",
+        "BOV-FR"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-FR",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "laminitis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ল্যামিনাইটিস",
+      "titleEn": "Laminitis",
+      "summaryBn": "পায়ে তীব্র ব্যথা, হাঁটতে কষ্ট, দাঁড়াতে অস্বস্তি; প্রায়ই উচ্চ খাদ্য intake-এর পর।",
+      "summaryEn": "Severe hoof pain, difficulty walking/standing; often after high concentrate intake.",
+      "bodyBn": "## Signs\n\nপায়ে তীব্র ব্যথা, হাঁটতে কষ্ট, দাঁড়াতে অস্বস্তি; প্রায়ই উচ্চ খাদ্য intake-এর পর।\n\n## Diagnosis\n\nল্যামিনাইটিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nল্যামিনাইটিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nল্যামিনাইটিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nSevere hoof pain, difficulty walking/standing; often after high concentrate intake.\n\n## Diagnosis\n\nDiagnosis of Laminitis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Laminitis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Laminitis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "পায়ে ব্যথা",
+        "হাঁটতে কষ্ট"
+      ],
+      "keywordsBn": [
+        "ল্যামিনাইটিস",
+        "পায়ে ব্যথা",
+        "হাঁটতে কষ্ট"
+      ],
+      "keywordsEn": [
+        "Laminitis",
+        "BOV-LAM"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-LAM",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "pneumonia-bovine",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "গরুর নিউমোনিয়া",
+      "titleEn": "Bovine Pneumonia",
+      "summaryBn": "জ্বর, কাশি, নাক/চোখ থেকে স্রাব, শ্বাসকষ্ট, খাবার কম।",
+      "summaryEn": "Fever, cough, nasal/ocular discharge, dyspnea, inappetence.",
+      "bodyBn": "## Signs\n\nজ্বর, কাশি, নাক/চোখ থেকে স্রাব, শ্বাসকষ্ট, খাবার কম।\n\n## Diagnosis\n\nগরুর নিউমোনিয়া নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nগরুর নিউমোনিয়া প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nগরুর নিউমোনিয়া সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nFever, cough, nasal/ocular discharge, dyspnea, inappetence.\n\n## Diagnosis\n\nDiagnosis of Bovine Pneumonia relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Bovine Pneumonia with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Bovine Pneumonia, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "গরু জ্বর",
+        "কাশি",
+        "নাক দিয়ে পানি"
+      ],
+      "keywordsBn": [
+        "গরুর নিউমোনিয়া",
+        "গরু জ্বর",
+        "কাশি",
+        "নাক দিয়ে পানি"
+      ],
+      "keywordsEn": [
+        "Bovine Pneumonia",
+        "BOV-PNE"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-PNE",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "enterotoxemia",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "এন্টেরোটок্সemia (গরু)",
+      "titleEn": "Enterotoxemia (Cattle)",
+      "summaryBn": "হঠাৎ পেট ফোলা, ব্যথা, নড়াচড়া কম; দ্রুত মৃত্যু হতে পারে।",
+      "summaryEn": "Sudden bloat, pain, depression; may die rapidly.",
+      "bodyBn": "## Signs\n\nহঠাৎ পেট ফোলা, ব্যথা, নড়াচড়া কম; দ্রুত মৃত্যু হতে পারে।\n\n## Diagnosis\n\nএন্টেরোটок্সemia (গরু) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nএন্টেরোটок্সemia (গরু) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nএন্টেরোটок্সemia (গরু) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nSudden bloat, pain, depression; may die rapidly.\n\n## Diagnosis\n\nDiagnosis of Enterotoxemia (Cattle) relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Enterotoxemia (Cattle) with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Enterotoxemia (Cattle), contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "হঠাৎ পেট ফোলা",
+        "হঠাৎ মৃত্যু"
+      ],
+      "keywordsBn": [
+        "এন্টেরোটок্সemia (গরু)",
+        "হঠাৎ পেট ফোলা",
+        "হঠাৎ মৃত্যু"
+      ],
+      "keywordsEn": [
+        "Enterotoxemia (Cattle)",
+        "BOV-ENT"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-ENT",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "helminthiasis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "কৃমি সংক্রমণ (গরু)",
+      "titleEn": "Helminthiasis (Cattle)",
+      "summaryBn": "ওজন কম, পাতলা পায়খানা, ক্ষমতা হ্রাস, ক্ষীণ দেহ।",
+      "summaryEn": "Weight loss, diarrhea, poor growth, poor body condition.",
+      "bodyBn": "## Signs\n\nওজন কম, পাতলা পায়খানা, ক্ষমতা হ্রাস, ক্ষীণ দেহ।\n\n## Diagnosis\n\nকৃমি সংক্রমণ (গরু) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nকৃমি সংক্রমণ (গরু) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nকৃমি সংক্রমণ (গরু) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nWeight loss, diarrhea, poor growth, poor body condition.\n\n## Diagnosis\n\nDiagnosis of Helminthiasis (Cattle) relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Helminthiasis (Cattle) with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Helminthiasis (Cattle), contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "পাতলা পায়খানা",
+        "ওজন কম"
+      ],
+      "keywordsBn": [
+        "কৃমি সংক্রমণ (গরু)",
+        "পাতলা পায়খানা",
+        "ওজন কম"
+      ],
+      "keywordsEn": [
+        "Helminthiasis (Cattle)",
+        "BOV-HEL"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-HEL",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "theileriosis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "থাইলেরিয়োসিস",
+      "titleEn": "Theileriosis",
+      "summaryBn": "উচ্চ জ্বর, anemia, হলুদ চোখ/মুখ, দুর্বলতা; টিক-প্রবণ এলাকায়।",
+      "summaryEn": "High fever, anemia, icterus, weakness; tick-endemic areas.",
+      "bodyBn": "## Signs\n\nউচ্চ জ্বর, anemia, হলুদ চোখ/মুখ, দুর্বলতা; টিক-প্রবণ এলাকায়।\n\n## Diagnosis\n\nথাইলেরিয়োসিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nথাইলেরিয়োসিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nথাইলেরিয়োসিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nHigh fever, anemia, icterus, weakness; tick-endemic areas.\n\n## Diagnosis\n\nDiagnosis of Theileriosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Theileriosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Theileriosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "টিক জ্বর",
+        "হলুদ চোখ"
+      ],
+      "keywordsBn": [
+        "থাইলেরিয়োসিস",
+        "টিক জ্বর",
+        "হলুদ চোখ"
+      ],
+      "keywordsEn": [
+        "Theileriosis",
+        "BOV-THE"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-THE",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "anthrax",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "এনথ্রাক্স",
+      "titleEn": "Anthrax",
+      "summaryBn": "হঠাৎ মৃত্যু, রক্তঝরা, শ্বাসকষ্ট; মৃত পশু স্পর্শ করবেন না — জরুরি।",
+      "summaryEn": "Sudden death, bleeding, dyspnea; do not open carcass — emergency zoonosis.",
+      "bodyBn": "## Signs\n\nহঠাৎ মৃত্যু, রক্তঝরা, শ্বাসকষ্ট; মৃত পশু স্পর্শ করবেন না — জরুরি।\n\n## Diagnosis\n\nএনথ্রাক্স নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nএনথ্রাক্স প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nএনথ্রাক্স সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nSudden death, bleeding, dyspnea; do not open carcass — emergency zoonosis.\n\n## Diagnosis\n\nDiagnosis of Anthrax relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Anthrax with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Anthrax, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "রক্তঝরা",
+        "হঠাৎ মৃত্যু"
+      ],
+      "keywordsBn": [
+        "এনথ্রাক্স",
+        "রক্তঝরা",
+        "হঠাৎ মৃত্যু"
+      ],
+      "keywordsEn": [
+        "Anthrax",
+        "BOV-ANT"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-ANT",
+        "endemicBd": true,
+        "zoonotic": true,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "brucellosis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ব্রুসেলোসিস",
+      "titleEn": "Brucellosis",
+      "summaryBn": "বারবার ঝরা, বন্ধ্যাত্ব, জরায় প্রদাহ; মানুষেও সংক্রমণ হতে পারে।",
+      "summaryEn": "Repeat abortions, infertility, metritis; zoonotic risk to humans.",
+      "bodyBn": "## Signs\n\nবারবার ঝরা, বন্ধ্যাত্ব, জরায় প্রদাহ; মানুষেও সংক্রমণ হতে পারে।\n\n## Diagnosis\n\nব্রুসেলোসিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nব্রুসেলোসিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nব্রুসেলোসিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nRepeat abortions, infertility, metritis; zoonotic risk to humans.\n\n## Diagnosis\n\nDiagnosis of Brucellosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Brucellosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Brucellosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "ঝরা",
+        "বারবার ঝরা"
+      ],
+      "keywordsBn": [
+        "ব্রুসেলোসিস",
+        "ঝরা",
+        "বারবার ঝরা"
+      ],
+      "keywordsEn": [
+        "Brucellosis",
+        "BOV-BRU"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-BRU",
+        "endemicBd": true,
+        "zoonotic": true,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "babesiosis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "বেবেসিয়োসিস",
+      "titleEn": "Babesiosis",
+      "summaryBn": "জ্বর, anemia, হলুদ চোখ, লাল/গাঢ় প্রস্রাব (টিক জ্বর)।",
+      "summaryEn": "Fever, anemia, icterus, red/dark urine (tick fever).",
+      "bodyBn": "## Signs\n\nজ্বর, anemia, হলুদ চোখ, লাল/গাঢ় প্রস্রাব (টিক জ্বর)।\n\n## Diagnosis\n\nবেবেসিয়োসিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nবেবেসিয়োসিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nবেবেসিয়োসিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nFever, anemia, icterus, red/dark urine (tick fever).\n\n## Diagnosis\n\nDiagnosis of Babesiosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Babesiosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Babesiosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "লাল প্রস্রাব",
+        "জ্বর"
+      ],
+      "keywordsBn": [
+        "বেবেসিয়োসিস",
+        "লাল প্রস্রাব",
+        "জ্বর"
+      ],
+      "keywordsEn": [
+        "Babesiosis",
+        "BOV-BAB"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-BAB",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "udder-oedema",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "আদরের ফোলা (ওডema)",
+      "titleEn": "Udder Oedema",
+      "summaryBn": "প্রথম বাছা বা দুধ বাড়ার সময় আদর ফোলা; সাধারণত mastitis নয়।",
+      "summaryEn": "Udder swelling around calving/lactation onset; usually not mastitis.",
+      "bodyBn": "## Signs\n\nপ্রথম বাছা বা দুধ বাড়ার সময় আদর ফোলা; সাধারণত mastitis নয়।\n\n## Diagnosis\n\nআদরের ফোলা (ওডema) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nআদরের ফোলা (ওডema) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nআদরের ফোলা (ওডema) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nUdder swelling around calving/lactation onset; usually not mastitis.\n\n## Diagnosis\n\nDiagnosis of Udder Oedema relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Udder Oedema with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Udder Oedema, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "COW"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "আদর ফোলা",
+        "প্রথম বাছা"
+      ],
+      "keywordsBn": [
+        "আদরের ফোলা (ওডema)",
+        "আদর ফোলা",
+        "প্রথম বাছা"
+      ],
+      "keywordsEn": [
+        "Udder Oedema",
+        "BOV-UOE"
+      ],
+      "structuredJson": {
+        "diseaseCode": "BOV-UOE",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "ppr",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "PPR (ছাগল)",
+      "titleEn": "Peste des Petits Ruminants",
+      "summaryBn": "PPR (ছাগল) হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Peste des Petits Ruminants.",
+      "bodyBn": "## Signs\n\nPPR (ছাগল) হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nPPR (ছাগল) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nPPR (ছাগল) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nPPR (ছাগল) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Peste des Petits Ruminants.\n\n## Diagnosis\n\nDiagnosis of Peste des Petits Ruminants relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Peste des Petits Ruminants with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Peste des Petits Ruminants, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "PPR",
+        "জ্বর",
+        "ডায়রিয়া"
+      ],
+      "keywordsBn": [
+        "PPR (ছাগল)",
+        "PPR",
+        "জ্বর",
+        "ডায়রিয়া"
+      ],
+      "keywordsEn": [
+        "Peste des Petits Ruminants",
+        "GOAT-PPR"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-PPR",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "contagious-caprine-pleuropneumonia",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের CCPP",
+      "titleEn": "Contagious Caprine Pleuropneumonia",
+      "summaryBn": "ছাগলের CCPP হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Contagious Caprine Pleuropneumonia.",
+      "bodyBn": "## Signs\n\nছাগলের CCPP হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের CCPP নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের CCPP প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের CCPP সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Contagious Caprine Pleuropneumonia.\n\n## Diagnosis\n\nDiagnosis of Contagious Caprine Pleuropneumonia relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Contagious Caprine Pleuropneumonia with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Contagious Caprine Pleuropneumonia, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "CCPP",
+        "কাশি"
+      ],
+      "keywordsBn": [
+        "ছাগলের CCPP",
+        "CCPP",
+        "কাশি"
+      ],
+      "keywordsEn": [
+        "Contagious Caprine Pleuropneumonia",
+        "GOAT-CCPP"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-CCPP",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "enterotoxemia-goat",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের এন্টেরোটок্সemia",
+      "titleEn": "Goat Enterotoxemia",
+      "summaryBn": "ছাগলের এন্টেরোটок্সemia হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Goat Enterotoxemia.",
+      "bodyBn": "## Signs\n\nছাগলের এন্টেরোটок্সemia হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের এন্টেরোটок্সemia নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের এন্টেরোটок্সemia প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের এন্টেরোটок্সemia সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Goat Enterotoxemia.\n\n## Diagnosis\n\nDiagnosis of Goat Enterotoxemia relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Goat Enterotoxemia with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Goat Enterotoxemia, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "হঠাৎ মৃত্যু",
+        "পেট ফোলা"
+      ],
+      "keywordsBn": [
+        "ছাগলের এন্টেরোটок্সemia",
+        "হঠাৎ মৃত্যু",
+        "পেট ফোলা"
+      ],
+      "keywordsEn": [
+        "Goat Enterotoxemia",
+        "GOAT-ENT"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-ENT",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "coccidiosis-goat",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের কক্সিডিয়োসিস",
+      "titleEn": "Goat Coccidiosis",
+      "summaryBn": "ছাগলের কক্সিডিয়োসিস হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Goat Coccidiosis.",
+      "bodyBn": "## Signs\n\nছাগলের কক্সিডিয়োসিস হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের কক্সিডিয়োসিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের কক্সিডিয়োসিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের কক্সিডিয়োসিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Goat Coccidiosis.\n\n## Diagnosis\n\nDiagnosis of Goat Coccidiosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Goat Coccidiosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Goat Coccidiosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "ডায়রিয়া",
+        "রক্ত মিশ্রিত",
+        "ছাগলের ডায়রিয়া"
+      ],
+      "keywordsBn": [
+        "ছাগলের কক্সিডিয়োসিস",
+        "ডায়রিয়া",
+        "রক্ত মিশ্রিত",
+        "ছাগলের ডায়রিয়া"
+      ],
+      "keywordsEn": [
+        "Goat Coccidiosis",
+        "GOAT-COC"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-COC",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "helminthiasis-goat",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের কৃমি",
+      "titleEn": "Goat Helminthiasis",
+      "summaryBn": "ছাগলের কৃমি হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Goat Helminthiasis.",
+      "bodyBn": "## Signs\n\nছাগলের কৃমি হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের কৃমি নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের কৃমি প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের কৃমি সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Goat Helminthiasis.\n\n## Diagnosis\n\nDiagnosis of Goat Helminthiasis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Goat Helminthiasis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Goat Helminthiasis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "পাতলা পায়খানা",
+        "ওজন কম"
+      ],
+      "keywordsBn": [
+        "ছাগলের কৃমি",
+        "পাতলা পায়খানা",
+        "ওজন কম"
+      ],
+      "keywordsEn": [
+        "Goat Helminthiasis",
+        "GOAT-HEL"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-HEL",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "foot-rot-goat",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের ফুট রট",
+      "titleEn": "Goat Foot Rot",
+      "summaryBn": "ছাগলের ফুট রট হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Goat Foot Rot.",
+      "bodyBn": "## Signs\n\nছাগলের ফুট রট হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের ফুট রট নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের ফুট রট প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের ফুট রট সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Goat Foot Rot.\n\n## Diagnosis\n\nDiagnosis of Goat Foot Rot relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Goat Foot Rot with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Goat Foot Rot, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "খুর ব্যথা"
+      ],
+      "keywordsBn": [
+        "ছাগলের ফুট রট",
+        "খুর ব্যথা"
+      ],
+      "keywordsEn": [
+        "Goat Foot Rot",
+        "GOAT-FR"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-FR",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "mastitis-goat",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের mastitis",
+      "titleEn": "Goat Mastitis",
+      "summaryBn": "ছাগলের mastitis হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Goat Mastitis.",
+      "bodyBn": "## Signs\n\nছাগলের mastitis হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের mastitis নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের mastitis প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের mastitis সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Goat Mastitis.\n\n## Diagnosis\n\nDiagnosis of Goat Mastitis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Goat Mastitis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Goat Mastitis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "দুধ গলে"
+      ],
+      "keywordsBn": [
+        "ছাগলের mastitis",
+        "দুধ গলে"
+      ],
+      "keywordsEn": [
+        "Goat Mastitis",
+        "GOAT-MAST"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-MAST",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "goat-pox",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ছাগলের pox",
+      "titleEn": "Goat Pox",
+      "summaryBn": "ছাগলের pox হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।",
+      "summaryEn": "Typical signs include fever, weakness, and species-specific clinical features of Goat Pox.",
+      "bodyBn": "## Signs\n\nছাগলের pox হলে জ্বর, দুর্বলতা ও species-specific লক্ষণ দেখা যায়।\n\n## Diagnosis\n\nছাগলের pox নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nছাগলের pox প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nছাগলের pox সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nTypical signs include fever, weakness, and species-specific clinical features of Goat Pox.\n\n## Diagnosis\n\nDiagnosis of Goat Pox relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Goat Pox with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Goat Pox, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "GOAT"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "চামড়ায় ফোসকা",
+        "জ্বর"
+      ],
+      "keywordsBn": [
+        "ছাগলের pox",
+        "চামড়ায় ফোসকা",
+        "জ্বর"
+      ],
+      "keywordsEn": [
+        "Goat Pox",
+        "GOAT-POX"
+      ],
+      "structuredJson": {
+        "diseaseCode": "GOAT-POX",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "newcastle-disease",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "নিউক্যাসল রোগ",
+      "titleEn": "Newcastle Disease",
+      "summaryBn": "নিউক্যাসল রোগ: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Newcastle Disease: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nনিউক্যাসল রোগ: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nনিউক্যাসল রোগ নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nনিউক্যাসল রোগ প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nনিউক্যাসল রোগ সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nNewcastle Disease: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Newcastle Disease relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Newcastle Disease with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Newcastle Disease, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "ND",
+        "মুরগি মরছে",
+        "মাথা ঝুলে"
+      ],
+      "keywordsBn": [
+        "নিউক্যাসল রোগ",
+        "ND",
+        "মুরগি মরছে",
+        "মাথা ঝুলে"
+      ],
+      "keywordsEn": [
+        "Newcastle Disease",
+        "POUL-ND"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-ND",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "infectious-bursal-disease",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "গাম্বোরো (IBD)",
+      "titleEn": "Infectious Bursal Disease",
+      "summaryBn": "গাম্বোরো (IBD): দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Infectious Bursal Disease: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nগাম্বোরো (IBD): দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nগাম্বোরো (IBD) নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nগাম্বোরো (IBD) প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nগাম্বোরো (IBD) সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nInfectious Bursal Disease: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Infectious Bursal Disease relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Infectious Bursal Disease with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Infectious Bursal Disease, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "Gumboro",
+        "মুরগি দুর্বল"
+      ],
+      "keywordsBn": [
+        "গাম্বোরো (IBD)",
+        "Gumboro",
+        "মুরগি দুর্বল"
+      ],
+      "keywordsEn": [
+        "Infectious Bursal Disease",
+        "POUL-IBD"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-IBD",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "infectious-bronchitis",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ইনফেকশাস ব্রঙ্কাইটিস",
+      "titleEn": "Infectious Bronchitis",
+      "summaryBn": "ইনফেকশাস ব্রঙ্কাইটিস: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Infectious Bronchitis: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nইনফেকশাস ব্রঙ্কাইটিস: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nইনফেকশাস ব্রঙ্কাইটিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nইনফেকশাস ব্রঙ্কাইটিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nইনফেকশাস ব্রঙ্কাইটিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nInfectious Bronchitis: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Infectious Bronchitis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Infectious Bronchitis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Infectious Bronchitis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "কাশি",
+        "শ্বাস"
+      ],
+      "keywordsBn": [
+        "ইনফেকশাস ব্রঙ্কাইটিস",
+        "কাশি",
+        "শ্বাস"
+      ],
+      "keywordsEn": [
+        "Infectious Bronchitis",
+        "POUL-IB"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-IB",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "fowl-pox",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "ফাউল pox",
+      "titleEn": "Fowl Pox",
+      "summaryBn": "ফাউল pox: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Fowl Pox: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nফাউল pox: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nফাউল pox নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nফাউল pox প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nফাউল pox সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nFowl Pox: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Fowl Pox relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Fowl Pox with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Fowl Pox, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "চামড়ায় ফোসকা"
+      ],
+      "keywordsBn": [
+        "ফাউল pox",
+        "চামড়ায় ফোসকা"
+      ],
+      "keywordsEn": [
+        "Fowl Pox",
+        "POUL-FPX"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-FPX",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "salmonellosis-poultry",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "মুরগির সালমোনেলosis",
+      "titleEn": "Poultry Salmonellosis",
+      "summaryBn": "মুরগির সালমোনেলosis: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Poultry Salmonellosis: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nমুরগির সালমোনেলosis: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nমুরগির সালমোনেলosis নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nমুরগির সালমোনেলosis প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nমুরগির সালমোনেলosis সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nPoultry Salmonellosis: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Poultry Salmonellosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Poultry Salmonellosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Poultry Salmonellosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "ডায়রিয়া",
+        "মৃত্যু"
+      ],
+      "keywordsBn": [
+        "মুরগির সালমোনেলosis",
+        "ডায়রিয়া",
+        "মৃত্যু"
+      ],
+      "keywordsEn": [
+        "Poultry Salmonellosis",
+        "POUL-SAL"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-SAL",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "coccidiosis-poultry",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "মুরগির কক্সিডিয়োসিস",
+      "titleEn": "Poultry Coccidiosis",
+      "summaryBn": "মুরগির কক্সিডিয়োসিস: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Poultry Coccidiosis: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nমুরগির কক্সিডিয়োসিস: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nমুরগির কক্সিডিয়োসিস নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nমুরগির কক্সিডিয়োসিস প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nমুরগির কক্সিডিয়োসিস সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nPoultry Coccidiosis: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Poultry Coccidiosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Poultry Coccidiosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Poultry Coccidiosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "রক্ত মিশ্রিত পায়খানা"
+      ],
+      "keywordsBn": [
+        "মুরগির কক্সিডিয়োসিস",
+        "রক্ত মিশ্রিত পায়খানা"
+      ],
+      "keywordsEn": [
+        "Poultry Coccidiosis",
+        "POUL-COC"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-COC",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "avian-influenza",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "এভিয়ান ইনফ্লুয়েঞ্জা",
+      "titleEn": "Avian Influenza",
+      "summaryBn": "এভিয়ান ইনফ্লুয়েঞ্জা: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Avian Influenza: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nএভিয়ান ইনফ্লুয়েঞ্জা: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nএভিয়ান ইনফ্লুয়েঞ্জা নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nএভিয়ান ইনফ্লুয়েঞ্জা প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nএভিয়ান ইনফ্লুয়েঞ্জা সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nAvian Influenza: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Avian Influenza relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Avian Influenza with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Avian Influenza, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "হঠাৎ মৃত্যু",
+        "মুরগির রোগ"
+      ],
+      "keywordsBn": [
+        "এভিয়ান ইনফ্লুয়েঞ্জা",
+        "হঠাৎ মৃত্যু",
+        "মুরগির রোগ"
+      ],
+      "keywordsEn": [
+        "Avian Influenza",
+        "POUL-AI"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-AI",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "mycoplasmosis-poultry",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "মাইকোপ্লাজমosis",
+      "titleEn": "Mycoplasmosis",
+      "summaryBn": "মাইকোপ্লাজমosis: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Mycoplasmosis: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nমাইকোপ্লাজমosis: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nমাইকোপ্লাজমosis নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nমাইকোপ্লাজমosis প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nমাইকোপ্লাজমosis সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nMycoplasmosis: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Mycoplasmosis relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Mycoplasmosis with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Mycoplasmosis, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "কাশি",
+        "শ্বাস"
+      ],
+      "keywordsBn": [
+        "মাইকোপ্লাজমosis",
+        "কাশি",
+        "শ্বাস"
+      ],
+      "keywordsEn": [
+        "Mycoplasmosis",
+        "POUL-MYC"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-MYC",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "marek-disease",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "মারেক রোগ",
+      "titleEn": "Marek Disease",
+      "summaryBn": "মারেক রোগ: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Marek Disease: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nমারেক রোগ: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nমারেক রোগ নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nমারেক রোগ প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nমারেক রোগ সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nMarek Disease: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Marek Disease relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Marek Disease with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Marek Disease, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "পক্ষাঘাত"
+      ],
+      "keywordsBn": [
+        "মারেক রোগ",
+        "পক্ষাঘাত"
+      ],
+      "keywordsEn": [
+        "Marek Disease",
+        "POUL-MAR"
+      ],
+      "structuredJson": {
+        "diseaseCode": "POUL-MAR",
+        "endemicBd": false,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "duck-plague",
+      "domain": "DISEASE",
+      "entityType": "Disease",
+      "titleBn": "হাঁসের plague",
+      "titleEn": "Duck Plague",
+      "summaryBn": "হাঁসের plague: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।",
+      "summaryEn": "Duck Plague: weakness, respiratory/GI signs, flock mortality may increase.",
+      "bodyBn": "## Signs\n\nহাঁসের plague: দুর্বলতা, শ্বাস/পাচন লক্ষণ, মৃত্যুহার বাড়তে পারে।\n\n## Diagnosis\n\nহাঁসের plague নির্ণয়ে পশুচিকিত্সক পরীক্ষা, ক্লিনিকাল লক্ষণ ও খামারের ইতিহাস গুরুত্বপূর্ণ।\n\n## Treatment\n\nচিকিৎসা পশুচিকিত্সকের তত্ত্বাবধানে করুন। স্ব-চিকিৎসা বা এন্টিবায়োটিক/ওষুধের মাত্রা নিজে নির্ধারণ করবেন না।\n\n## Prevention\n\nহাঁসের plague প্রতিরোধে টিকা, জীবাণুমুক্তি ও ভালো ব্যবস্থাপনা জরুরি।\n\n## Farmer Summary\n\nহাঁসের plague সন্দেহ হলে দ্রুত পশুচিকিত্সকের পরামর্শ নিন।\n\n## When to Call Vet\n\nজ্বর, দ্রুত অবনতি, হঠাৎ মৃত্যু বা একাধিক পশু অসুস্থ হলে অবিলম্বে পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nDuck Plague: weakness, respiratory/GI signs, flock mortality may increase.\n\n## Diagnosis\n\nDiagnosis of Duck Plague relies on veterinary examination, clinical signs, and farm history.\n\n## Treatment\n\nTreatment must be under veterinary supervision. Do not self-prescribe antibiotics or doses.\n\n## Prevention\n\nPrevent Duck Plague with vaccination, biosecurity, and good husbandry.\n\n## Farmer Summary\n\nIf you suspect Duck Plague, contact a veterinarian promptly.\n\n## When to Call Vet\n\nCall a vet immediately for fever, rapid decline, sudden death, or multiple affected animals.",
+      "species": [
+        "DUCK"
+      ],
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "DISEASE_BY_HEADING",
+      "colloquialBn": [
+        "হাঁস মরছে"
+      ],
+      "keywordsBn": [
+        "হাঁসের plague",
+        "হাঁস মরছে"
+      ],
+      "keywordsEn": [
+        "Duck Plague",
+        "DUCK-DPV"
+      ],
+      "structuredJson": {
+        "diseaseCode": "DUCK-DPV",
+        "endemicBd": true,
+        "zoonotic": false,
+        "transmissionMode": "varies",
+        "mortalityRisk": "moderate"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    }
+  ]
+}

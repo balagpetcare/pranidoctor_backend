@@ -1,35 +1,34 @@
 {
-  "generatedAt": "2026-05-30T11:22:26.373Z",
+  "generatedAt": "2026-05-30T15:20:37.953Z",
   "environment": {
     "nodeEnv": "development",
-    "openaiApiKey": "(not set)",
-    "anthropicApiKey": "(not set)",
+    "vaultMasterKeyConfigured": true,
+    "openaiVaultConfigured": true,
+    "anthropicVaultConfigured": true,
     "openaiModel": "gpt-4o-mini",
     "anthropicModel": "claude-3-5-haiku-20241022",
     "dailyBudgetUsd": null,
     "monthlyBudgetUsd": null,
     "healthProbeEnabled": false,
-    "redisEnabled": false,
+    "redisEnabled": true,
     "llmRequired": false
   },
   "secretsValidation": {
     "ok": true,
     "errors": [],
-    "warnings": [
-      "No LLM API keys configured — rules-based fallback only"
-    ]
+    "warnings": []
   },
   "providerValidation": {
     "openAi": {
       "provider": "openai",
-      "configured": false,
+      "configured": true,
       "valid": true,
       "errors": [],
       "warnings": []
     },
     "anthropic": {
       "provider": "anthropic",
-      "configured": false,
+      "configured": true,
       "valid": true,
       "errors": [],
       "warnings": []
@@ -37,32 +36,34 @@
   },
   "providerStatus": {
     "openai": {
-      "configured": false,
+      "configured": true,
       "reachable": false,
-      "errorCode": "not_configured"
+      "error": "Seed placeholder cannot be decrypted"
     },
     "anthropic": {
-      "configured": false,
+      "configured": true,
       "reachable": false,
-      "errorCode": "not_configured"
+      "error": "Seed placeholder cannot be decrypted"
     }
   },
   "checks": [
     {
       "name": "openai_connectivity",
       "pass": false,
-      "detail": "OPENAI_API_KEY not set in environment"
+      "detail": "Seed placeholder cannot be decrypted",
+      "latencyMs": 10
     },
     {
       "name": "anthropic_connectivity",
       "pass": false,
-      "detail": "ANTHROPIC_API_KEY not set in environment"
+      "detail": "Seed placeholder cannot be decrypted",
+      "latencyMs": 3
     },
     {
       "name": "provider_failover",
       "pass": true,
       "detail": "With openai governance-blocked, chain returned provider=rules-based",
-      "latencyMs": 8,
+      "latencyMs": 21,
       "metadata": {
         "provider": "rules-based",
         "model": "rules-based-v1"
@@ -72,7 +73,7 @@
       "name": "budget_enforcement",
       "pass": true,
       "detail": "Budget blocked (spent $1 / cap $0.001) → rules-based",
-      "latencyMs": 39,
+      "latencyMs": 40,
       "metadata": {
         "budgetStatus": {
           "daily": {
@@ -95,8 +96,8 @@
     {
       "name": "usage_tracking",
       "pass": true,
-      "detail": "AiUsageRecord 0→3; provider=rules-based",
-      "latencyMs": 821,
+      "detail": "AiUsageRecord 0→6; provider=rules-based",
+      "latencyMs": 829,
       "metadata": {
         "provider": "rules-based",
         "inputTokens": 15,
@@ -117,17 +118,17 @@
     {
       "name": "governance_rules",
       "pass": true,
-      "detail": "DB governance row present — llmDisabled=false, version=3",
+      "detail": "DB governance row present — llmDisabled=false, version=5",
       "metadata": {
         "llmDisabled": false,
-        "version": 3
+        "version": 5
       }
     },
     {
       "name": "kill_switch",
       "pass": true,
       "detail": "LLM disabled via applyLocalState → orchestrator returned rules-based",
-      "latencyMs": 12
+      "latencyMs": 19
     },
     {
       "name": "health_monitoring",
@@ -137,19 +138,59 @@
         "probes": [
           {
             "provider": "openai",
-            "configured": false,
+            "configured": true,
             "reachable": false,
-            "latencyMs": 0,
-            "errorCode": "not_configured",
-            "lastProbedAt": "2026-05-30T11:22:26.053Z"
+            "latencyMs": 12,
+            "errorCode": "provider_error",
+            "lastProbedAt": "2026-05-30T15:20:37.626Z"
           },
           {
             "provider": "anthropic",
+            "configured": true,
+            "reachable": false,
+            "latencyMs": 10,
+            "errorCode": "provider_error",
+            "lastProbedAt": "2026-05-30T15:20:37.625Z"
+          },
+          {
+            "provider": "gemini",
+            "configured": true,
+            "reachable": false,
+            "latencyMs": 10,
+            "errorCode": "not_configured",
+            "lastProbedAt": "2026-05-30T15:20:37.625Z"
+          },
+          {
+            "provider": "grok",
             "configured": false,
             "reachable": false,
             "latencyMs": 0,
             "errorCode": "not_configured",
-            "lastProbedAt": "2026-05-30T11:22:26.053Z"
+            "lastProbedAt": "2026-05-30T15:20:37.615Z"
+          },
+          {
+            "provider": "deepseek",
+            "configured": true,
+            "reachable": false,
+            "latencyMs": 9,
+            "errorCode": "provider_error",
+            "lastProbedAt": "2026-05-30T15:20:37.624Z"
+          },
+          {
+            "provider": "openrouter",
+            "configured": true,
+            "reachable": false,
+            "latencyMs": 4,
+            "errorCode": "not_configured",
+            "lastProbedAt": "2026-05-30T15:20:37.619Z"
+          },
+          {
+            "provider": "self-hosted",
+            "configured": false,
+            "reachable": false,
+            "latencyMs": 0,
+            "errorCode": "not_configured",
+            "lastProbedAt": "2026-05-30T15:20:37.615Z"
           }
         ]
       }

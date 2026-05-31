@@ -24,6 +24,12 @@ const DEFAULTS: Record<AiProviderKey, Omit<ProviderRuntimeConfig, 'adapterType' 
     visionModel: 'gemini-1.5-flash',
     embeddingModel: 'text-embedding-004',
   },
+  groq: {
+    baseUrl: 'https://api.groq.com/openai/v1',
+    chatModel: 'llama-3.3-70b-versatile',
+    visionModel: 'llama-3.3-70b-versatile',
+    embeddingModel: 'text-embedding-3-small',
+  },
   grok: {
     baseUrl: 'https://api.x.ai/v1',
     chatModel: 'grok-2-1212',
@@ -54,6 +60,9 @@ export function getProviderRuntimeConfig(key: AiProviderKey): ProviderRuntimeCon
   resetAiPlatformConfigCache();
   const platform = getAiPlatformConfig();
   const base = DEFAULTS[key];
+  if (!base) {
+    throw new Error(`Unknown provider key: ${key}`);
+  }
 
   switch (key) {
     case 'openai':
@@ -86,6 +95,16 @@ export function getProviderRuntimeConfig(key: AiProviderKey): ProviderRuntimeCon
         visionModel: env('GEMINI_VISION_MODEL') ?? base.visionModel,
         embeddingModel: env('GEMINI_EMBEDDING_MODEL') ?? base.embeddingModel,
         baseUrl: env('GEMINI_BASE_URL') ?? base.baseUrl,
+      };
+    case 'groq':
+      return {
+        ...base,
+        adapterType: 'openai_compatible',
+        authHeader: 'bearer',
+        chatModel: env('GROQ_MODEL') ?? base.chatModel,
+        visionModel: env('GROQ_VISION_MODEL') ?? base.visionModel,
+        embeddingModel: env('GROQ_EMBEDDING_MODEL') ?? base.embeddingModel,
+        baseUrl: env('GROQ_BASE_URL') ?? base.baseUrl,
       };
     case 'grok':
       return {
@@ -132,10 +151,10 @@ export function getProviderRuntimeConfig(key: AiProviderKey): ProviderRuntimeCon
         baseUrl: env('SELF_HOSTED_LLM_BASE_URL') ?? base.baseUrl,
       };
     default:
-      return { ...base, adapterType: 'unknown', authHeader: 'bearer' };
+      throw new Error(`Unknown provider key: ${String(key)}`);
   }
 }
 
 export function allProviderKeys(): string[] {
-  return ['openai', 'anthropic', 'gemini', 'grok', 'deepseek', 'openrouter', 'self_hosted'];
+  return ['openai', 'anthropic', 'gemini', 'groq', 'grok', 'deepseek', 'openrouter', 'self_hosted'];
 }

@@ -1,0 +1,116 @@
+{
+  "rows": [
+    {
+      "slug": "poultry-farm-entry-biosecurity",
+      "domain": "CLINICAL_PROTOCOL",
+      "entityType": "BiosecurityMeasure",
+      "titleBn": "মুরগি খামার প্রবেশ নিয়ন্ত্রণ",
+      "titleEn": "Poultry Farm Entry Biosecurity",
+      "bodyBn": "## Step 1\n\nআক্রান্ত/সন্দেহভাজন পশু আলাদা করুন।\n\n## Step 2\n\nজীবাণুমুক্তি ও সরঞ্জাম পরিষ্কার করুন।\n\n## Step 3\n\nপশুচিকিত্সক/উপজেলা DLS-কে জানান।\n\n## Step 4\n\nনতুন পশু প্রবেশে কোয়ারেন্টাইন মেনে চলুন।",
+      "bodyEn": "## Step 1\n\nIsolate suspect animals.\n\n## Step 2\n\nDisinfect equipment and entry points.\n\n## Step 3\n\nNotify veterinarian or local DLS office.\n\n## Step 4\n\nMaintain quarantine for new introductions.",
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "PROTOCOL_BY_STEP",
+      "structuredJson": {
+        "procedureCode": "BIO-POU-01",
+        "ppeRequired": true,
+        "steps": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "cattle-quarantine-new-stock",
+      "domain": "CLINICAL_PROTOCOL",
+      "entityType": "BiosecurityMeasure",
+      "titleBn": "নতুন গরু কোয়ারেন্টাইন",
+      "titleEn": "Cattle Quarantine for New Stock",
+      "bodyBn": "## Step 1\n\nআক্রান্ত/সন্দেহভাজন পশু আলাদা করুন।\n\n## Step 2\n\nজীবাণুমুক্তি ও সরঞ্জাম পরিষ্কার করুন।\n\n## Step 3\n\nপশুচিকিত্সক/উপজেলা DLS-কে জানান।\n\n## Step 4\n\nনতুন পশু প্রবেশে কোয়ারেন্টাইন মেনে চলুন।",
+      "bodyEn": "## Step 1\n\nIsolate suspect animals.\n\n## Step 2\n\nDisinfect equipment and entry points.\n\n## Step 3\n\nNotify veterinarian or local DLS office.\n\n## Step 4\n\nMaintain quarantine for new introductions.",
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "PROTOCOL_BY_STEP",
+      "structuredJson": {
+        "procedureCode": "BIO-COW-01",
+        "ppeRequired": true,
+        "steps": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "footbath-disinfection-protocol",
+      "domain": "CLINICAL_PROTOCOL",
+      "entityType": "BiosecurityMeasure",
+      "titleBn": "ফুটবাথ জীবাণুমুক্তি",
+      "titleEn": "Footbath Disinfection",
+      "bodyBn": "## Step 1\n\nআক্রান্ত/সন্দেহভাজন পশু আলাদা করুন।\n\n## Step 2\n\nজীবাণুমুক্তি ও সরঞ্জাম পরিষ্কার করুন।\n\n## Step 3\n\nপশুচিকিত্সক/উপজেলা DLS-কে জানান।\n\n## Step 4\n\nনতুন পশু প্রবেশে কোয়ারেন্টাইন মেনে চলুন।",
+      "bodyEn": "## Step 1\n\nIsolate suspect animals.\n\n## Step 2\n\nDisinfect equipment and entry points.\n\n## Step 3\n\nNotify veterinarian or local DLS office.\n\n## Step 4\n\nMaintain quarantine for new introductions.",
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "MEDIUM",
+      "chunkPolicyId": "PROTOCOL_BY_STEP",
+      "structuredJson": {
+        "procedureCode": "BIO-FTB-01",
+        "ppeRequired": true,
+        "steps": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "nd-flock-response-sop",
+      "domain": "CLINICAL_PROTOCOL",
+      "entityType": "SOP",
+      "titleBn": "ND ঝুঁকি SOP",
+      "titleEn": "ND Flock Response SOP",
+      "bodyBn": "## Step 1\n\nআক্রান্ত/সন্দেহভাজন পশু আলাদা করুন।\n\n## Step 2\n\nজীবাণুমুক্তি ও সরঞ্জাম পরিষ্কার করুন।\n\n## Step 3\n\nপশুচিকিত্সক/উপজেলা DLS-কে জানান।\n\n## Step 4\n\nনতুন পশু প্রবেশে কোয়ারেন্টাইন মেনে চলুন।",
+      "bodyEn": "## Step 1\n\nIsolate suspect animals.\n\n## Step 2\n\nDisinfect equipment and entry points.\n\n## Step 3\n\nNotify veterinarian or local DLS office.\n\n## Step 4\n\nMaintain quarantine for new introductions.",
+      "audience": "BOTH",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "chunkPolicyId": "PROTOCOL_BY_STEP",
+      "structuredJson": {
+        "procedureCode": "SOP-ND-01",
+        "ppeRequired": true,
+        "steps": 4
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    }
+  ]
+}

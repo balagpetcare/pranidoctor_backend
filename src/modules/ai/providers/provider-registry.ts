@@ -1,5 +1,4 @@
 import type { IAIProvider } from './core/ai-provider.interface.js';
-import type { AiProviderKey } from './core/ai-provider.types.js';
 
 export class AiProviderRegistry {
   readonly name = 'AiProviderRegistry';

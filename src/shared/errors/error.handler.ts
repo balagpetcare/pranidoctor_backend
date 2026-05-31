@@ -9,6 +9,7 @@ import { omitUndefined } from '../types/object.utils.js';
 
 import { AppError } from './app.error.js';
 import { InternalServerError, ValidationError } from './http.errors.js';
+import { isAiAdminDiagnosticsEnabled, logAiAdminDiagnostic } from '../../modules/ai/admin/ai-admin-diagnostics.js';
 import { mapPrismaError } from './prisma-error.mapper.js';
 
 interface ErrorResponse {
@@ -119,6 +120,22 @@ export function errorHandler(
     method: req.method,
     elapsed,
   });
+  if (isAiAdminDiagnosticsEnabled() && req.path.includes('/admin/ai-ops')) {
+    logAiAdminDiagnostic(
+      'error',
+      {
+        layer: 'controller',
+        route: req.path,
+        method: req.method,
+      },
+      {
+        error,
+        errorCode: 'INTERNAL_ERROR',
+        body: req.body,
+        query: req.query,
+      },
+    );
+  }
   captureException(error, {
     ...(requestId ? { requestId } : {}),
     route: `${req.method} ${req.path}`,

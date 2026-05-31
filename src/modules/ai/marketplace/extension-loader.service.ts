@@ -1,5 +1,6 @@
 import { AiExtensionStatus } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { toInputJson } from '../../../shared/database/prisma-json.js';
 import { getAiProviderRegistry } from '../providers/provider-registry.js';
 import { PLATFORM_SCOPE_KEY } from '../prompts/management/prompt-management.types.js';
 import { getAiAdapterRegistry } from './adapter-registry.js';
@@ -9,6 +10,7 @@ import {
   type ExtensionManifest,
   type ExtensionRegistrationContext,
   type RegisteredExtensionView,
+  type ExtensionManifestModel,
 } from './marketplace.types.js';
 
 export class ExtensionLoaderService {
@@ -41,7 +43,7 @@ export class ExtensionLoaderService {
         description: parsed.description ?? null,
         adapterType: parsed.adapterType,
         providerKey: parsed.providerKey ?? null,
-        manifestJson: parsed,
+        manifestJson: toInputJson(parsed),
         status: AiExtensionStatus.ACTIVE,
         enabled: true,
         installedAt: new Date(),
@@ -53,7 +55,7 @@ export class ExtensionLoaderService {
         description: parsed.description ?? null,
         adapterType: parsed.adapterType,
         providerKey: parsed.providerKey ?? null,
-        manifestJson: parsed,
+        manifestJson: toInputJson(parsed),
         status: AiExtensionStatus.ACTIVE,
         enabled: true,
         installedAt: new Date(),
@@ -69,7 +71,7 @@ export class ExtensionLoaderService {
         await getExternalModelRegistrationService().registerFromManifestModels(
           provider.id,
           row.id,
-          parsed.models,
+          parsed.models as ExtensionManifestModel[],
         );
       }
     }
@@ -85,7 +87,7 @@ export class ExtensionLoaderService {
     });
     if (!extension) return;
 
-    const manifest = extensionManifestSchema.parse(extension.manifestJson);
+    const manifest = extensionManifestSchema.parse(extension.manifestJson) as ExtensionManifest;
     const providerKey = extension.providerKey ?? manifest.providerKey;
     if (!providerKey) return;
 
@@ -102,9 +104,9 @@ export class ExtensionLoaderService {
       providerKey,
       displayName: extension.name,
       manifest,
-      dbConfig: providerRow
-        ? { baseUrl: providerRow.baseUrl, configJson: providerRow.configJson }
-        : undefined,
+      ...(providerRow
+        ? { dbConfig: { baseUrl: providerRow.baseUrl, configJson: providerRow.configJson } }
+        : {}),
     });
 
     if (provider) {

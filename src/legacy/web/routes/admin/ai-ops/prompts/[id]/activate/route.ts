@@ -1,21 +1,18 @@
-import { requireAdminApiActor } from "@/lib/admin-auth/api-guard";
-import { jsonError, jsonOk } from "@/lib/api-response";
-import { getAiPromptService } from "../../../../../../../modules/ai/prompts/ai-prompt.service.js";
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { adminErrorMessage, requireAiAdminCapability } from '../../../../../../../modules/ai/admin/index.js';
+import { publishPromptAdmin } from '../../../../../../../modules/ai/admin/ai-prompt-admin.service.js';
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAdminApiActor();
+  const auth = await requireAiAdminCapability('ai.registry.manage');
   if (!auth.ok) return auth.response;
-  if (auth.actor.role !== "SUPER_ADMIN" && auth.actor.role !== "ADMIN") {
-    return jsonError("FORBIDDEN", "Admin role required", 403);
-  }
   const { id } = await context.params;
   try {
-    const data = await getAiPromptService().activate(id);
+    const data = await publishPromptAdmin(request, auth.actor, id);
     return jsonOk(data);
-  } catch {
-    return jsonError("DATABASE_ERROR", "Failed to activate prompt", 500);
+  } catch (error) {
+    return jsonError('AI_ADMIN_ERROR', adminErrorMessage(error, 'Failed to activate prompt'), 400);
   }
 }

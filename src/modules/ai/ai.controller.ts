@@ -6,6 +6,21 @@ import { sendCreated, sendSuccess } from '../../shared/utils/response.js';
 import { AiVeterinaryCoreController } from '../ai-veterinary-core/ai-veterinary-core.controller.js';
 
 import { getAiAssistantService } from './assistant/ai-assistant.service.js';
+import {
+  getVeterinaryAssistantService,
+  listVeterinaryAssistants,
+  VETERINARY_ASSISTANT_IDS,
+} from './veterinary-assistants/index.js';
+import {
+  getAiDoctorOrchestratorService,
+} from './ai-doctor/index.js';
+import { getDiseaseReasoningOrchestratorService } from './disease-intelligence/index.js';
+import {
+  getAiPrescriptionOrchestratorService,
+} from './ai-prescription/index.js';
+import {
+  getAiVaccineOrchestratorService,
+} from './ai-vaccine/index.js';
 import { getAiAnalyticsService } from './analytics/ai-analytics.service.js';
 import { getAiKnowledgeService } from './knowledge/ai-knowledge.service.js';
 import { getAiRepository } from './ai.repository.js';
@@ -55,6 +70,101 @@ const symptomCheckSchema = z.object({
   aiSessionId: z.string().max(64).optional(),
 });
 
+const assistantQuerySchema = z.object({
+  message: z.string().min(1).max(4000),
+  sessionId: z.string().max(64).optional(),
+  caseId: z.string().max(64).optional(),
+  livestockId: z.string().max(64).optional(),
+  locale: z.enum(['bn', 'en']).optional(),
+});
+
+const aiDoctorCreateCaseSchema = z.object({
+  species: z.enum(API_LIVESTOCK_SPECIES),
+  livestockId: z.string().max(64).optional(),
+  locale: z.enum(['bn', 'en']).optional(),
+  symptomCheckSessionId: z.string().max(64).optional(),
+});
+
+const aiPrescriptionCreateSessionSchema = z.object({
+  species: z.enum(API_LIVESTOCK_SPECIES),
+  livestockId: z.string().max(64).optional(),
+  locale: z.enum(['bn', 'en']).optional(),
+  pregnancy: z.boolean().optional(),
+  lactating: z.boolean().optional(),
+  ageDays: z.number().int().min(0).max(36500).optional(),
+  weightKg: z.number().min(0).max(10000).optional(),
+  doctorCaseId: z.string().max(64).optional(),
+});
+
+const aiPrescriptionAnalyzeSchema = z.object({
+  message: z.string().min(1).max(4000).optional(),
+  query: z.string().min(1).max(400).optional(),
+  drugSlugs: z.array(z.string().min(1).max(128)).max(8).optional(),
+  vaccineSlugs: z.array(z.string().min(1).max(128)).max(8).optional(),
+});
+
+const aiPrescriptionLookupSchema = z.object({
+  query: z.string().min(1).max(200),
+  species: z.enum(API_LIVESTOCK_SPECIES).optional(),
+});
+
+const aiPrescriptionInteractionSchema = z.object({
+  drugSlugs: z.array(z.string().min(1).max(128)).min(1).max(8),
+});
+
+const aiPrescriptionWithdrawalSchema = z.object({
+  drugSlugs: z.array(z.string().min(1).max(128)).min(1).max(8),
+  species: z.enum(API_LIVESTOCK_SPECIES),
+});
+
+const aiVaccineCreateSessionSchema = z.object({
+  species: z.enum(API_LIVESTOCK_SPECIES),
+  livestockId: z.string().max(64).optional(),
+  locale: z.enum(['bn', 'en']).optional(),
+  pregnancy: z.boolean().optional(),
+  ageDays: z.number().int().min(0).max(36500).optional(),
+});
+
+const aiVaccineAnalyzeSchema = z.object({
+  message: z.string().min(1).max(4000).optional(),
+  query: z.string().min(1).max(400).optional(),
+  vaccineSlugs: z.array(z.string().min(1).max(128)).max(8).optional(),
+  medicineSlugs: z.array(z.string().min(1).max(128)).max(8).optional(),
+});
+
+const aiVaccineLookupSchema = z.object({
+  query: z.string().min(1).max(200),
+  species: z.enum(API_LIVESTOCK_SPECIES).optional(),
+});
+
+const aiVaccineSchedulesSchema = z.object({
+  species: z.enum(API_LIVESTOCK_SPECIES).optional(),
+  antigen: z.string().max(64).optional(),
+});
+
+const aiVaccineEligibilitySchema = z.object({
+  ageDays: z.number().int().min(0).max(36500).optional(),
+  antigen: z.string().max(64).optional(),
+  species: z.enum(API_LIVESTOCK_SPECIES).optional(),
+});
+
+const aiVaccineInteractionSchema = z.object({
+  vaccineSlugs: z.array(z.string().min(1).max(128)).min(1).max(8),
+  medicineSlugs: z.array(z.string().min(1).max(128)).max(8).optional(),
+});
+
+const aiDoctorIntakeSchema = z
+  .object({
+    symptomCodes: z.array(z.string().min(1).max(64)).max(20),
+    freeTextSymptoms: z.array(z.string().min(1).max(200)).max(5).optional(),
+    durationDays: z.number().int().min(0).max(365).optional(),
+    severity: z.enum(['MILD', 'MODERATE', 'SEVERE']).optional(),
+  })
+  .refine(
+    (data) => data.symptomCodes.length > 0 || (data.freeTextSymptoms?.length ?? 0) > 0,
+    { message: 'At least one symptom code or free-text symptom is required' },
+  );
+
 export class AiController extends AiVeterinaryCoreController {
   async chatEnhanced(req: Request, res: Response): Promise<void> {
     const body = z
@@ -84,6 +194,489 @@ export class AiController extends AiVeterinaryCoreController {
       ...(body.locale !== undefined ? { locale: body.locale } : {}),
     });
     sendCreated(res, result);
+  }
+
+  async listVeterinaryAssistants(_req: Request, res: Response): Promise<void> {
+    const assistants = listVeterinaryAssistants().map(
+      ({ assistantId, featureKey, taskType, retrievalProfileId, riskTier }) => ({
+        assistantId,
+        featureKey,
+        taskType,
+        retrievalProfileId,
+        riskTier,
+      }),
+    );
+    sendSuccess(res, { assistants });
+  }
+
+  private async runVeterinaryAssistant(
+    req: Request,
+    res: Response,
+    assistantId: (typeof VETERINARY_ASSISTANT_IDS)[number],
+  ): Promise<void> {
+    const body = assistantQuerySchema.parse(req.body);
+    const uid = userId(req);
+    const cid = await getAiRepository().resolveCustomerId(uid);
+    if (body.livestockId && cid) {
+      const animal = await getAiRepository().assertCustomerOwnedLivestock(cid, body.livestockId);
+      if (!animal) {
+        throw new ForbiddenError('LIVESTOCK_ACCESS_DENIED', 'Livestock not accessible');
+      }
+    }
+
+    const result = await getVeterinaryAssistantService().ask(
+      omitUndefined({
+        assistantId,
+        userId: uid,
+        message: body.message,
+        sessionId: body.sessionId,
+        caseId: body.caseId,
+        livestockId: body.livestockId,
+        locale: body.locale,
+        customerId: cid ?? undefined,
+      }),
+    );
+    sendCreated(res, result);
+  }
+
+  async aiDoctor(req: Request, res: Response): Promise<void> {
+    await this.runVeterinaryAssistant(req, res, 'ai-doctor');
+  }
+
+  async createAiDoctorCase(req: Request, res: Response): Promise<void> {
+    const body = aiDoctorCreateCaseSchema.parse(req.body);
+    const uid = userId(req);
+    const cid = await getAiRepository().resolveCustomerId(uid);
+    if (body.livestockId && cid) {
+      const animal = await getAiRepository().assertCustomerOwnedLivestock(cid, body.livestockId);
+      if (!animal) {
+        throw new ForbiddenError('LIVESTOCK_ACCESS_DENIED', 'Livestock not accessible');
+      }
+    }
+
+    const aiCase = await getDiseaseReasoningOrchestratorService().createCase(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        species: apiSpeciesToPrisma(body.species),
+        livestockId: body.livestockId,
+        locale: body.locale,
+        symptomCheckSessionId: body.symptomCheckSessionId,
+      }),
+    );
+    sendCreated(res, { case: aiCase });
+  }
+
+  async getAiDoctorCase(req: Request, res: Response): Promise<void> {
+    const caseId = z.string().min(1).max(64).parse(req.params.caseId);
+    const aiCase = await getAiDoctorOrchestratorService().getCase(caseId, userId(req));
+    sendSuccess(res, { case: aiCase });
+  }
+
+  async submitAiDoctorIntake(req: Request, res: Response): Promise<void> {
+    const caseId = z.string().min(1).max(64).parse(req.params.caseId);
+    const body = aiDoctorIntakeSchema.parse(req.body);
+    const result = await getDiseaseReasoningOrchestratorService().submitIntake(
+      caseId,
+      userId(req),
+      omitUndefined({
+        symptomCodes: body.symptomCodes,
+        freeTextSymptoms: body.freeTextSymptoms,
+        durationDays: body.durationDays,
+        severity: body.severity,
+      }),
+    );
+    sendCreated(res, result);
+  }
+
+  async analyzeAiDoctorCase(req: Request, res: Response): Promise<void> {
+    const caseId = z.string().min(1).max(64).parse(req.params.caseId);
+    const persona = z.string().optional().parse(req.query.persona);
+    const result = await getDiseaseReasoningOrchestratorService().analyze(caseId, userId(req), persona);
+    sendCreated(res, result);
+  }
+
+  async escalateAiDoctorCase(req: Request, res: Response): Promise<void> {
+    const caseId = z.string().min(1).max(64).parse(req.params.caseId);
+    const result = await getDiseaseReasoningOrchestratorService().escalate(caseId, userId(req));
+    sendCreated(res, result);
+  }
+
+  async prescriptionAssistant(req: Request, res: Response): Promise<void> {
+    const body = assistantQuerySchema.parse(req.body);
+    const uid = userId(req);
+    const cid = await getAiRepository().resolveCustomerId(uid);
+
+    let species = apiSpeciesToPrisma('CATTLE');
+    if (body.livestockId && cid) {
+      const animal = await getAiRepository().assertCustomerOwnedLivestock(cid, body.livestockId);
+      if (!animal) {
+        throw new ForbiddenError('LIVESTOCK_ACCESS_DENIED', 'Livestock not accessible');
+      }
+      species = animal.species;
+    }
+
+    const orchestrator = getAiPrescriptionOrchestratorService();
+    const session = await orchestrator.createSession(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        species,
+        locale: body.locale,
+        livestockId: body.livestockId,
+        doctorCaseId: body.caseId,
+      }),
+    );
+
+    const result = await orchestrator.analyze(session.id, uid, { message: body.message });
+
+    sendCreated(res, {
+      assistantId: 'prescription',
+      sessionId: result.session.sessionId ?? session.sessionId,
+      prescriptionSessionId: result.session.id,
+      messageId: result.session.id,
+      content: result.content,
+      refused: result.refused,
+      humanRedirect: result.humanRedirect,
+      escalationRecommended: result.escalationRecommended,
+      disclaimer: result.disclaimer,
+      citations: result.citations,
+      confidence: result.confidence,
+      safetyClassification: result.safetyClassification,
+      safetyReport: result.safetyReport,
+      drugMatches: result.drugMatches,
+      referenceCards: result.referenceCards,
+      retrieval: result.pack
+        ? {
+            packId: result.pack.packId,
+            profileId: result.pack.retrievalProfileId,
+            routingDecision: result.pack.routingDecision.action,
+            retrievalMode: result.pack.retrievalMode,
+            chunkCount: result.pack.chunks.length,
+            citationBlock: result.pack.citationBlock,
+          }
+        : undefined,
+      structuredFacts: result.structuredFacts,
+      escalationType: result.escalationType,
+      escalationId: result.escalationId,
+    });
+  }
+
+  async createPrescriptionSession(req: Request, res: Response): Promise<void> {
+    const body = aiPrescriptionCreateSessionSchema.parse(req.body);
+    const uid = userId(req);
+    const cid = await getAiRepository().resolveCustomerId(uid);
+    if (body.livestockId && cid) {
+      const animal = await getAiRepository().assertCustomerOwnedLivestock(cid, body.livestockId);
+      if (!animal) {
+        throw new ForbiddenError('LIVESTOCK_ACCESS_DENIED', 'Livestock not accessible');
+      }
+    }
+
+    const session = await getAiPrescriptionOrchestratorService().createSession(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        species: apiSpeciesToPrisma(body.species),
+        livestockId: body.livestockId,
+        locale: body.locale,
+        pregnancy: body.pregnancy,
+        lactating: body.lactating,
+        ageDays: body.ageDays,
+        weightKg: body.weightKg,
+        doctorCaseId: body.doctorCaseId,
+      }),
+    );
+    sendCreated(res, { session });
+  }
+
+  async getPrescriptionSession(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const session = await getAiPrescriptionOrchestratorService().getSession(sessionId, userId(req));
+    sendSuccess(res, { session });
+  }
+
+  async analyzePrescriptionSession(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiPrescriptionAnalyzeSchema.parse(req.body);
+    const result = await getAiPrescriptionOrchestratorService().analyze(
+      sessionId,
+      userId(req),
+      omitUndefined({
+        message: body.message,
+        query: body.query,
+        drugSlugs: body.drugSlugs,
+        vaccineSlugs: body.vaccineSlugs,
+      }),
+    );
+    sendCreated(res, result);
+  }
+
+  async lookupPrescriptionMedicine(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiPrescriptionLookupSchema.parse(req.body);
+    const session = await getAiPrescriptionOrchestratorService().getSession(sessionId, userId(req));
+    const species = body.species
+      ? apiSpeciesToPrisma(body.species)
+      : session.species;
+    const result = await getAiPrescriptionOrchestratorService().lookupMedicine({
+      query: body.query,
+      species,
+    });
+    sendSuccess(res, result);
+  }
+
+  async checkPrescriptionInteractions(req: Request, res: Response): Promise<void> {
+    z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiPrescriptionInteractionSchema.parse(req.body);
+    const result = await getAiPrescriptionOrchestratorService().checkInteractions({
+      drugSlugs: body.drugSlugs,
+    });
+    sendCreated(res, result);
+  }
+
+  async lookupPrescriptionWithdrawal(req: Request, res: Response): Promise<void> {
+    z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiPrescriptionWithdrawalSchema.parse(req.body);
+    const result = await getAiPrescriptionOrchestratorService().lookupWithdrawal({
+      drugSlugs: body.drugSlugs,
+      species: apiSpeciesToPrisma(body.species),
+    });
+    sendCreated(res, result);
+  }
+
+  async escalatePrescriptionSession(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const result = await getAiPrescriptionOrchestratorService().escalate(sessionId, userId(req));
+    sendCreated(res, result);
+  }
+
+  async vaccineAssistant(req: Request, res: Response): Promise<void> {
+    const body = assistantQuerySchema.parse(req.body);
+    const uid = userId(req);
+    const cid = await getAiRepository().resolveCustomerId(uid);
+
+    let species = apiSpeciesToPrisma('CATTLE');
+    let ageDays: number | undefined;
+    if (body.livestockId && cid) {
+      const animal = await getAiRepository().assertCustomerOwnedLivestock(cid, body.livestockId);
+      if (!animal) {
+        throw new ForbiddenError('LIVESTOCK_ACCESS_DENIED', 'Livestock not accessible');
+      }
+      species = animal.species;
+      if (animal.dateOfBirth) {
+        const dob = new Date(animal.dateOfBirth);
+        ageDays = Math.floor((Date.now() - dob.getTime()) / (24 * 60 * 60 * 1000));
+      }
+    }
+
+    const orchestrator = getAiVaccineOrchestratorService();
+    const session = await orchestrator.createSession(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        species,
+        locale: body.locale,
+        livestockId: body.livestockId,
+        ageDays,
+      }),
+    );
+
+    const result = await orchestrator.analyze(session.id, uid, { message: body.message });
+
+    sendCreated(res, {
+      assistantId: 'vaccine',
+      sessionId: result.session.sessionId ?? session.sessionId,
+      vaccineSessionId: result.session.id,
+      messageId: result.session.id,
+      content: result.content,
+      refused: result.refused,
+      humanRedirect: result.humanRedirect,
+      escalationRecommended: result.escalationRecommended,
+      disclaimer: result.disclaimer,
+      citations: result.citations,
+      confidence: result.confidence,
+      safetyClassification: result.safetyClassification,
+      safetyReport: result.safetyReport,
+      safetyMessaging: result.safetyMessaging,
+      vaccineMatches: result.vaccineMatches,
+      referenceCards: result.referenceCards,
+      schedules: result.schedules,
+      eligibility: result.eligibility,
+      boosters: result.boosters,
+      missedAlerts: result.missedAlerts,
+      reminders: result.reminders,
+      interactions: result.interactions,
+      retrieval: result.pack
+        ? {
+            packId: result.pack.packId,
+            profileId: result.pack.retrievalProfileId,
+            routingDecision: result.pack.routingDecision.action,
+            retrievalMode: result.pack.retrievalMode,
+            chunkCount: result.pack.chunks.length,
+            citationBlock: result.pack.citationBlock,
+          }
+        : undefined,
+      structuredFacts: result.structuredFacts,
+      escalationType: result.escalationType,
+      escalationId: result.escalationId,
+      redirectAssistant: result.redirectAssistant,
+    });
+  }
+
+  async createVaccineSession(req: Request, res: Response): Promise<void> {
+    const body = aiVaccineCreateSessionSchema.parse(req.body);
+    const uid = userId(req);
+    const cid = await getAiRepository().resolveCustomerId(uid);
+    if (body.livestockId && cid) {
+      const animal = await getAiRepository().assertCustomerOwnedLivestock(cid, body.livestockId);
+      if (!animal) {
+        throw new ForbiddenError('LIVESTOCK_ACCESS_DENIED', 'Livestock not accessible');
+      }
+    }
+
+    const session = await getAiVaccineOrchestratorService().createSession(
+      omitUndefined({
+        userId: uid,
+        customerId: cid ?? undefined,
+        species: apiSpeciesToPrisma(body.species),
+        livestockId: body.livestockId,
+        locale: body.locale,
+        pregnancy: body.pregnancy,
+        ageDays: body.ageDays,
+      }),
+    );
+    sendCreated(res, { session });
+  }
+
+  async getVaccineSession(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    sendSuccess(res, { session });
+  }
+
+  async analyzeVaccineSession(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiVaccineAnalyzeSchema.parse(req.body);
+    const result = await getAiVaccineOrchestratorService().analyze(
+      sessionId,
+      userId(req),
+      omitUndefined({
+        message: body.message,
+        query: body.query,
+        vaccineSlugs: body.vaccineSlugs,
+        medicineSlugs: body.medicineSlugs,
+      }),
+    );
+    sendCreated(res, result);
+  }
+
+  async lookupVaccine(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiVaccineLookupSchema.parse(req.body);
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    const species = body.species
+      ? apiSpeciesToPrisma(body.species)
+      : session.species;
+    const result = await getAiVaccineOrchestratorService().lookupVaccine({
+      query: body.query,
+      species,
+    });
+    sendSuccess(res, result);
+  }
+
+  async retrieveVaccineSchedules(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiVaccineSchedulesSchema.parse(req.body);
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    const species = body.species
+      ? apiSpeciesToPrisma(body.species)
+      : session.species;
+    const result = await getAiVaccineOrchestratorService().retrieveSchedules(
+      omitUndefined({
+        species,
+        antigen: body.antigen,
+      }),
+    );
+    sendSuccess(res, result);
+  }
+
+  async checkVaccineEligibility(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiVaccineEligibilitySchema.parse(req.body);
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    const species = body.species
+      ? apiSpeciesToPrisma(body.species)
+      : session.species;
+    const ageDays = body.ageDays ?? session.ageDays;
+    const result = await getAiVaccineOrchestratorService().checkEligibility(
+      omitUndefined({
+        species,
+        ageDays,
+        antigen: body.antigen,
+      }),
+    );
+    sendSuccess(res, result);
+  }
+
+  async checkVaccineBoosters(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = z
+      .object({ vaccineSlugs: z.array(z.string().min(1).max(128)).max(8).optional() })
+      .parse(req.body ?? {});
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    const result = await getAiVaccineOrchestratorService().checkBoosters(
+      omitUndefined({
+        session,
+        vaccineSlugs: body.vaccineSlugs,
+      }),
+    );
+    sendSuccess(res, result);
+  }
+
+  async detectMissedVaccines(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    const result = await getAiVaccineOrchestratorService().detectMissed({ session });
+    sendSuccess(res, result);
+  }
+
+  async recommendVaccineReminders(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const session = await getAiVaccineOrchestratorService().getSession(sessionId, userId(req));
+    const result = await getAiVaccineOrchestratorService().recommendReminders({
+      session,
+      confidenceTier: 'MODERATE',
+    });
+    sendSuccess(res, result);
+  }
+
+  async checkVaccineInteractions(req: Request, res: Response): Promise<void> {
+    z.string().min(1).max(64).parse(req.params.sessionId);
+    const body = aiVaccineInteractionSchema.parse(req.body);
+    const result = await getAiVaccineOrchestratorService().checkInteractions({
+      vaccineSlugs: body.vaccineSlugs,
+      medicineSlugs: body.medicineSlugs ?? [],
+    });
+    sendCreated(res, result);
+  }
+
+  async escalateVaccineSession(req: Request, res: Response): Promise<void> {
+    const sessionId = z.string().min(1).max(64).parse(req.params.sessionId);
+    const result = await getAiVaccineOrchestratorService().escalate(sessionId, userId(req));
+    sendCreated(res, result);
+  }
+
+  async feedAdvisor(req: Request, res: Response): Promise<void> {
+    await this.runVeterinaryAssistant(req, res, 'feed');
+  }
+
+  async breedingAdvisor(req: Request, res: Response): Promise<void> {
+    await this.runVeterinaryAssistant(req, res, 'breeding');
+  }
+
+  async emergencyAssistant(req: Request, res: Response): Promise<void> {
+    await this.runVeterinaryAssistant(req, res, 'emergency');
   }
 
   async symptomTaxonomy(req: Request, res: Response): Promise<void> {
@@ -333,7 +926,10 @@ export class AiAdminController {
 
     const result = await getAiPromptManagementService().list(
       omitUndefined({
-        kind: req.query.kind === 'system' || req.query.kind === 'feature' ? req.query.kind : undefined,
+        kind:
+          req.query.kind === 'system' || req.query.kind === 'feature'
+            ? (req.query.kind as 'system' | 'feature')
+            : undefined,
         taskType: typeof req.query.taskType === 'string' ? req.query.taskType : undefined,
         promptKey: typeof req.query.promptKey === 'string' ? req.query.promptKey : undefined,
         status,

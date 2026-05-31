@@ -93,7 +93,7 @@ export async function publishGovernanceChange(
   );
 }
 
-export function createGovernanceSubscriber(config: AppConfig): Redis {
+export function createGovernanceSubscriber(_config: AppConfig): Redis {
   const primary = getRedis();
   return primary.duplicate();
 }

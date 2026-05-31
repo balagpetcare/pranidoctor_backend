@@ -172,4 +172,5 @@ export const rateLimitLogin = createRateLimitMiddleware('AUTH_LOGIN');
 export const rateLimitAiChat = createRateLimitMiddleware('AI_CHAT');
 export const rateLimitUpload = createRateLimitMiddleware('UPLOAD');
 export const rateLimitSearch = createRateLimitMiddleware('SEARCH');
+export const rateLimitAiAnalytics = createRateLimitMiddleware('AI_ANALYTICS');
 export const rateLimitExport = createRateLimitMiddleware('EXPORT');

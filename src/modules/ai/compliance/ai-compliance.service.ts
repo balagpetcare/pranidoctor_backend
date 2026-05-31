@@ -6,7 +6,6 @@ import type {
   AiComplianceFeature,
   AiComplianceMetadata,
   AiComplianceRiskLevel,
-  AiComplianceRulesConfig,
 } from './ai-compliance.types.js';
 
 export function mapBucketToComplianceRisk(

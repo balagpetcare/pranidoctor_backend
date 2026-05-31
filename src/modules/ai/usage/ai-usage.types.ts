@@ -28,6 +28,8 @@ export interface AiUsageAttemptInput {
   correlationId?: string;
   scopeKey?: string;
   tenantId?: string;
+  sessionId?: string;
+  retrievalMetadataJson?: Record<string, unknown>;
 }
 
 export interface AiUsageSummaryRow {

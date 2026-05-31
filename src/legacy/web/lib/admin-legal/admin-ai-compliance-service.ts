@@ -2,7 +2,7 @@ import {
   loadAiComplianceConfig,
   saveAiComplianceConfig,
 } from '../ai-compliance/ai-compliance-config.js';
-import type { AiComplianceRulesConfig } from '../../../modules/ai/compliance/ai-compliance.types.js';
+import type { AiComplianceRulesConfig } from '../../../../modules/ai/compliance/ai-compliance.types.js';
 
 export type AdminAiComplianceSettings = AiComplianceRulesConfig & {
   updatedAt: string | null;

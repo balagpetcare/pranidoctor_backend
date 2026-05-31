@@ -174,4 +174,7 @@ export const registerExternalModelSchema = z.object({
   contextWindow: z.number().int().positive().optional(),
   inputCostPerToken: z.number().min(0).optional(),
   outputCostPerToken: z.number().min(0).optional(),
+  extensionId: z.string().optional(),
+  capabilitiesJson: z.array(z.string()).optional(),
+  metadataJson: z.record(z.string(), z.unknown()).optional(),
 });

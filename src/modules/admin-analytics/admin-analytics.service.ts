@@ -2,6 +2,7 @@ import {
   ServiceRequestStatus,
   ServiceRequestType,
 } from '../../generated/prisma/index.js';
+import { getAnimalWeightAdminAnalytics } from '../../legacy/web/lib/mobile-animals/animal-weight-admin.service.js';
 import { buildCacheKey, getCached, setCached } from './admin-analytics.cache.js';
 import { resolveAnalyticsDateRange } from './admin-analytics.date-range.js';
 import type { AdminAnalyticsDateRangeQuery } from './admin-analytics.schemas.js';
@@ -278,6 +279,20 @@ export class AdminAnalyticsService {
       },
     };
 
+    setCached(cacheKey, payload);
+    return payload;
+  }
+
+  async getAnimalWeight(query: AdminAnalyticsDateRangeQuery) {
+    const range = resolveAnalyticsDateRange(query);
+    const cacheKey = buildCacheKey('animal-weight', {
+      from: range.fromKey,
+      to: range.toKey,
+    });
+    const cached = getCached<Awaited<ReturnType<typeof getAnimalWeightAdminAnalytics>>>(cacheKey);
+    if (cached) return cached;
+
+    const payload = await getAnimalWeightAdminAnalytics(range.from, range.to);
     setCached(cacheKey, payload);
     return payload;
   }

@@ -1,0 +1,12 @@
+{
+  "manifestVersion": "6e.1.0",
+  "description": "Batch import manifest — list bundle files and registered source IDs. No content rows.",
+  "entries": [
+    {
+      "filePath": "path/to/bundle.csv",
+      "sourceId": "registered-ai-knowledge-source-uuid",
+      "documentId": "optional-source-document-uuid",
+      "domain": "DISEASE"
+    }
+  ]
+}

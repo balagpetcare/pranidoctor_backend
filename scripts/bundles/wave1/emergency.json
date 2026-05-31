@@ -1,0 +1,557 @@
+{
+  "rows": [
+    {
+      "slug": "acute-bloat",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "তীব্র পেট ফোলা (Acute Bloat)",
+      "titleEn": "Acute Bloat",
+      "bodyBn": "## Action 1\n\nপশুকে শান্ত রাখুন, চলাচল সীমিত করুন।\n\n## Action 2\n\nতেল/সাবান পানি দেওয়ার আগে পশুচিকিত্সকের পরামর্শ নিন।\n\n## Do Not Do\n\nনিজে থেকে ছুরি/ক্যানুলা ব্যবহার করবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nKeep the animal calm and limit movement.\n\n## Action 2\n\nConsult a vet before giving oil/soap drench.\n\n## Do Not Do\n\nDo not perform rumen puncture without veterinary guidance.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "গরু ফুলে গেল",
+        "পেট ফোলা",
+        "হঠাৎ ফুলে"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "severe-bleeding",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "তীব্র রক্তপাত",
+      "titleEn": "Severe Bleeding",
+      "bodyBn": "## Action 1\n\nপরিষ্কার কাপড়/ব্যান্ডেজ দিয়ে চাপ দিন।\n\n## Action 2\n\nপশুকে শান্ত স্থানে রাখুন।\n\n## Do Not Do\n\nঅপ্রয়োজনীয় ওষুধ/মাত্রা দেবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nApply clean pressure bandage to bleeding site.\n\n## Action 2\n\nMove animal to quiet area.\n\n## Do Not Do\n\nDo not administer unprescribed drugs or doses.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "রক্ত পড়ছে",
+        "গরু জরুরি রক্ত"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "downer-cow-milk-fever",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "ডাউনার কো/মিল্ক ফিভার",
+      "titleEn": "Downer Cow / Milk Fever",
+      "bodyBn": "## Action 1\n\nপশুকে স্থিতাবস্থায় রাখুন, সূর্য/বৃষ্টি থেকে রক্ষা করুন।\n\n## Action 2\n\nপশুচিকিত্সককে ডাকুন — ক্যালসিয়াম চিকিৎসা প্রয়োজন হতে পারে।\n\n## Do Not Do\n\nজোর করে দাঁড় করানোর চেষ্টা করবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nKeep animal positioned safely; shelter from weather.\n\n## Action 2\n\nCall vet — calcium therapy may be required.\n\n## Do Not Do\n\nDo not force the animal to stand.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "গরু পড়ে গেছে"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 4,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "acute-hs-crisis",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "HS তীব্র আক্রমণ",
+      "titleEn": "Acute HS Crisis",
+      "bodyBn": "## Action 1\n\nআক্রান্ত পশু আলাদা করুন।\n\n## Action 2\n\nঅবিলম্বে পশুচিকিত্সক ডাকুন।\n\n## Do Not Do\n\nঅন্য পশুর সাথে মিশাবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nIsolate affected animal.\n\n## Action 2\n\nCall veterinarian immediately.\n\n## Do Not Do\n\nDo not mix with healthy herd.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "ঠোট ফোলা",
+        "HS"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "nd-acute-flock",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "ND তীব্র ঝুঁকি (মুরগি)",
+      "titleEn": "Acute Newcastle Disease Flock Crisis",
+      "bodyBn": "## Action 1\n\nআক্রান্ত পাখি আলাদা/মেরে ফেলুন নীতি অনুযায়ী।\n\n## Action 2\n\nজীবাণুমুক্তি শুরু করুন।\n\n## Do Not Do\n\nঅসুস্থ পাখির মাংস/ডিম খাবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nIsolate/cull per veterinary/public health guidance.\n\n## Action 2\n\nBegin biosecurity disinfection.\n\n## Do Not Do\n\nDo not consume products from sick birds.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "মুরগি মরছে",
+        "Newcastle"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 4,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "anthrax-suspicion",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "এনথ্রাক্স সন্দেহ",
+      "titleEn": "Anthrax Suspicion",
+      "bodyBn": "## Action 1\n\nমৃত পশু স্পর্শ/খোলবেন না; কর্তৃপক্ষকে জানান।\n\n## Action 2\n\nক্ষেত্রে অন্য পশু আলাদা করুন।\n\n## Do Not Do\n\nমৃত পশু খাওয়াবেন/বিক্রি করবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nDo not open/touch carcass; notify authorities.\n\n## Action 2\n\nSeparate other animals in the area.\n\n## Do Not Do\n\nDo not butcher or sell affected carcass.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "হঠাৎ মৃত্যু",
+        "রক্তঝরা"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "rabies-exposure",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "রেবিস এক্সপোজার",
+      "titleEn": "Rabies Exposure",
+      "bodyBn": "## Action 1\n\nআক্রান্ত/সন্দেহভাজন পশু আলাদা করুন।\n\n## Action 2\n\nমানুষ কামড় খেলে হাসপাতাল/চিকিৎসকে জানান।\n\n## Do Not Do\n\nসন্দেহভাজন পশুর লালা/টিস্যু স্পর্শ করবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nIsolate suspect animal.\n\n## Action 2\n\nHuman bite — seek medical care immediately.\n\n## Do Not Do\n\nAvoid contact with saliva/tissues of suspect animal.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "কুকুর কামড়"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 4,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "organophosphate-poisoning",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "অর্গানofosফেট বিষক্রিয়া",
+      "titleEn": "Organophosphate Poisoning",
+      "bodyBn": "## Action 1\n\nউৎস (কীটনাশক) সরিয়ে ফেলুন।\n\n## Action 2\n\nপশুচিকিত্সককে জানান — জরুরি চিকিৎসা প্রয়োজন।\n\n## Do Not Do\n\nনিজে থেকে অ্যান্টিডোট/মাত্রা দেবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nRemove poison source (pesticide).\n\n## Action 2\n\nContact vet for emergency treatment.\n\n## Do Not Do\n\nDo not give antidote/dose without vet.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "GOAT",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "বিষ",
+        "কীটনাশক"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "heat-stroke-livestock",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "হিট স্ট্রোক",
+      "titleEn": "Heat Stroke",
+      "bodyBn": "## Action 1\n\nছায়া/বাতাসে নিন, ঠান্ডা পানি স্প্রে/স্নান।\n\n## Action 2\n\nপani access নিশ্চিত করুন।\n\n## Do Not Do\n\nভ heavy exercise করাবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nMove to shade/ventilation; cool with water.\n\n## Action 2\n\nEnsure water access.\n\n## Do Not Do\n\nDo not force exercise.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "গরমে অসুস্থ"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 4,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "dystocia",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "ডিস্টোসিয়া (কঠিন প্রসব)",
+      "titleEn": "Dystocia",
+      "bodyBn": "## Action 1\n\nপশুকে শান্ত রাখুন, পরিষ্কার স্থানে রাখুন।\n\n## Action 2\n\nপশুচিকিত্সক/AI technician ডাকুন।\n\n## Do Not Do\n\nজোর করে টানবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nKeep animal calm in clean area.\n\n## Action 2\n\nCall veterinarian or trained attendant.\n\n## Do Not Do\n\nDo not forcefully pull the calf/kid.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "GOAT",
+        "BUFFALO"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "বাছা হচ্ছে না",
+        "গরু ঝরা"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "snake-envenomation",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "সাপের বিষ",
+      "titleEn": "Snake Envenomation",
+      "bodyBn": "## Action 1\n\nপশুকে স্থির রাখুন, কামড়ের স্থান চিহ্নিত করুন।\n\n## Action 2\n\nপশুচিকিত্সক ডাকুন।\n\n## Do Not Do\n\nকাট/চুষবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nKeep still; mark bite site.\n\n## Action 2\n\nCall veterinarian.\n\n## Do Not Do\n\nDo not cut or suck wound.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "GOAT",
+        "BUFFALO"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "সাপ কামড়"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "traumatic-injury",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "তীব্র আঘাত",
+      "titleEn": "Traumatic Injury",
+      "bodyBn": "## Action 1\n\nরক্তপাত বন্ধ করুন, পশুকে স্থানান্তর করুন।\n\n## Action 2\n\nপশুচিকিত্সক/কlinicে নিন।\n\n## Do Not Do\n\nভ heavy sedation/ওষুধ দেবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nControl bleeding; stabilize for transport.\n\n## Action 2\n\nTransport to veterinary care.\n\n## Do Not Do\n\nDo not give unprescribed sedatives/drugs.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "গরু মরে যাচ্ছে",
+        "জরুরি"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "hypothermia-flood-livestock",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "বন্যা/ঠান্ডায় হাইপোথার্মিয়া",
+      "titleEn": "Flood/Hypothermia",
+      "bodyBn": "## Action 1\n\nশুকনো/উষ্ণ স্থানে নিন, ভেজা কোট শুকান।\n\n## Action 2\n\nউষ্ণ পানি/খাদ্য দিন।\n\n## Do Not Do\n\nতীব্র উত্তাপ/আগুনে খুব কাছে রাখবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nDry shelter; warm dry bedding.\n\n## Action 2\n\nProvide warm water and feed.\n\n## Do Not Do\n\nAvoid extreme direct heat.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "GOAT",
+        "BUFFALO",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "বন্যা",
+        "ঠান্ডা"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 6,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "acute-severe-diarrhea-dehydration",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "তীব্র ডায়রিয়া ও পানিশূন্যতা",
+      "titleEn": "Acute Severe Diarrhea / Dehydration",
+      "bodyBn": "## Action 1\n\nORS/প electrolyte পani access দিন (species অনুযায়ী)।\n\n## Action 2\n\nআক্রান্ত পশু আলাদা করুন।\n\n## Do Not Do\n\nমানুষের ওষুধ/অ্যান্টিবায়োটিক দেবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nProvide oral electrolytes/water access per species.\n\n## Action 2\n\nIsolate affected animals.\n\n## Do Not Do\n\nDo not give human antibiotics unprescribed.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "GOAT",
+        "BUFFALO",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "ডায়রিয়া",
+        "পাতলা পায়খানা"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 4,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "unknown-acute-collapse",
+      "domain": "EMERGENCY",
+      "entityType": "EmergencyCondition",
+      "titleBn": "অজানা তীব্র পতন",
+      "titleEn": "Unknown Acute Collapse",
+      "bodyBn": "## Action 1\n\nপশুকে নিরাপদ স্থানে রাখুন।\n\n## Action 2\n\nঅবিলম্বে পশুচিকিত্সক ডাকুন।\n\n## Do Not Do\n\nকারণ না জেনে ওষুধ দেবেন না।\n\n## Call Vet Now\n\nঅবস্থা খারাপ হলে বিলম্ব ছাড়াই নিকটস্থ পশুচিকিত্সক বা কল সেন্টারে যোগাযোগ করুন।",
+      "bodyEn": "## Action 1\n\nPlace animal in safe position.\n\n## Action 2\n\nCall veterinarian immediately.\n\n## Do Not Do\n\nDo not medicate without diagnosis.\n\n## Call Vet Now\n\nIf condition worsens, contact the nearest veterinarian or helpline without delay.",
+      "species": [
+        "COW",
+        "BUFFALO",
+        "GOAT",
+        "CHICKEN"
+      ],
+      "audience": "FARMER",
+      "regionScope": "BD",
+      "clinicalRiskTier": "CRITICAL",
+      "chunkPolicyId": "EMERGENCY_BY_ACTION",
+      "colloquialBn": [
+        "গরু মরে যাচ্ছে",
+        "হঠাৎ পড়ে"
+      ],
+      "structuredJson": {
+        "vetRequiredWithinHours": 2,
+        "onsetSpeed": "acute",
+        "homeStabilizationAllowed": true
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    }
+  ]
+}

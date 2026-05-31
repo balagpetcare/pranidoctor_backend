@@ -9,12 +9,19 @@ describe('customer-address.schema', () => {
     expect(readAreaLabel(null)).toBeNull();
   });
 
-  it('profileComplete when name and village or area', () => {
+  it('profileComplete when name and unionId in address', () => {
     expect(
       isProfileComplete({
         displayName: 'Rahim',
         addressJson: null,
         primaryVillageId: 'v1',
+      }),
+    ).toBe(false);
+    expect(
+      isProfileComplete({
+        displayName: 'Rahim',
+        addressJson: { unionId: 'u1' },
+        primaryVillageId: null,
       }),
     ).toBe(true);
     expect(
@@ -23,11 +30,11 @@ describe('customer-address.schema', () => {
         addressJson: { areaLabel: 'Village' },
         primaryVillageId: null,
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isProfileComplete({
         displayName: '',
-        addressJson: { areaLabel: 'Village' },
+        addressJson: { unionId: 'u1' },
         primaryVillageId: null,
       }),
     ).toBe(false);

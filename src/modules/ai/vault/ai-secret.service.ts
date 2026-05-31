@@ -3,9 +3,12 @@ import {
   AiApiKeyStatus,
   type AiApiKey,
   type AiProvider,
+  type Prisma,
 } from '../../../generated/prisma/index.js';
 import { NotFoundError, ValidationError } from '../../../shared/errors/http.errors.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { toInputJson } from '../../../shared/database/prisma-json.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 import type {
   AddAiApiKeyInput,
@@ -17,6 +20,10 @@ import type {
   UpdateAiApiKeyInput,
 } from './ai-secret.types.js';
 import { getEncryptionService } from './encryption.service.js';
+import {
+  isPlaceholderCiphertext,
+  PLACEHOLDER_KEY_USER_MESSAGE,
+} from './placeholder-secret.util.js';
 import { testProviderApiKey } from './provider-key-test.js';
 
 export const PLATFORM_SCOPE_KEY = 'platform';
@@ -40,6 +47,7 @@ function toPublic(row: AiApiKey & { provider: Pick<AiProvider, 'providerKey'> })
     encryptionKeyId: row.encryptionKeyId,
     encryptionAlgorithm: row.encryptionAlgorithm,
     secretHint: row.secretHint,
+    isPrimary: row.isPrimary,
     expiresAt: row.expiresAt?.toISOString() ?? null,
     rotatedAt: row.rotatedAt?.toISOString() ?? null,
     revokedAt: row.revokedAt?.toISOString() ?? null,
@@ -47,6 +55,7 @@ function toPublic(row: AiApiKey & { provider: Pick<AiProvider, 'providerKey'> })
     version: row.version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    isPlaceholder: isPlaceholderCiphertext(row.encryptedSecret),
   };
 }
 
@@ -63,6 +72,7 @@ export class AiSecretService {
       where: {
         scopeKey,
         status: AiApiKeyStatus.ACTIVE,
+        isPrimary: true,
         deletedAt: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
@@ -99,6 +109,7 @@ export class AiSecretService {
       where: {
         scopeKey,
         status: AiApiKeyStatus.ACTIVE,
+        isPrimary: true,
         deletedAt: null,
         provider: { providerKey, enabled: true, deletedAt: null },
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
@@ -146,9 +157,16 @@ export class AiSecretService {
   async addKey(input: AddAiApiKeyInput): Promise<AiApiKeyPublic> {
     this.validatePlaintextSecret(input.secret, input.providerKey);
 
+    const encryption = getEncryptionService();
+    if (process.env.NODE_ENV === 'production' && !encryption.isMasterKeyConfigured()) {
+      throw new ValidationError(
+        'VAULT_NOT_CONFIGURED',
+        'AI_VAULT_MASTER_KEY is required before storing API keys in production',
+      );
+    }
+
     const scopeKey = input.scopeKey ?? buildScopeKey(input.tenantId, input.branchId);
     const prisma = getPrisma();
-    const encryption = getEncryptionService();
 
     const provider = await prisma.aiProvider.findFirst({
       where: { scopeKey, providerKey: input.providerKey, deletedAt: null },
@@ -159,6 +177,16 @@ export class AiSecretService {
 
     const { ciphertext, encryptionKeyId, encryptionAlgorithm } = encryption.encrypt(input.secret);
 
+    const existingPrimary = await prisma.aiApiKey.findFirst({
+      where: {
+        providerId: provider.id,
+        scopeKey,
+        isPrimary: true,
+        status: AiApiKeyStatus.ACTIVE,
+        deletedAt: null,
+      },
+    });
+
     const row = await prisma.aiApiKey.create({
       data: {
         scopeKey,
@@ -166,29 +194,32 @@ export class AiSecretService {
         branchId: input.branchId ?? null,
         providerId: provider.id,
         name: input.name,
-        status: AiApiKeyStatus.ACTIVE,
+        status: AiApiKeyStatus.PENDING_TEST,
+        isPrimary: !existingPrimary,
         encryptedSecret: ciphertext,
         encryptionKeyId,
         encryptionAlgorithm,
         secretHint: encryption.buildSecretHint(input.secret),
         expiresAt: input.expiresAt ?? null,
-        createdByUserId: input.actor?.userId,
-        updatedByUserId: input.actor?.userId,
+        createdByUserId: input.actor?.userId ?? null,
+        updatedByUserId: input.actor?.userId ?? null,
       },
       include: { provider: { select: { providerKey: true } } },
     });
 
-    await this.appendAudit({
-      apiKeyId: row.id,
-      providerKey: provider.providerKey,
-      action: AiApiKeyAuditAction.CREATED,
-      actor: input.actor,
-      reason: input.reason,
-      metadataJson: { name: input.name, secretHint: row.secretHint },
-    });
+    await this.appendAudit(
+      omitUndefined({
+        apiKeyId: row.id,
+        providerKey: provider.providerKey,
+        action: AiApiKeyAuditAction.CREATED,
+        actor: input.actor,
+        reason: input.reason,
+        metadataJson: { name: input.name, secretHint: row.secretHint },
+      }),
+    );
 
     await this.refreshConfigurationCache({ scopeKey });
-    return toPublic(row);
+    return toPublic({ ...row, provider });
   }
 
   async updateKey(id: string, input: UpdateAiApiKeyInput): Promise<AiApiKeyPublic> {
@@ -200,17 +231,8 @@ export class AiSecretService {
     if (!existing) throw new NotFoundError('AI_API_KEY_NOT_FOUND', 'API key not found');
 
     const encryption = getEncryptionService();
-    const data: {
-      name?: string;
-      expiresAt?: Date | null;
-      encryptedSecret?: string;
-      encryptionKeyId?: string;
-      encryptionAlgorithm?: string;
-      secretHint?: string;
-      version?: { increment: number };
-      updatedByUserId?: string;
-    } = {
-      updatedByUserId: input.actor?.userId,
+    const data: Prisma.AiApiKeyUncheckedUpdateInput = {
+      updatedByUserId: input.actor?.userId ?? null,
       version: { increment: 1 },
     };
 
@@ -224,6 +246,7 @@ export class AiSecretService {
       data.encryptionKeyId = enc.encryptionKeyId;
       data.encryptionAlgorithm = enc.encryptionAlgorithm;
       data.secretHint = encryption.buildSecretHint(input.secret);
+      data.status = AiApiKeyStatus.PENDING_TEST;
     }
 
     const row = await prisma.aiApiKey.update({
@@ -232,20 +255,22 @@ export class AiSecretService {
       include: { provider: { select: { providerKey: true } } },
     });
 
-    await this.appendAudit({
-      apiKeyId: row.id,
-      providerKey: row.provider.providerKey,
-      action: AiApiKeyAuditAction.UPDATED,
-      actor: input.actor,
-      reason: input.reason,
-      metadataJson: {
-        name: row.name,
-        secretRotated: input.secret !== undefined,
-      },
-    });
+    await this.appendAudit(
+      omitUndefined({
+        apiKeyId: row.id,
+        providerKey: existing.provider.providerKey,
+        action: AiApiKeyAuditAction.UPDATED,
+        actor: input.actor,
+        reason: input.reason,
+        metadataJson: {
+          name: row.name,
+          secretRotated: input.secret !== undefined,
+        },
+      }),
+    );
 
     await this.refreshConfigurationCache({ scopeKey: row.scopeKey });
-    return toPublic(row);
+    return toPublic({ ...row, provider: existing.provider });
   }
 
   async disableKey(id: string, actor?: AiSecretActor, reason?: string): Promise<AiApiKeyPublic> {
@@ -261,22 +286,24 @@ export class AiSecretService {
       data: {
         status: AiApiKeyStatus.REVOKED,
         revokedAt: new Date(),
-        updatedByUserId: actor?.userId,
+        isPrimary: false,
+        updatedByUserId: actor?.userId ?? null,
         version: { increment: 1 },
       },
-      include: { provider: { select: { providerKey: true } } },
     });
 
-    await this.appendAudit({
-      apiKeyId: row.id,
-      providerKey: row.provider.providerKey,
-      action: AiApiKeyAuditAction.DISABLED,
-      actor,
-      reason,
-    });
+    await this.appendAudit(
+      omitUndefined({
+        apiKeyId: row.id,
+        providerKey: existing.provider.providerKey,
+        action: AiApiKeyAuditAction.DISABLED,
+        actor,
+        reason,
+      }),
+    );
 
     await this.refreshConfigurationCache({ scopeKey: row.scopeKey });
-    return toPublic(row);
+    return toPublic({ ...row, provider: existing.provider });
   }
 
   async testKey(id: string, actor?: AiSecretActor): Promise<AiApiKeyTestResult> {
@@ -287,19 +314,116 @@ export class AiSecretService {
     });
     if (!row) throw new NotFoundError('AI_API_KEY_NOT_FOUND', 'API key not found');
 
+    if (isPlaceholderCiphertext(row.encryptedSecret)) {
+      const placeholderResult: AiApiKeyTestResult = {
+        ok: false,
+        providerKey: row.provider.providerKey,
+        latencyMs: 0,
+        errorCode: 'VAULT_PLACEHOLDER_SECRET',
+        message: PLACEHOLDER_KEY_USER_MESSAGE,
+      };
+      await this.appendAudit(
+        omitUndefined({
+          apiKeyId: row.id,
+          providerKey: row.provider.providerKey,
+          action: AiApiKeyAuditAction.TESTED,
+          actor,
+          metadataJson: {
+            ok: false,
+            placeholder: true,
+            errorCode: placeholderResult.errorCode,
+          },
+        }),
+      );
+      return placeholderResult;
+    }
+
     const encryption = getEncryptionService();
     const secret = encryption.decrypt(row.encryptedSecret);
     const result = await testProviderApiKey(row.provider.providerKey, secret, row.provider.baseUrl);
 
-    await this.appendAudit({
-      apiKeyId: row.id,
-      providerKey: row.provider.providerKey,
-      action: AiApiKeyAuditAction.TESTED,
-      actor,
-      metadataJson: { ok: result.ok, latencyMs: result.latencyMs, errorCode: result.errorCode },
-    });
+    if (result.ok && row.status === AiApiKeyStatus.PENDING_TEST) {
+      await prisma.aiApiKey.update({
+        where: { id: row.id },
+        data: {
+          status: AiApiKeyStatus.ACTIVE,
+          updatedByUserId: actor?.userId ?? null,
+        },
+      });
+      await this.refreshConfigurationCache({ scopeKey: row.scopeKey });
+    }
+
+    if (result.ok) {
+      await prisma.aiProvider.update({
+        where: { id: row.providerId },
+        data: {
+          lastConnectionTestAt: new Date(),
+          lastConnectionTestOk: true,
+        },
+      });
+    } else {
+      await prisma.aiProvider.update({
+        where: { id: row.providerId },
+        data: {
+          lastConnectionTestAt: new Date(),
+          lastConnectionTestOk: false,
+        },
+      });
+    }
+
+    await this.appendAudit(
+      omitUndefined({
+        apiKeyId: row.id,
+        providerKey: row.provider.providerKey,
+        action: AiApiKeyAuditAction.TESTED,
+        actor,
+        metadataJson: { ok: result.ok, latencyMs: result.latencyMs, errorCode: result.errorCode },
+      }),
+    );
 
     return { ...result, providerKey: row.provider.providerKey };
+  }
+
+  async setPrimaryKey(id: string, actor?: AiSecretActor, reason?: string): Promise<AiApiKeyPublic> {
+    const prisma = getPrisma();
+    const existing = await prisma.aiApiKey.findFirst({
+      where: { id, deletedAt: null },
+      include: { provider: { select: { providerKey: true } } },
+    });
+    if (!existing) throw new NotFoundError('AI_API_KEY_NOT_FOUND', 'API key not found');
+    if (existing.status !== AiApiKeyStatus.ACTIVE) {
+      throw new ValidationError('AI_API_KEY_NOT_ACTIVE', 'Only ACTIVE keys can be set as primary');
+    }
+
+    await prisma.$transaction([
+      prisma.aiApiKey.updateMany({
+        where: {
+          providerId: existing.providerId,
+          scopeKey: existing.scopeKey,
+          isPrimary: true,
+          deletedAt: null,
+        },
+        data: { isPrimary: false, updatedByUserId: actor?.userId ?? null },
+      }),
+      prisma.aiApiKey.update({
+        where: { id },
+        data: { isPrimary: true, updatedByUserId: actor?.userId ?? null },
+      }),
+    ]);
+
+    await this.appendAudit(
+      omitUndefined({
+        apiKeyId: id,
+        providerKey: existing.provider.providerKey,
+        action: AiApiKeyAuditAction.UPDATED,
+        actor,
+        reason: reason ?? 'Set as primary key',
+        metadataJson: { isPrimary: true },
+      }),
+    );
+
+    await this.refreshConfigurationCache({ scopeKey: existing.scopeKey });
+    return this.getKeyById(id);
   }
 
   async listAuditLog(apiKeyId: string, limit = 50): Promise<AiApiKeyAuditEntry[]> {
@@ -334,21 +458,28 @@ export class AiSecretService {
   }): Promise<void> {
     const prisma = getPrisma();
     await prisma.aiApiKeyAuditLog.create({
-      data: {
+      data: omitUndefined({
         apiKeyId: params.apiKeyId,
         providerKey: params.providerKey,
         action: params.action,
-        actorUserId: params.actor?.userId,
-        actorRole: params.actor?.role,
+        actorUserId: params.actor?.userId ?? null,
+        actorRole: params.actor?.role ?? null,
         reason: params.reason,
-        metadataJson: params.metadataJson as object | undefined,
-        ipAddress: params.actor?.ipAddress,
-      },
+        metadataJson:
+          params.metadataJson != null ? toInputJson(params.metadataJson) : undefined,
+        ipAddress: params.actor?.ipAddress ?? null,
+      }),
     });
   }
 
   validatePlaintextSecret(secret: string, providerKey: string): void {
     const trimmed = secret.trim();
+    if (isPlaceholderCiphertext(trimmed)) {
+      throw new ValidationError(
+        'AI_API_KEY_INVALID',
+        'Cannot store a seed/demo placeholder as an API key — paste a real provider secret',
+      );
+    }
     if (trimmed.length < 20) {
       throw new ValidationError('AI_API_KEY_INVALID', 'API key is too short');
     }
@@ -358,6 +489,9 @@ export class AiSecretService {
     }
     if (providerKey === 'anthropic' && !trimmed.startsWith('sk-ant-')) {
       throw new ValidationError('AI_API_KEY_INVALID', 'Anthropic key must start with sk-ant-');
+    }
+    if (providerKey === 'groq' && !trimmed.startsWith('gsk_')) {
+      throw new ValidationError('AI_API_KEY_INVALID', 'Groq key must start with gsk_');
     }
   }
 }

@@ -1,8 +1,9 @@
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { getLogger } from '../../../shared/logger/logger.js';
-import { logAiExecution, logAiPlatformEvent } from '../../../shared/monitoring/structured-logging.js';
+import { logAiPlatformEvent } from '../../../shared/monitoring/structured-logging.js';
 import { getAiPlatformConfig } from '../config/ai.config.js';
 import { getAiUsageAlertService } from '../alerts/ai-usage-alert.service.js';
+import { getAiSettingsService } from '../settings/ai-settings.service.js';
 
 function utcDayStart(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -48,34 +49,36 @@ export class AiBudgetService {
   }
 
   async getStatus(): Promise<AiBudgetStatus> {
-    const config = getAiPlatformConfig();
+    const envConfig = getAiPlatformConfig();
+    const settings = await getAiSettingsService().getSnapshot();
+    const dailyBudgetUsd = settings.budget.dailyBudgetUsd ?? envConfig.dailyBudgetUsd;
+    const monthlyBudgetUsd = settings.budget.monthlyBudgetUsd ?? envConfig.monthlyBudgetUsd;
+
     const dailySpent = await this.getSpendSince(utcDayStart());
     const monthlySpent = await this.getSpendSince(utcMonthStart());
 
-    const dailyExceeded =
-      config.dailyBudgetUsd != null && dailySpent >= config.dailyBudgetUsd;
-    const monthlyExceeded =
-      config.monthlyBudgetUsd != null && monthlySpent >= config.monthlyBudgetUsd;
+    const dailyExceeded = dailyBudgetUsd != null && dailySpent >= dailyBudgetUsd;
+    const monthlyExceeded = monthlyBudgetUsd != null && monthlySpent >= monthlyBudgetUsd;
 
     this.dailyBlocked = dailyExceeded;
     this.monthlyBlocked = monthlyExceeded;
 
     return {
       daily: {
-        budgetUsd: config.dailyBudgetUsd,
+        budgetUsd: dailyBudgetUsd,
         spentUsd: Math.round(dailySpent * 1_000_000) / 1_000_000,
         remainingUsd:
-          config.dailyBudgetUsd != null
-            ? Math.max(0, config.dailyBudgetUsd - dailySpent)
+          dailyBudgetUsd != null
+            ? Math.max(0, dailyBudgetUsd - dailySpent)
             : null,
         exceeded: dailyExceeded,
       },
       monthly: {
-        budgetUsd: config.monthlyBudgetUsd,
+        budgetUsd: monthlyBudgetUsd,
         spentUsd: Math.round(monthlySpent * 1_000_000) / 1_000_000,
         remainingUsd:
-          config.monthlyBudgetUsd != null
-            ? Math.max(0, config.monthlyBudgetUsd - monthlySpent)
+          monthlyBudgetUsd != null
+            ? Math.max(0, monthlyBudgetUsd - monthlySpent)
             : null,
         exceeded: monthlyExceeded,
       },

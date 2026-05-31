@@ -1,9 +1,12 @@
 import { readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import { logError } from '../../shared/logger/logger.js';
 
 import type { Router } from 'express';
 
+import { logAiAdminDiagnostic } from '../ai/admin/ai-admin-diagnostics.js';
 import { wrapNextHandler } from './next-adapter.js';
 
 const ROUTES_ROOT = join(import.meta.dirname, '../../legacy/web/routes');
@@ -64,23 +67,80 @@ export function fileToExpressPath(routeFile: string): string {
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const;
 
+function isDevelopmentEnv(): boolean {
+  return process.env.NODE_ENV === 'development';
+}
+
+function logRouteModuleLoadFailure(
+  routeFile: string,
+  method: (typeof METHODS)[number],
+  error: unknown,
+): void {
+  const routePath = fileToExpressPath(routeFile);
+  const moduleUrl = pathToFileURL(resolve(routeFile)).href;
+  logError('Legacy route module failed to load', error, {
+    routeFile,
+    moduleUrl,
+    routePath,
+    method,
+    ...(error instanceof Error && 'code' in error
+      ? { errorCode: String((error as NodeJS.ErrnoException).code) }
+      : {}),
+  });
+  if (routePath.includes('/admin/ai-ops')) {
+    logAiAdminDiagnostic(
+      'error',
+      {
+        layer: 'route',
+        route: routePath,
+        method,
+        handler: routeFile,
+      },
+      { error, moduleUrl, importTarget: routeFile },
+    );
+  }
+}
+
 function lazyLegacyHandler(routeFile: string, method: (typeof METHODS)[number]) {
   let handler: RouteHandlerExports[(typeof METHODS)[number]] | undefined;
   let loadError: unknown;
 
   const load = async () => {
-    if (handler || loadError) return;
+    if (handler) return;
+    if (loadError) throw loadError;
     try {
       const mod = (await import(pathToFileURL(routeFile).href)) as RouteHandlerExports;
       handler = mod[method];
     } catch (error) {
       loadError = error;
+      logRouteModuleLoadFailure(routeFile, method, error);
       throw error;
     }
   };
 
   return wrapNextHandler(async (webReq, context) => {
-    await load();
+    try {
+      await load();
+    } catch (error) {
+      if (isDevelopmentEnv() && error instanceof Error) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: 'ROUTE_MODULE_LOAD_FAILED',
+              message: error.message,
+              route: fileToExpressPath(routeFile),
+              routeFile,
+            },
+          }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+      throw error;
+    }
     if (!handler) {
       return new Response(null, { status: 405 });
     }

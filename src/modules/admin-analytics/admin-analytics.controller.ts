@@ -24,6 +24,10 @@ export class AdminAnalyticsController {
     return this.service.getLivestock(query);
   }
 
+  animalWeight(query: AdminAnalyticsDateRangeQuery) {
+    return this.service.getAnimalWeight(query);
+  }
+
   geography(query: AdminAnalyticsDateRangeQuery) {
     return this.service.getGeography(query);
   }

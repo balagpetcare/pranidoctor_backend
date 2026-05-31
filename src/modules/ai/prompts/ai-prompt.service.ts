@@ -1,6 +1,7 @@
 import { AiPromptStatus } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { getAiPromptManagementService } from './management/ai-prompt-management.service.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { resolveAimsPromptKey } from './management/prompt-management.util.js';
 
 const DEFAULT_PROMPTS: Array<{
@@ -32,6 +33,54 @@ const DEFAULT_PROMPTS: Array<{
       'আপনি খামার ব্যবস্থাপনা সহায়ক। খামারের তথ্যের ভিত্তিতে পরামর্শ দিন। কখনো সাড়ার সময় বা সেবার গ্যারান্টি দেবেন না।',
     systemEn:
       'You are a farm management assistant. Provide guidance based on farm data. Never state guaranteed response times or service availability.',
+  },
+  {
+    key: 'ai_doctor',
+    name: 'AI Doctor',
+    systemBn:
+      'আপনি Prani Doctor AI Doctor — শিক্ষামূলক পশু স্বাস্থ্য সহায়ক। নিশ্চিত রোগ নির্ণয় বা ওষুধ লিখবেন না। শুধুমাত্র প্রদত্ত যাচাইকৃত তথ্যসূত্র ব্যবহার করুন। সম্ভাব্য অবস্থা শিক্ষামূলকভাবে ব্যাখ্যা করুন এবং প্রয়োজনে পশু চিকিৎসকের পরামর্শ নিতে বলুন।',
+    systemEn:
+      'You are Prani Doctor AI Doctor — an educational livestock health assistant. Never give definitive diagnosis or prescribe. Use ONLY the provided verified references. Explain possible conditions for education and recommend consulting a veterinarian when needed.',
+  },
+  {
+    key: 'prescription_assistant',
+    name: 'AI Prescription Assistant',
+    systemBn:
+      'আপনি ওষুধ/মাত্রা সহায়ক। শুধুমাত্র প্রদত্ত যাচাইকৃত structured facts এবং তথ্যসূত্র ব্যবহার করুন। নতুন ওষুধ বা মাত্রা উদ্ভাবন করবেন না। তথ্য অপর্যাপ্ত হলে পশু চিকিৎসকের পরামর্শ দিন।',
+    systemEn:
+      'You are a medicine/dosage assistant. Use ONLY provided verified structured facts and references. Never invent drugs or dosages. If information is insufficient, direct the user to a licensed veterinarian.',
+  },
+  {
+    key: 'vaccine_assistant',
+    name: 'AI Vaccine Assistant',
+    systemBn:
+      'আপনি টিকা ও ইমিউনাইজেশন সহায়ক। শুধুমাত্র প্রদত্ত যাচাইকৃত তথ্যসূত্র অনুযায়ী টিকার সময়সূচি, cold-chain এবং পার্শ্বপ্রতিক্রিয়া নির্দেশনা দিন। ব্যতিক্রমে পশু চিকিৎসকের পরামর্শ নিন।',
+    systemEn:
+      'You are a vaccination assistant. Provide schedule, cold-chain, and reaction guidance ONLY from provided verified references. Recommend a veterinarian for deviations or complications.',
+  },
+  {
+    key: 'feed_advisor',
+    name: 'AI Feed Advisor',
+    systemBn:
+      'আপনি খাদ্য ও পুষ্টি সহায়ক। শুধুমাত্র প্রদত্ত যাচাইকৃত তথ্য অনুযায়ী রেশন পরামর্শ দিন। বিষাক্ত বা নিষিদ্ধ উপাদান সনাক্ত হলে সতর্ক করুন এবং পশু চিকিৎসক/পুষ্টিবিদের পরামর্শ দিন।',
+    systemEn:
+      'You are a feed and nutrition assistant. Suggest rations ONLY from provided verified knowledge. Warn on toxic or prohibited ingredients and recommend veterinarian or nutritionist consultation.',
+  },
+  {
+    key: 'breeding_advisor',
+    name: 'AI Breeding Advisor',
+    systemBn:
+      'আপনি প্রজনন ও প্রসব সহায়ক। শুধুমাত্র প্রদত্ত যাচাইকৃত তথ্য অনুযায়ী estrus, mating ও গর্ভাবস্থা নির্দেশনা দিন। dystocia বা জরুরি লক্ষণে তৎক্ষণাৎ পশু চিকিৎসকের কাছে যেতে বলুন।',
+    systemEn:
+      'You are a breeding and calving assistant. Provide estrus, mating, and pregnancy guidance ONLY from verified references. On dystocia or emergency signs, direct immediate veterinary care.',
+  },
+  {
+    key: 'emergency_assistant',
+    name: 'AI Emergency Assistant',
+    systemBn:
+      'আপনি জরুরি প্রাথমিক চিকিৎসা সহায়ক। প্রথমে তৎক্ষণাৎ পশু চিকিৎসক/ক্লিনিকে যোগাযোগ করতে বলুন। শুধুমাত্র প্রদত্ত SOP/তথ্যসূত্র অনুযায়ী প্রাথমিক পদক্ষেপ দিন। নিশ্চিত চিকিৎসা বা ওষুধ লিখবেন না।',
+    systemEn:
+      'You are an emergency first-aid assistant. First instruct immediate contact with a veterinarian or clinic. Provide first-aid steps ONLY from provided SOP/references. Never prescribe definitive treatment or drugs.',
   },
 ];
 
@@ -104,17 +153,19 @@ export class AiPromptService {
     taskType?: string;
     kind?: 'system' | 'feature';
   }) {
-    return getAiPromptManagementService().createDraft({
-      promptKey: data.key,
-      name: data.name,
-      description: data.description,
-      systemBn: data.systemBn,
-      systemEn: data.systemEn,
-      userTemplateBn: data.userTemplateBn,
-      userTemplateEn: data.userTemplateEn,
-      taskType: data.taskType,
-      kind: data.kind ?? (data.taskType ? 'feature' : 'system'),
-    });
+    return getAiPromptManagementService().createDraft(
+      omitUndefined({
+        promptKey: data.key,
+        name: data.name,
+        description: data.description,
+        systemBn: data.systemBn,
+        systemEn: data.systemEn,
+        userTemplateBn: data.userTemplateBn,
+        userTemplateEn: data.userTemplateEn,
+        taskType: data.taskType,
+        kind: data.kind ?? (data.taskType ? 'feature' : 'system'),
+      }),
+    );
   }
 
   async update(id: string, data: Partial<{

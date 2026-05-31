@@ -5,7 +5,7 @@ export { createLeadsModule, LeadsModule } from './leads/index.js';
 export { createAnimalsModule, AnimalsModule } from './animals/index.js';
 export { createClinicsModule, ClinicsModule } from './clinics/index.js';
 export { createAiVeterinaryCoreModule, AiVeterinaryCoreModule, getAiVeterinaryCoreService } from './ai-veterinary-core/index.js';
-export { createAiModule, AiModule } from './ai/index.js';
+export { createAiModule, createAiAdminModule, AiModule, AiAdminModule } from './ai/index.js';
 export { createNotificationsModule, NotificationsModule } from './notifications/index.js';
 export { createMediaModule, MediaModule } from './media/index.js';
 export { createIdentityModule, IdentityModule } from './identity/index.js';
@@ -23,7 +23,7 @@ import { createDoctorsModule } from './doctors/index.js';
 import { createLeadsModule } from './leads/index.js';
 import { createAnimalsModule } from './animals/index.js';
 import { createClinicsModule } from './clinics/index.js';
-import { createAiModule, AiModule } from './ai/index.js';
+import { createAiModule, createAiAdminModule, AiModule, AiAdminModule } from './ai/index.js';
 import { createNotificationsModule } from './notifications/index.js';
 import { createMediaModule } from './media/index.js';
 import { createIdentityModule } from './identity/index.js';
@@ -53,6 +53,7 @@ export function createAllModules(): ModuleDefinition[] {
     createClinicsModule(),
     createNotificationsModule(),
     createAiModule(),
+    createAiAdminModule(),
     createMediaModule(),
     createLivestockModule(),
     createFeedConsumptionModule(),

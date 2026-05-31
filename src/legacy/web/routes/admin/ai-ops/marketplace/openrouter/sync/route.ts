@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../../../modules/ai/admin/ai-admin.guard.js';
+import { requireAiAdminCapability } from '../../../../../../../../modules/ai/admin/index.js';
 import { getOpenRouterCatalogService } from '../../../../../../../../modules/ai/marketplace/openrouter-catalog.service.js';
 
 export async function POST(request: Request) {
-  const auth = await requireAiAdminActor();
+  const auth = await requireAiAdminCapability('ai.registry.manage');
   if (!auth.ok) return auth.response;
   let json: unknown;
   try {

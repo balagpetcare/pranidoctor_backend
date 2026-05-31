@@ -1,6 +1,8 @@
 import { AiApiKeyAuditAction, AiApiKeyStatus } from '../../../generated/prisma/index.js';
 import { NotFoundError } from '../../../shared/errors/http.errors.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { toInputJson } from '../../../shared/database/prisma-json.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 import type { AiSecretActor, RotateAiApiKeyResult } from './ai-secret.types.js';
 import { getAiSecretService } from './ai-secret.service.js';
@@ -36,7 +38,7 @@ export class KeyRotationService {
         data: {
           status: AiApiKeyStatus.ROTATED,
           rotatedAt: now,
-          updatedByUserId: actor?.userId,
+          updatedByUserId: actor?.userId ?? null,
           version: { increment: 1 },
         },
       }),
@@ -48,36 +50,41 @@ export class KeyRotationService {
           providerId: existing.providerId,
           name: existing.name,
           status: AiApiKeyStatus.ACTIVE,
+          isPrimary: existing.isPrimary,
           encryptedSecret: enc.ciphertext,
           encryptionKeyId: enc.encryptionKeyId,
           encryptionAlgorithm: enc.encryptionAlgorithm,
           secretHint: encryption.buildSecretHint(newPlaintextSecret),
           expiresAt: existing.expiresAt,
           version: existing.version + 1,
-          createdByUserId: actor?.userId,
-          updatedByUserId: actor?.userId,
-          metadataJson: { rotatedFromId: existing.id },
+          createdByUserId: actor?.userId ?? null,
+          updatedByUserId: actor?.userId ?? null,
+          metadataJson: toInputJson({ rotatedFromId: existing.id }),
         },
       }),
     ]);
 
-    await secrets.appendAudit({
-      apiKeyId: previous.id,
-      providerKey: existing.provider.providerKey,
-      action: AiApiKeyAuditAction.ROTATED,
-      actor,
-      reason,
-      metadataJson: { successorId: created.id },
-    });
+    await secrets.appendAudit(
+      omitUndefined({
+        apiKeyId: previous.id,
+        providerKey: existing.provider.providerKey,
+        action: AiApiKeyAuditAction.ROTATED,
+        actor,
+        reason,
+        metadataJson: { successorId: created.id },
+      }),
+    );
 
-    await secrets.appendAudit({
-      apiKeyId: created.id,
-      providerKey: existing.provider.providerKey,
-      action: AiApiKeyAuditAction.CREATED,
-      actor,
-      reason: reason ?? 'Key rotation',
-      metadataJson: { rotatedFromId: previous.id },
-    });
+    await secrets.appendAudit(
+      omitUndefined({
+        apiKeyId: created.id,
+        providerKey: existing.provider.providerKey,
+        action: AiApiKeyAuditAction.CREATED,
+        actor,
+        reason: reason ?? 'Key rotation',
+        metadataJson: { rotatedFromId: previous.id },
+      }),
+    );
 
     await secrets.refreshConfigurationCache({ scopeKey: existing.scopeKey });
 

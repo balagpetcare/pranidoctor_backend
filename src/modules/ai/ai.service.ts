@@ -1,4 +1,4 @@
-import { omitUndefined, omitUndefinedDeep } from '../../shared/types/object.utils.js';
+import { omitUndefinedDeep } from '../../shared/types/object.utils.js';
 import type { ModuleService } from '../../shared/module/module.types.js';
 import type { PaginatedResult } from '../../shared/types/api.types.js';
 
@@ -16,6 +16,7 @@ export interface AiServiceInterface extends ModuleService {
   listConversations(filter: ConversationFilter, page: number, pageSize: number): Promise<PaginatedResult<AiConversation>>;
 }
 
+/** @deprecated Legacy conversation service — use AiFoundationService / orchestrator instead. */
 export class AiService implements AiServiceInterface {
   readonly name = 'AiService';
 
@@ -76,13 +77,13 @@ export class AiService implements AiServiceInterface {
       aiResponse
     );
 
-    return omitUndefined({
+    return {
       conversationId: conversation.id,
       messageId: assistantMessage.id,
       content: aiResponse,
-      emergencyLevel: conversation.emergencyLevel,
+      ...(conversation.emergencyLevel ? { emergencyLevel: conversation.emergencyLevel } : {}),
       suggestedActions: [] as string[],
-    });
+    };
   }
 
   async endConversation(data: EndConversationDto): Promise<AiConversation> {

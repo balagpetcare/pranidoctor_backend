@@ -1,15 +1,20 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../modules/ai/admin/ai-admin.guard.js';
 import {
+  assertAiAdminCan,
   createProviderSchema,
-  getAiRegistryAdminService,
+  getAiProviderManagementService,
+  requireAiAdminActor,
 } from '../../../../../../modules/ai/admin/index.js';
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireAiAdminActor();
   if (!auth.ok) return auth.response;
+  const denied = assertAiAdminCan(auth.actor, 'ai.ops.view');
+  if (denied) return denied;
   try {
-    const data = await getAiRegistryAdminService().listProviders();
+    const url = new URL(request.url);
+    const scopeKey = url.searchParams.get('scopeKey') ?? undefined;
+    const data = await getAiProviderManagementService().listProviders(scopeKey ?? undefined);
     return jsonOk(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load providers';
@@ -20,6 +25,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireAiAdminActor();
   if (!auth.ok) return auth.response;
+  const denied = assertAiAdminCan(auth.actor, 'ai.registry.manage');
+  if (denied) return denied;
   let json: unknown;
   try {
     json = await request.json();
@@ -28,7 +35,7 @@ export async function POST(request: Request) {
   }
   try {
     const body = createProviderSchema.parse(json);
-    const data = await getAiRegistryAdminService().createProvider(body, auth.actor.id);
+    const data = await getAiProviderManagementService().createProvider(body, auth.actor);
     return jsonOk(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to create provider';

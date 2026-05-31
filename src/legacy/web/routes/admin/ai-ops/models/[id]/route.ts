@@ -1,15 +1,35 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../../modules/ai/admin/ai-admin.guard.js';
 import {
-  getAiRegistryAdminService,
+  adminErrorMessage,
+  getAiModelRegistryService,
+  requireAiAdminCapability,
   updateModelSchema,
 } from '../../../../../../../modules/ai/admin/index.js';
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const auth = await requireAiAdminCapability('ai.ops.view');
+  if (!auth.ok) return auth.response;
+  const { id } = await context.params;
+  try {
+    const data = await getAiModelRegistryService().getModel(id);
+    return jsonOk(data);
+  } catch (error) {
+    return jsonError(
+      'AI_ADMIN_ERROR',
+      adminErrorMessage(error, 'Failed to load model'),
+      404,
+    );
+  }
+}
 
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAiAdminActor();
+  const auth = await requireAiAdminCapability('ai.registry.manage');
   if (!auth.ok) return auth.response;
   const { id } = await context.params;
   let json: unknown;
@@ -20,10 +40,13 @@ export async function PUT(
   }
   try {
     const body = updateModelSchema.parse(json);
-    const data = await getAiRegistryAdminService().updateModel(id, body, auth.actor.id);
+    const data = await getAiModelRegistryService().updateModel(id, body, auth.actor.id);
     return jsonOk(data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update model';
-    return jsonError('AI_ADMIN_ERROR', message, 400);
+    return jsonError(
+      'AI_ADMIN_ERROR',
+      adminErrorMessage(error, 'Failed to update model'),
+      400,
+    );
   }
 }

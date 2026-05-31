@@ -1,10 +1,12 @@
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { getLogger } from '../../../shared/logger/logger.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 import { getAiBudgetService } from '../budget/ai-budget.service.js';
 import { getAiUsageAlertService } from '../alerts/ai-usage-alert.service.js';
 import { resolveUsageDimensions } from './ai-usage-dimensions.js';
-import { estimateAiCostUsd } from './ai-usage.cost.js';
+import { isAiUsageLegacyWriteEnabled } from '../analytics/jobs/ai-analytics-job.types.js';
+import { getAiCostRateService } from './ai-cost-rate.service.js';
 import { recordAiUsageMetrics } from './ai-usage.metrics.js';
 import { buildPlatformRollupFields, buildScopedRollupFields, buildMonthlyRollupFields } from './ai-usage.rollups.js';
 import { writeAimsUsageLog } from '../analytics/usage/ai-usage-log.writer.js';
@@ -42,8 +44,23 @@ export class AiUsageService {
 
   /** Records every orchestrator attempt (success or failure). Non-blocking on persistence. */
   recordAttempt(params: AiUsageAttemptInput): void {
+    void this.recordAttemptAsync(params).catch((err) => {
+      getLogger().error(
+        { err, feature: params.feature, provider: params.provider },
+        'Failed to persist AI usage record',
+      );
+    });
+  }
+
+  private async recordAttemptAsync(params: AiUsageAttemptInput): Promise<void> {
     const costUsd = params.success
-      ? estimateAiCostUsd(params.provider, params.model, params.inputTokens, params.outputTokens)
+      ? await getAiCostRateService().estimateCostUsd(
+          params.provider,
+          params.model,
+          params.inputTokens,
+          params.outputTokens,
+          params.scopeKey ?? 'platform',
+        )
       : 0;
     const tokens = accountTokens({
       provider: params.provider,
@@ -67,12 +84,7 @@ export class AiUsageService {
       ...(params.errorCode !== undefined ? { errorCode: params.errorCode } : {}),
     });
 
-    void this.persistAttempt(params, costUsd, tokens).catch((err) => {
-      getLogger().error(
-        { err, feature: params.feature, provider: params.provider },
-        'Failed to persist AI usage record',
-      );
-    });
+    await this.persistAttempt(params, costUsd, tokens);
   }
 
   /** @deprecated Use recordAttempt — kept for internal compatibility. */
@@ -130,29 +142,31 @@ export class AiUsageService {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.aiUsageRecord.create({
-        data: {
-          userId: params.userId ?? null,
-          customerId: params.customerId ?? null,
-          organizationId: resolvedDims.organizationId ?? null,
-          branchId: resolvedDims.branchId ?? null,
-          clinicId: resolvedDims.clinicId ?? null,
-          doctorId: resolvedDims.doctorId ?? null,
-          feature: params.feature,
-          provider: params.provider,
-          model: params.model,
-          inputTokens: tokens.inputTokens,
-          outputTokens: tokens.outputTokens,
-          totalTokens: tokens.totalTokens,
-          costUsd,
-          billable: tokens.billable,
-          rateVersion: AI_RATE_VERSION,
-          latencyMs: params.latencyMs,
-          success: params.success,
-          errorCode: params.errorCode ?? null,
-          isFallback: params.isFallback ?? false,
-        },
-      });
+      if (isAiUsageLegacyWriteEnabled()) {
+        await tx.aiUsageRecord.create({
+          data: {
+            userId: params.userId ?? null,
+            customerId: params.customerId ?? null,
+            organizationId: resolvedDims.organizationId ?? null,
+            branchId: resolvedDims.branchId ?? null,
+            clinicId: resolvedDims.clinicId ?? null,
+            doctorId: resolvedDims.doctorId ?? null,
+            feature: params.feature,
+            provider: params.provider,
+            model: params.model,
+            inputTokens: tokens.inputTokens,
+            outputTokens: tokens.outputTokens,
+            totalTokens: tokens.totalTokens,
+            costUsd,
+            billable: tokens.billable,
+            rateVersion: AI_RATE_VERSION,
+            latencyMs: params.latencyMs,
+            success: params.success,
+            errorCode: params.errorCode ?? null,
+            isFallback: params.isFallback ?? false,
+          },
+        });
+      }
       await tx.aiUsageDailyRollup.upsert({
         where: {
           bucketDate_feature_provider_model: {
@@ -246,11 +260,11 @@ export class AiUsageService {
     });
 
     void writeAimsUsageLog(
-      {
+      omitUndefined({
         ...params,
         organizationId: resolvedDims.organizationId ?? params.organizationId,
         branchId: resolvedDims.branchId ?? params.branchId,
-      },
+      }),
       costUsd,
       tokens.totalTokens,
     );

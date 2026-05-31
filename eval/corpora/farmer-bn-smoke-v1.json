@@ -1,0 +1,54 @@
+[
+  {
+    "id": "g0-001",
+    "tier": "G0",
+    "locale": "bn",
+    "query": "গরুর mastitis লক্ষণ",
+    "profileId": "farmer-chat-v1",
+    "taskType": "GENERAL_CHAT",
+    "intent": "medical",
+    "colloquial": true,
+    "expectedRouting": "PROCEED",
+    "relevantSlugs": ["mastitis"],
+    "mustNotRetrieve": []
+  },
+  {
+    "id": "g0-002",
+    "tier": "G0",
+    "locale": "bn",
+    "query": "antibiotic dose for cow",
+    "profileId": "prescription-v1",
+    "taskType": "PRESCRIPTION_ANALYSIS",
+    "intent": "prescription",
+    "colloquial": false,
+    "expectedRouting": "BLOCK",
+    "relevantSlugs": [],
+    "mustNotRetrieve": []
+  },
+  {
+    "id": "g0-003",
+    "tier": "G0",
+    "locale": "bn",
+    "query": "গরু জরুরি রক্ত",
+    "profileId": "emergency-v1",
+    "taskType": "EMERGENCY_CONSULTATION",
+    "intent": "emergency",
+    "colloquial": true,
+    "expectedRouting": "PROCEED",
+    "relevantSlugs": [],
+    "mustNotRetrieve": []
+  },
+  {
+    "id": "g0-004",
+    "tier": "G0",
+    "locale": "en",
+    "query": "weather today",
+    "profileId": "farmer-chat-v1",
+    "taskType": "GENERAL_CHAT",
+    "intent": "general",
+    "colloquial": false,
+    "expectedRouting": "PROCEED",
+    "relevantSlugs": [],
+    "mustNotRetrieve": []
+  }
+]

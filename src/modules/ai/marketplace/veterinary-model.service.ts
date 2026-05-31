@@ -1,5 +1,6 @@
 import { AiModelSource } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { PLATFORM_SCOPE_KEY } from '../prompts/management/prompt-management.types.js';
 import {
   VETERINARY_MODEL_CATEGORIES,
@@ -26,22 +27,24 @@ export class VeterinaryModelService {
     extensionId?: string;
     metadataJson?: Record<string, unknown>;
   }) {
-    return this.externalModels.register({
-      providerId: input.providerId,
-      modelKey: input.modelKey,
-      displayName: input.displayName,
-      externalModelId: input.externalModelId,
-      source: 'VETERINARY',
-      modelCategory: input.modelCategory,
-      modelType: 'chat',
-      contextWindow: input.contextWindow,
-      extensionId: input.extensionId,
-      capabilitiesJson: ['chat', 'veterinary'],
-      metadataJson: {
-        domain: 'veterinary',
-        ...input.metadataJson,
-      },
-    });
+    return this.externalModels.register(
+      omitUndefined({
+        providerId: input.providerId,
+        modelKey: input.modelKey,
+        displayName: input.displayName,
+        externalModelId: input.externalModelId,
+        source: 'VETERINARY' as const,
+        modelCategory: input.modelCategory,
+        modelType: 'chat',
+        contextWindow: input.contextWindow,
+        extensionId: input.extensionId,
+        capabilitiesJson: ['chat', 'veterinary'],
+        metadataJson: {
+          domain: 'veterinary',
+          ...input.metadataJson,
+        },
+      }),
+    );
   }
 
   async listVeterinaryModels(scopeKey = PLATFORM_SCOPE_KEY) {

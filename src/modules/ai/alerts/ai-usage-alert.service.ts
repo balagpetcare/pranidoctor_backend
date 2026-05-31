@@ -8,7 +8,8 @@ import { getAiPlatformConfig } from '../config/ai.config.js';
 export type AiAlertType =
   | 'budget_exceeded'
   | 'provider_unavailable'
-  | 'usage_spike';
+  | 'usage_spike'
+  | 'analytics_reconcile_drift';
 
 const ALERT_COOLDOWN_MS = 15 * 60 * 1000;
 const lastAlertAt = new Map<string, number>();
@@ -77,6 +78,26 @@ export class AiUsageAlertService {
       severity: 'warning',
       message,
       metadata: status as unknown as Record<string, unknown>,
+    });
+  }
+
+  async emitAnalyticsReconcileDrift(details: {
+    bucketKey: string;
+    driftCostUsd: number;
+    driftRequests: number;
+    logRequests: number;
+    rollupRequests: number;
+    autoRepaired: boolean;
+  }): Promise<void> {
+    if (!this.shouldEmit('analytics_reconcile_drift', details.bucketKey)) return;
+
+    const message = `AI analytics rollup drift for ${details.bucketKey}: cost Δ $${details.driftCostUsd.toFixed(4)}, requests Δ ${details.driftRequests}`;
+    logAiPlatformEvent('alert_analytics_reconcile_drift', details);
+    await this.persistAlert({
+      alertType: 'analytics_reconcile_drift',
+      severity: 'critical',
+      message,
+      metadata: details as unknown as Record<string, unknown>,
     });
   }
 

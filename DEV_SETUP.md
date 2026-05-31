@@ -1,5 +1,7 @@
 # Local Development Setup — Prani Doctor Backend
 
+**Local ports:** API **3000** (`PORT` in `.env`) · Next.js admin/web **3001** (`pranidoctor-web`: `npm run dev`).
+
 This guide covers running the API on your host machine with optional Docker infrastructure.
 
 ## Quick start (minimal — PostgreSQL only)

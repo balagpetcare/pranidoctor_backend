@@ -1,4 +1,4 @@
-export type AiProviderName = 'openai' | 'anthropic' | 'rules-based';
+export type AiProviderName = string;
 
 export interface AiCompletionInput {
   feature: string;
@@ -7,6 +7,25 @@ export interface AiCompletionInput {
   locale: 'bn' | 'en';
   maxTokens?: number;
   temperature?: number;
+  taskType?: string;
+  scopeKey?: string;
+  tenantId?: string;
+  branchId?: string;
+  sessionId?: string;
+  promptId?: string;
+  requestId?: string;
+  correlationId?: string;
+  /** Registry-resolved model key from AiRouterEngine — adapters must prefer over env defaults. */
+  resolvedModelKey?: string;
+  resolvedModelId?: string;
+  hopIndex?: number;
+}
+
+export interface AiCompletionTrace {
+  routeId?: string;
+  providerId?: string;
+  modelId?: string;
+  isFallback?: boolean;
 }
 
 export interface AiCompletionOutput {
@@ -17,6 +36,8 @@ export interface AiCompletionOutput {
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
+  trace?: AiCompletionTrace;
+  usage?: { costUsd: number };
 }
 
 export interface AiProviderAdapter {

@@ -1,5 +1,7 @@
 import { AiModelSource } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { toInputJson } from '../../../shared/database/prisma-json.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { PLATFORM_SCOPE_KEY } from '../prompts/management/prompt-management.types.js';
 import type {
   ExtensionManifestModel,
@@ -10,7 +12,7 @@ import { registerExternalModelSchema } from './marketplace.types.js';
 export class ExternalModelRegistrationService {
   readonly name = 'ExternalModelRegistrationService';
 
-  async register(input: ExternalModelRegistrationInput, scopeKey = PLATFORM_SCOPE_KEY) {
+  async register(input: ExternalModelRegistrationInput, _scopeKey = PLATFORM_SCOPE_KEY) {
     const body = registerExternalModelSchema.parse(input);
     const prisma = getPrisma();
 
@@ -42,7 +44,7 @@ export class ExternalModelRegistrationService {
       inputCostPerToken: body.inputCostPerToken ?? 0,
       outputCostPerToken: body.outputCostPerToken ?? 0,
       capabilitiesJson: body.capabilitiesJson ?? ['chat'],
-      metadataJson: body.metadataJson ?? { registeredVia: 'external_model_service' },
+      metadataJson: toInputJson(body.metadataJson ?? { registeredVia: 'external_model_service' }),
       extensionId: body.extensionId ?? null,
     };
 
@@ -63,21 +65,23 @@ export class ExternalModelRegistrationService {
   ): Promise<number> {
     let count = 0;
     for (const model of models) {
-      await this.register({
-        providerId,
-        modelKey: model.modelKey,
-        displayName: model.displayName,
-        externalModelId: model.externalModelId ?? model.modelKey,
-        source: model.source ?? 'MARKETPLACE',
-        modelCategory: model.modelCategory ?? 'general_chat',
-        modelType: model.modelType ?? 'chat',
-        contextWindow: model.contextWindow,
-        inputCostPerToken: model.inputCostPerToken,
-        outputCostPerToken: model.outputCostPerToken,
-        extensionId,
-        capabilitiesJson: model.capabilities,
-        metadataJson: model.metadata,
-      });
+      await this.register(
+        omitUndefined({
+          providerId,
+          modelKey: model.modelKey,
+          displayName: model.displayName,
+          externalModelId: model.externalModelId ?? model.modelKey,
+          source: model.source ?? 'MARKETPLACE',
+          modelCategory: model.modelCategory ?? 'general_chat',
+          modelType: model.modelType ?? 'chat',
+          contextWindow: model.contextWindow,
+          inputCostPerToken: model.inputCostPerToken,
+          outputCostPerToken: model.outputCostPerToken,
+          extensionId,
+          capabilitiesJson: model.capabilities,
+          metadataJson: model.metadata,
+        }),
+      );
       count += 1;
     }
     return count;

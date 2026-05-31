@@ -15,6 +15,7 @@ import {
   AIFailoverService,
   resetAIFailoverServiceForTests,
 } from './ai-failover.service.js';
+import { resetAiRouterEngineForTests } from '../router/ai-router-engine.service.js';
 import { AiFailoverExhaustedError, AiFailoverAbortedError } from './failover.errors.js';
 import type { ResolvedRoute, RouteHop } from '../routing/ai-router.types.js';
 import { resetAIRouterServiceForTests } from '../routing/ai-router.service.js';
@@ -110,6 +111,7 @@ function mockRoute(overrides?: Partial<ResolvedRoute>): ResolvedRoute {
 
 function resetFailoverForTests(): void {
   resetAIFailoverServiceForTests();
+  resetAiRouterEngineForTests();
   resetAIHealthServiceForTests();
   resetAIProviderMonitorForTests();
   resetAIRouterServiceForTests();
@@ -349,7 +351,7 @@ describe('AIFailoverService', () => {
     expect(execution.isFallback).toBe(true);
   });
 
-  it('retries primary before failing over', async () => {
+  it('failovers to next provider on timeout without same-hop retries', async () => {
     resolveRouteMock.mockResolvedValue(mockRoute({ maxRetries: 2, timeoutMs: 2000 }));
     const service = new AIFailoverService();
     let openaiAttempts = 0;
@@ -366,12 +368,13 @@ describe('AIFailoverService', () => {
       usedHop: { providerKey: 'anthropic' },
     });
 
-    expect(openaiAttempts).toBe(3);
+    expect(openaiAttempts).toBe(1);
   });
 
   it('skips provider when circuit is open', async () => {
     process.env.AI_CIRCUIT_FAILURE_THRESHOLD = '1';
     resetAIProviderMonitorForTests();
+    resetAiRouterEngineForTests();
     const monitor = getAIProviderMonitor();
     monitor.recordFailure('openai', 10, 'provider_5xx');
 
@@ -392,6 +395,7 @@ describe('AIFailoverService', () => {
   });
 
   it('jumps to rules-based when DB rule says RULES_ONLY', async () => {
+    resetAiRouterEngineForTests();
     aiFailoverRuleFindMany.mockResolvedValue([
       {
         id: 'rule-budget',
@@ -430,6 +434,7 @@ describe('AIFailoverService', () => {
   });
 
   it('aborts when rule action is ABORT', async () => {
+    resetAiRouterEngineForTests();
     aiFailoverRuleFindMany.mockResolvedValue([
       {
         id: 'rule-abort',

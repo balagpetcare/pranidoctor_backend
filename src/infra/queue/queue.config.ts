@@ -174,4 +174,68 @@ export const queueDefinitions: Record<string, QueueDefinition> = {
       concurrency: 5,
     },
   },
+
+  [QueueNames.AI_ANALYTICS]: {
+    name: QueueNames.AI_ANALYTICS,
+    defaultJobOptions: {
+      ...defaultJobOptions,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+      priority: 3,
+    },
+    workerOptions: {
+      concurrency: 1,
+    },
+  },
+
+  [QueueNames.KNOWLEDGE_IMPORT]: {
+    name: QueueNames.KNOWLEDGE_IMPORT,
+    defaultJobOptions: {
+      ...defaultJobOptions,
+      attempts: 5,
+      backoff: {
+        type: 'exponential',
+        delay: 3000,
+      },
+      priority: 4,
+    },
+    workerOptions: {
+      concurrency: 2,
+    },
+  },
+
+  [QueueNames.KNOWLEDGE_VALIDATE]: {
+    name: QueueNames.KNOWLEDGE_VALIDATE,
+    defaultJobOptions: {
+      ...defaultJobOptions,
+      attempts: 4,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+      priority: 4,
+    },
+    workerOptions: {
+      concurrency: 3,
+    },
+  },
+
+  [QueueNames.KNOWLEDGE_EMBEDDING]: {
+    name: QueueNames.KNOWLEDGE_EMBEDDING,
+    defaultJobOptions: {
+      ...defaultJobOptions,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+      priority: 3,
+    },
+    workerOptions: {
+      concurrency: 4,
+    },
+  },
 };

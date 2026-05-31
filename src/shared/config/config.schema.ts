@@ -60,7 +60,9 @@ export const configSchema = z
     }),
 
     cors: z.object({
-      origins: z.array(z.string()).default(['http://localhost:3000']),
+      origins: z
+        .array(z.string())
+        .default(['http://localhost:3001', 'http://localhost:3000']),
     }),
 
     rateLimit: z.object({

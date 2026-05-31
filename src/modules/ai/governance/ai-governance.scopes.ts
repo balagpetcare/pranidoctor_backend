@@ -2,11 +2,26 @@ export const AI_GOVERNANCE_SCOPE_TYPES = ['feature', 'provider'] as const;
 export type AiGovernanceScopeType = (typeof AI_GOVERNANCE_SCOPE_TYPES)[number];
 
 /** LLM-backed features governed by the orchestrator kill switch. */
-export const AI_GOVERNANCE_FEATURES = ['CHAT', 'FARM_BRIEFING', 'FARM_QUERY'] as const;
+export const AI_GOVERNANCE_FEATURES = [
+  'CHAT',
+  'FARM_BRIEFING',
+  'FARM_QUERY',
+  'DISEASE_REASONING',
+] as const;
 export type AiGovernanceFeatureKey = (typeof AI_GOVERNANCE_FEATURES)[number];
 
 /** External LLM providers (rules-based is never kill-switched). */
-export const AI_GOVERNANCE_PROVIDERS = ['openai', 'anthropic'] as const;
+export const AI_GOVERNANCE_PROVIDERS = [
+  'openai',
+  'anthropic',
+  'gemini',
+  'groq',
+  'grok',
+  'deepseek',
+  'openrouter',
+  'self_hosted',
+  'self-hosted',
+] as const;
 export type AiGovernanceProviderKey = (typeof AI_GOVERNANCE_PROVIDERS)[number];
 
 export type AiGovernanceScopeSnapshot = {

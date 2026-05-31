@@ -26,6 +26,10 @@ export const QueueNames = {
   CLEANUP: 'cleanup',
   BACKUP: 'backup',
   SCHEDULED: 'scheduled',
+  AI_ANALYTICS: 'ai:analytics',
+  KNOWLEDGE_IMPORT: 'knowledge:import',
+  KNOWLEDGE_VALIDATE: 'knowledge:validate',
+  KNOWLEDGE_EMBEDDING: 'ai:knowledge:embed',
 } as const;
 
 export type QueueName = (typeof QueueNames)[keyof typeof QueueNames];

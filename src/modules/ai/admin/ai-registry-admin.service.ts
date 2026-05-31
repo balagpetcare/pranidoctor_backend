@@ -1,6 +1,9 @@
-import type { AiProvider } from '../../../generated/prisma/index.js';
+import type { AiProvider, Prisma } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
+import { toInputJson, toNullableInputJson } from '../../../shared/database/prisma-json.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import { getAiPlatformAdminService } from '../platform/ai-platform-admin.service.js';
+import { getAiModelRegistryService } from '../models/ai-model-registry.service.js';
 import { PLATFORM_SCOPE_KEY } from '../prompts/management/prompt-management.types.js';
 import type { z } from 'zod';
 import type {
@@ -23,7 +26,11 @@ type UpdateRouteInput = z.infer<typeof updateRouteSchema>;
 type CreateFailoverInput = z.infer<typeof createFailoverRuleSchema>;
 type UpdateFailoverInput = z.infer<typeof updateFailoverRuleSchema>;
 
-function resolveScopeKey(input?: { scopeKey?: string; tenantId?: string; branchId?: string }): string {
+function resolveScopeKey(input: {
+  scopeKey?: string | undefined;
+  tenantId?: string | undefined;
+  branchId?: string | undefined;
+} = {}): string {
   if (input?.scopeKey?.trim()) return input.scopeKey.trim();
   if (input?.tenantId && input?.branchId) return `tenant:${input.tenantId}:branch:${input.branchId}`;
   if (input?.tenantId) return `tenant:${input.tenantId}`;
@@ -94,13 +101,13 @@ export class AiRegistryAdminService {
         providerKey: input.providerKey,
         displayName: input.displayName,
         description: input.description ?? null,
-        enabled: input.enabled ?? true,
+        enabled: input.enabled ?? false,
         priority: input.priority ?? 100,
         adapterType: input.adapterType ?? 'openai_compatible',
         baseUrl: input.baseUrl ?? null,
         costTier: input.costTier ?? 'standard',
         capabilitiesJson: input.capabilitiesJson ?? [],
-        configJson: input.configJson ?? undefined,
+        ...(input.configJson != null ? { configJson: toInputJson(input.configJson) } : {}),
         createdByUserId: actorUserId ?? null,
         updatedByUserId: actorUserId ?? null,
       },
@@ -112,20 +119,24 @@ export class AiRegistryAdminService {
   async updateProvider(id: string, input: UpdateProviderInput, actorUserId?: string) {
     const prisma = getPrisma();
     await this.getProvider(id);
+    const data: Prisma.AiProviderUncheckedUpdateInput = {
+      updatedByUserId: actorUserId ?? null,
+    };
+    if (input.displayName != null) data.displayName = input.displayName;
+    if (input.description !== undefined) data.description = input.description;
+    if (input.enabled != null) data.enabled = input.enabled;
+    if (input.priority != null) data.priority = input.priority;
+    if (input.adapterType != null) data.adapterType = input.adapterType;
+    if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl;
+    if (input.costTier != null) data.costTier = input.costTier;
+    if (input.capabilitiesJson != null) data.capabilitiesJson = input.capabilitiesJson;
+    if (input.configJson !== undefined) {
+      data.configJson = toNullableInputJson(input.configJson);
+    }
+
     const row = await prisma.aiProvider.update({
       where: { id },
-      data: {
-        ...(input.displayName != null ? { displayName: input.displayName } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.enabled != null ? { enabled: input.enabled } : {}),
-        ...(input.priority != null ? { priority: input.priority } : {}),
-        ...(input.adapterType != null ? { adapterType: input.adapterType } : {}),
-        ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl } : {}),
-        ...(input.costTier != null ? { costTier: input.costTier } : {}),
-        ...(input.capabilitiesJson != null ? { capabilitiesJson: input.capabilitiesJson } : {}),
-        ...(input.configJson !== undefined ? { configJson: input.configJson ?? undefined } : {}),
-        updatedByUserId: actorUserId ?? null,
-      },
+      data,
       include: { _count: { select: { models: true, apiKeys: true } } },
     });
     return toProviderView(row);
@@ -140,109 +151,30 @@ export class AiRegistryAdminService {
   }
 
   async listModels(scopeKey?: string, providerId?: string) {
-    const prisma = getPrisma();
-    const scope = scopeKey ?? PLATFORM_SCOPE_KEY;
-    const rows = await prisma.aiModel.findMany({
-      where: {
-        scopeKey: scope,
-        deletedAt: null,
-        ...(providerId ? { providerId } : {}),
-      },
-      orderBy: [{ providerId: 'asc' }, { modelKey: 'asc' }],
-      include: { provider: { select: { providerKey: true, displayName: true } } },
-    });
-    return rows.map((row) => ({
-      id: row.id,
-      scopeKey: row.scopeKey,
-      providerId: row.providerId,
-      providerKey: row.provider.providerKey,
-      providerName: row.provider.displayName,
-      modelKey: row.modelKey,
-      displayName: row.displayName,
-      modelType: row.modelType,
-      contextWindow: row.contextWindow,
-      maxOutputTokens: row.maxOutputTokens,
-      inputCostPerToken: Number(row.inputCostPerToken),
-      outputCostPerToken: Number(row.outputCostPerToken),
-      enabled: row.enabled,
-      isDefault: row.isDefault,
-      capabilitiesJson: row.capabilitiesJson,
-      version: row.version,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
-    }));
+    return getAiModelRegistryService().listModels(
+      omitUndefined({
+        scopeKey,
+        providerId,
+      }),
+    );
   }
 
   async createModel(input: CreateModelInput, actorUserId?: string) {
-    const prisma = getPrisma();
-    const scopeKey = resolveScopeKey(input);
-    const provider = await prisma.aiProvider.findFirst({
-      where: { id: input.providerId, deletedAt: null },
-    });
-    if (!provider) throw new Error('Provider not found');
-
-    const existing = await prisma.aiModel.findFirst({
-      where: { scopeKey, providerId: input.providerId, modelKey: input.modelKey, deletedAt: null },
-    });
-    if (existing) throw new Error(`Model "${input.modelKey}" already exists for provider`);
-
-    const row = await prisma.aiModel.create({
-      data: {
-        scopeKey,
-        tenantId: input.tenantId ?? null,
-        branchId: input.branchId ?? null,
-        providerId: input.providerId,
-        modelKey: input.modelKey,
-        displayName: input.displayName,
-        modelType: input.modelType ?? 'chat',
-        contextWindow: input.contextWindow ?? null,
-        maxOutputTokens: input.maxOutputTokens ?? null,
-        inputCostPerToken: input.inputCostPerToken ?? 0,
-        outputCostPerToken: input.outputCostPerToken ?? 0,
-        enabled: input.enabled ?? true,
-        isDefault: input.isDefault ?? false,
-        capabilitiesJson: input.capabilitiesJson ?? [],
-        metadataJson: input.metadataJson ?? undefined,
-        createdByUserId: actorUserId ?? null,
-        updatedByUserId: actorUserId ?? null,
-      },
-      include: { provider: { select: { providerKey: true, displayName: true } } },
-    });
-    return {
-      id: row.id,
-      providerKey: row.provider.providerKey,
-      modelKey: row.modelKey,
-      displayName: row.displayName,
-      enabled: row.enabled,
-    };
+    return getAiModelRegistryService().createModel(input, actorUserId);
   }
 
   async updateModel(id: string, input: UpdateModelInput, actorUserId?: string) {
-    const prisma = getPrisma();
-    const existing = await prisma.aiModel.findFirst({ where: { id, deletedAt: null } });
-    if (!existing) throw new Error('Model not found');
-
-    await prisma.aiModel.update({
-      where: { id },
-      data: {
-        ...(input.displayName != null ? { displayName: input.displayName } : {}),
-        ...(input.modelType != null ? { modelType: input.modelType } : {}),
-        ...(input.contextWindow !== undefined ? { contextWindow: input.contextWindow } : {}),
-        ...(input.maxOutputTokens !== undefined ? { maxOutputTokens: input.maxOutputTokens } : {}),
-        ...(input.inputCostPerToken != null ? { inputCostPerToken: input.inputCostPerToken } : {}),
-        ...(input.outputCostPerToken != null ? { outputCostPerToken: input.outputCostPerToken } : {}),
-        ...(input.enabled != null ? { enabled: input.enabled } : {}),
-        ...(input.isDefault != null ? { isDefault: input.isDefault } : {}),
-        ...(input.capabilitiesJson != null ? { capabilitiesJson: input.capabilitiesJson } : {}),
-        ...(input.metadataJson !== undefined ? { metadataJson: input.metadataJson ?? undefined } : {}),
-        updatedByUserId: actorUserId ?? null,
-      },
-    });
-    return this.listModels(existing.scopeKey).then((rows) => rows.find((r) => r.id === id)!);
+    return getAiModelRegistryService().updateModel(id, input, actorUserId);
   }
 
   async toggleModel(id: string, enabled: boolean, actorUserId?: string) {
-    return this.updateModel(id, { enabled }, actorUserId);
+    if (!actorUserId) {
+      throw new Error('Actor required for model toggle');
+    }
+    return getAiModelRegistryService().toggleModel(id, enabled, {
+      id: actorUserId,
+      role: 'admin',
+    });
   }
 
   async listRoutes(scopeKey?: string) {
@@ -302,13 +234,13 @@ export class AiRegistryAdminService {
         priority: input.priority ?? 100,
         primaryProviderId: input.primaryProviderId ?? null,
         primaryModelId: input.primaryModelId ?? null,
-        providerChainJson: input.providerChainJson ?? [],
+        providerChainJson: toInputJson(input.providerChainJson ?? []),
         maxRetries: input.maxRetries ?? 2,
         timeoutMs: input.timeoutMs ?? 30_000,
         asyncRequired: input.asyncRequired ?? false,
         maxCostUsd: input.maxCostUsd ?? null,
         fallbackToRules: input.fallbackToRules ?? true,
-        conditionsJson: input.conditionsJson ?? undefined,
+        ...(input.conditionsJson != null ? { conditionsJson: toInputJson(input.conditionsJson) } : {}),
         createdByUserId: actorUserId ?? null,
         updatedByUserId: actorUserId ?? null,
       },
@@ -321,25 +253,29 @@ export class AiRegistryAdminService {
     const existing = await prisma.aiRoute.findFirst({ where: { id, deletedAt: null } });
     if (!existing) throw new Error('Route not found');
 
+    const data: Prisma.AiRouteUncheckedUpdateInput = {
+      updatedByUserId: actorUserId ?? null,
+    };
+    if (input.name != null) data.name = input.name;
+    if (input.taskType != null) data.taskType = input.taskType;
+    if (input.description !== undefined) data.description = input.description;
+    if (input.enabled != null) data.enabled = input.enabled;
+    if (input.priority != null) data.priority = input.priority;
+    if (input.primaryProviderId !== undefined) data.primaryProviderId = input.primaryProviderId;
+    if (input.primaryModelId !== undefined) data.primaryModelId = input.primaryModelId;
+    if (input.providerChainJson != null) data.providerChainJson = toInputJson(input.providerChainJson);
+    if (input.maxRetries != null) data.maxRetries = input.maxRetries;
+    if (input.timeoutMs != null) data.timeoutMs = input.timeoutMs;
+    if (input.asyncRequired != null) data.asyncRequired = input.asyncRequired;
+    if (input.maxCostUsd !== undefined) data.maxCostUsd = input.maxCostUsd;
+    if (input.fallbackToRules != null) data.fallbackToRules = input.fallbackToRules;
+    if (input.conditionsJson !== undefined) {
+      data.conditionsJson = toNullableInputJson(input.conditionsJson);
+    }
+
     await prisma.aiRoute.update({
       where: { id },
-      data: {
-        ...(input.name != null ? { name: input.name } : {}),
-        ...(input.taskType != null ? { taskType: input.taskType } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.enabled != null ? { enabled: input.enabled } : {}),
-        ...(input.priority != null ? { priority: input.priority } : {}),
-        ...(input.primaryProviderId !== undefined ? { primaryProviderId: input.primaryProviderId } : {}),
-        ...(input.primaryModelId !== undefined ? { primaryModelId: input.primaryModelId } : {}),
-        ...(input.providerChainJson != null ? { providerChainJson: input.providerChainJson } : {}),
-        ...(input.maxRetries != null ? { maxRetries: input.maxRetries } : {}),
-        ...(input.timeoutMs != null ? { timeoutMs: input.timeoutMs } : {}),
-        ...(input.asyncRequired != null ? { asyncRequired: input.asyncRequired } : {}),
-        ...(input.maxCostUsd !== undefined ? { maxCostUsd: input.maxCostUsd } : {}),
-        ...(input.fallbackToRules != null ? { fallbackToRules: input.fallbackToRules } : {}),
-        ...(input.conditionsJson !== undefined ? { conditionsJson: input.conditionsJson ?? undefined } : {}),
-        updatedByUserId: actorUserId ?? null,
-      },
+      data,
     });
     return this.listRoutes(existing.scopeKey).then((rows) => rows.find((r) => r.id === id)!);
   }
@@ -400,13 +336,17 @@ export class AiRegistryAdminService {
         enabled: input.enabled ?? true,
         priority: input.priority ?? 100,
         triggerType: input.triggerType,
-        triggerConfigJson: input.triggerConfigJson ?? undefined,
+        ...(input.triggerConfigJson != null
+          ? { triggerConfigJson: toInputJson(input.triggerConfigJson) }
+          : {}),
         fromProviderId: input.fromProviderId ?? null,
         toProviderId: input.toProviderId ?? null,
         fromModelId: input.fromModelId ?? null,
         toModelId: input.toModelId ?? null,
         action: input.action,
-        actionConfigJson: input.actionConfigJson ?? undefined,
+        ...(input.actionConfigJson != null
+          ? { actionConfigJson: toInputJson(input.actionConfigJson) }
+          : {}),
         createdByUserId: actorUserId ?? null,
         updatedByUserId: actorUserId ?? null,
       },
@@ -419,27 +359,29 @@ export class AiRegistryAdminService {
     const existing = await prisma.aiFailoverRule.findFirst({ where: { id, deletedAt: null } });
     if (!existing) throw new Error('Failover rule not found');
 
+    const data: Prisma.AiFailoverRuleUncheckedUpdateInput = {
+      updatedByUserId: actorUserId ?? null,
+    };
+    if (input.name != null) data.name = input.name;
+    if (input.routeId !== undefined) data.routeId = input.routeId;
+    if (input.enabled != null) data.enabled = input.enabled;
+    if (input.priority != null) data.priority = input.priority;
+    if (input.triggerType != null) data.triggerType = input.triggerType;
+    if (input.triggerConfigJson !== undefined) {
+      data.triggerConfigJson = toNullableInputJson(input.triggerConfigJson);
+    }
+    if (input.fromProviderId !== undefined) data.fromProviderId = input.fromProviderId;
+    if (input.toProviderId !== undefined) data.toProviderId = input.toProviderId;
+    if (input.fromModelId !== undefined) data.fromModelId = input.fromModelId;
+    if (input.toModelId !== undefined) data.toModelId = input.toModelId;
+    if (input.action != null) data.action = input.action;
+    if (input.actionConfigJson !== undefined) {
+      data.actionConfigJson = toNullableInputJson(input.actionConfigJson);
+    }
+
     await prisma.aiFailoverRule.update({
       where: { id },
-      data: {
-        ...(input.name != null ? { name: input.name } : {}),
-        ...(input.routeId !== undefined ? { routeId: input.routeId } : {}),
-        ...(input.enabled != null ? { enabled: input.enabled } : {}),
-        ...(input.priority != null ? { priority: input.priority } : {}),
-        ...(input.triggerType != null ? { triggerType: input.triggerType } : {}),
-        ...(input.triggerConfigJson !== undefined
-          ? { triggerConfigJson: input.triggerConfigJson ?? undefined }
-          : {}),
-        ...(input.fromProviderId !== undefined ? { fromProviderId: input.fromProviderId } : {}),
-        ...(input.toProviderId !== undefined ? { toProviderId: input.toProviderId } : {}),
-        ...(input.fromModelId !== undefined ? { fromModelId: input.fromModelId } : {}),
-        ...(input.toModelId !== undefined ? { toModelId: input.toModelId } : {}),
-        ...(input.action != null ? { action: input.action } : {}),
-        ...(input.actionConfigJson !== undefined
-          ? { actionConfigJson: input.actionConfigJson ?? undefined }
-          : {}),
-        updatedByUserId: actorUserId ?? null,
-      },
+      data,
     });
     return this.listFailoverRules(existing.scopeKey).then((rows) => rows.find((r) => r.id === id)!);
   }

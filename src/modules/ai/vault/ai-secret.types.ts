@@ -24,6 +24,7 @@ export type AiApiKeyPublic = {
   encryptionKeyId: string;
   encryptionAlgorithm: string;
   secretHint: string | null;
+  isPrimary: boolean;
   expiresAt: string | null;
   rotatedAt: string | null;
   revokedAt: string | null;
@@ -31,6 +32,8 @@ export type AiApiKeyPublic = {
   version: number;
   createdAt: string;
   updatedAt: string;
+  /** True when `encryptedSecret` is a seed/demo placeholder (not decryptable). */
+  isPlaceholder: boolean;
 };
 
 export type AddAiApiKeyInput = AiSecretScope & {
@@ -69,6 +72,55 @@ export type AiApiKeyAuditEntry = {
   metadataJson: unknown;
   ipAddress: string | null;
   createdAt: string;
+};
+
+export type AiConnectionTestResult = AiApiKeyTestResult & {
+  providerId?: string;
+  apiKeyId?: string;
+  testedAt: string;
+  probeType: 'validate' | 'manual' | 'health';
+};
+
+export type AiProviderKeySummary = {
+  hasPrimary: boolean;
+  primaryKeyId: string | null;
+  hint: string | null;
+  expiresAt: string | null;
+  pendingTestCount: number;
+  activeCount: number;
+};
+
+export type AiProviderEffectiveStatus =
+  | 'ACTIVE'
+  | 'DEGRADED'
+  | 'DISABLED'
+  | 'UNCONFIGURED'
+  | 'BLOCKED';
+
+export type AiProviderAdminDto = {
+  id: string;
+  scopeKey: string;
+  providerKey: string;
+  displayName: string;
+  description: string | null;
+  enabled: boolean;
+  effectiveStatus: AiProviderEffectiveStatus;
+  priority: number;
+  adapterType: string;
+  baseUrl: string | null;
+  costTier: string;
+  healthScore: number;
+  lastHealthCheckAt: string | null;
+  lastConnectionTestAt: string | null;
+  lastConnectionTestOk: boolean | null;
+  capabilitiesJson: unknown;
+  configJson: unknown;
+  modelCount: number;
+  apiKeyCount: number;
+  keySummary: AiProviderKeySummary;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type RotateAiApiKeyResult = {

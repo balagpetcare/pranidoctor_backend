@@ -12,6 +12,11 @@ export class GrokProvider extends OpenAiCompatibleProvider implements IAIProvide
   readonly displayName = 'Grok (xAI)';
 }
 
+export class GroqProvider extends OpenAiCompatibleProvider implements IAIProvider {
+  readonly key: AiProviderKey = 'groq';
+  readonly displayName = 'Groq';
+}
+
 export class DeepSeekProvider extends OpenAiCompatibleProvider implements IAIProvider {
   readonly key: AiProviderKey = 'deepseek';
   readonly displayName = 'DeepSeek';

@@ -60,6 +60,8 @@ export type AnimalJsonDto = {
   animalType: AnimalType | null;
   breed: string | null;
   weightKg: string | null;
+  lastWeightMethod: string | null;
+  lastWeightMeasuredAt: string | null;
   dateOfBirth: string | null;
   ageYears: number | null;
   ageMonths: number | null;
@@ -93,6 +95,8 @@ export function toAnimalJsonDto(row: AnimalProfile): AnimalJsonDto {
     animalType: row.animalType,
     breed: row.breed ?? null,
     weightKg: row.weightKg != null ? row.weightKg.toString() : null,
+    lastWeightMethod: row.lastWeightMethod ?? null,
+    lastWeightMeasuredAt: row.lastWeightMeasuredAt?.toISOString() ?? null,
     dateOfBirth: dob?.toISOString() ?? null,
     ageYears,
     ageMonths,

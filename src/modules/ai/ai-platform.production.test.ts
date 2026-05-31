@@ -52,6 +52,17 @@ vi.mock('./ai.repository.js', () => ({
   }),
 }));
 
+vi.mock('./routing/ai-router.service.js', () => ({
+  getAIRouterService: () => ({
+    resolve: vi.fn().mockRejectedValue(new Error('no route in test')),
+  }),
+}));
+
+vi.mock('./security/ai-prompt-security.service.js', () => ({
+  assertAiPromptAllowed: (_msg: string) => _msg,
+  filterAiResponseOutput: (msg: string) => msg,
+}));
+
 vi.mock('./governance/ai-governance.enforcement.js', () => ({
   shouldUseRulesOnlyForFeature: () => false,
   isProviderGovernanceBlocked: () => false,
@@ -135,15 +146,11 @@ describe('AI provider validation', () => {
 });
 
 describe('AI orchestrator fallback chain', () => {
-  beforeEach(() => {
-    recordAttemptMock.mockClear();
-    resetAiPlatformConfigCache();
-    secretConfiguredMock.mockReturnValue(true);
-  });
+    process.env.AI_REGISTRY_ORCHESTRATOR_ENABLED = 'false';
 
   it('falls back OpenAI → Anthropic → rules on failures', async () => {
     const orchestrator = new AiOrchestratorService();
-    (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+    (orchestrator as unknown as { legacyProviders: AiProviderAdapter[] }).legacyProviders = [
       mockProvider('openai', 'fail'),
       mockProvider('anthropic', 'fail'),
       mockProvider('rules-based', 'ok'),
@@ -164,7 +171,7 @@ describe('AI orchestrator fallback chain', () => {
 
   it('uses Anthropic when OpenAI fails', async () => {
     const orchestrator = new AiOrchestratorService();
-    (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+    (orchestrator as unknown as { legacyProviders: AiProviderAdapter[] }).legacyProviders = [
       mockProvider('openai', 'fail'),
       mockProvider('anthropic', 'ok'),
       mockProvider('rules-based', 'ok'),
@@ -190,7 +197,7 @@ describe('AI budget controls', () => {
     budgetBlockedFlag = true;
 
     const orchestrator = new AiOrchestratorService();
-    (orchestrator as unknown as { providers: AiProviderAdapter[] }).providers = [
+    (orchestrator as unknown as { legacyProviders: AiProviderAdapter[] }).legacyProviders = [
       mockProvider('openai', 'ok'),
       mockProvider('anthropic', 'ok'),
       mockProvider('rules-based', 'ok'),

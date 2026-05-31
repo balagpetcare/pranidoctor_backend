@@ -10,9 +10,11 @@ const prismaMock = {
     findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
   aiProvider: {
     findFirst: vi.fn(),
+    update: vi.fn(),
   },
   aiApiKeyAuditLog: {
     create: vi.fn(),
@@ -63,6 +65,7 @@ describe('AiSecretService', () => {
       id: 'prov-1',
       providerKey: 'openai',
     });
+    prismaMock.aiApiKey.findFirst.mockResolvedValue(null);
     prismaMock.aiApiKey.create.mockResolvedValue({
       id: 'key-1',
       scopeKey: 'platform',
@@ -70,7 +73,9 @@ describe('AiSecretService', () => {
       branchId: null,
       providerId: 'prov-1',
       name: 'default',
-      status: AiApiKeyStatus.ACTIVE,
+      status: AiApiKeyStatus.PENDING_TEST,
+      isPrimary: true,
+      encryptedSecret: 'v1:a:b:c',
       encryptionKeyId: 'vault:v1',
       encryptionAlgorithm: 'aes-256-gcm',
       secretHint: '****cdef',
@@ -94,10 +99,13 @@ describe('AiSecretService', () => {
     });
 
     expect(result.providerKey).toBe('openai');
+    expect(result.isPlaceholder).toBe(false);
     expect(result.secretHint).toBe('****cdef');
     expect(prismaMock.aiApiKey.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          status: AiApiKeyStatus.PENDING_TEST,
+          isPrimary: true,
           encryptedSecret: expect.stringMatching(/^v1:/),
           secretHint: expect.any(String),
         }),
@@ -116,6 +124,7 @@ describe('AiSecretService', () => {
 
     prismaMock.aiApiKey.findFirst.mockResolvedValue({
       id: 'key-1',
+      isPrimary: true,
       encryptedSecret: enc.ciphertext,
       provider: { providerKey: 'openai' },
     });
@@ -142,6 +151,7 @@ describe('AiSecretService', () => {
       providerId: 'prov-1',
       name: 'default',
       status: AiApiKeyStatus.REVOKED,
+      encryptedSecret: 'v1:a:b:c',
       encryptionKeyId: 'vault:v1',
       encryptionAlgorithm: 'aes-256-gcm',
       secretHint: '****cdef',
@@ -164,5 +174,57 @@ describe('AiSecretService', () => {
         data: expect.objectContaining({ action: AiApiKeyAuditAction.DISABLED }),
       }),
     );
+  });
+
+  it('testKey returns friendly result for placeholder ciphertext without decrypting', async () => {
+    prismaMock.aiApiKey.findFirst.mockResolvedValue({
+      id: 'key-seed',
+      status: AiApiKeyStatus.ACTIVE,
+      encryptedSecret: 'ENC:PLACEHOLDER:v1:not-a-real-api-key',
+      providerId: 'prov-1',
+      scopeKey: 'platform',
+      provider: { providerKey: 'openai', baseUrl: 'https://api.openai.com/v1', adapterType: 'openai_native' },
+    });
+    prismaMock.aiApiKeyAuditLog.create.mockResolvedValue({});
+
+    const { testProviderApiKey } = await import('./provider-key-test.js');
+    const result = await service.testKey('key-seed', { userId: 'admin-1' });
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe('VAULT_PLACEHOLDER_SECRET');
+    expect(result.message).toMatch(/seed\/demo/i);
+    expect(testProviderApiKey).not.toHaveBeenCalled();
+    expect(prismaMock.aiApiKeyAuditLog.create).toHaveBeenCalled();
+  });
+
+  it('listKeys marks placeholder rows', async () => {
+    prismaMock.aiApiKey.findMany.mockResolvedValue([
+      {
+        id: 'key-1',
+        scopeKey: 'platform',
+        tenantId: null,
+        branchId: null,
+        providerId: 'prov-1',
+        name: 'default',
+        status: AiApiKeyStatus.ACTIVE,
+        encryptedSecret: 'ENC:PLACEHOLDER:v1:not-a-real-api-key',
+        encryptionKeyId: 'seed:v1',
+        encryptionAlgorithm: 'aes-256-gcm',
+        secretHint: '****seed',
+        isPrimary: true,
+        expiresAt: null,
+        rotatedAt: null,
+        revokedAt: null,
+        lastUsedAt: null,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        provider: { providerKey: 'openai' },
+      },
+    ]);
+
+    const rows = await service.listKeys();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.isPlaceholder).toBe(true);
   });
 });

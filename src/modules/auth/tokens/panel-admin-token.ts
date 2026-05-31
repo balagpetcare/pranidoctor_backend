@@ -17,7 +17,7 @@ export function getAdminJwtSecret(): string | null {
   return raw;
 }
 
-export type AdminPanelSessionRole = 'ADMIN' | 'SUPER_ADMIN';
+export type AdminPanelSessionRole = 'ADMIN' | 'SUPER_ADMIN' | 'SUPPORT';
 
 export type AdminJwtPayload = {
   sub: string;
@@ -61,7 +61,7 @@ export async function verifyAdminToken(token: string): Promise<AdminJwtPayload |
       algorithms: [ALG],
     });
     const role = payload.role;
-    if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') return null;
+    if (role !== 'ADMIN' && role !== 'SUPER_ADMIN' && role !== 'SUPPORT') return null;
     if (typeof payload.sub !== 'string') return null;
     if (typeof payload.email !== 'string') return null;
     const sid = typeof payload.sid === 'string' ? payload.sid : undefined;

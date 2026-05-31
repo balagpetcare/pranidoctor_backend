@@ -1,15 +1,11 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../../modules/ai/admin/ai-admin.guard.js';
-import {
-  getAiRegistryAdminService,
-  updateFailoverRuleSchema,
-} from '../../../../../../../modules/ai/admin/index.js';
+import { requireAiAdminCapability, getAiRegistryAdminService, updateFailoverRuleSchema } from '../../../../../../../modules/ai/admin/index.js';
 
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAiAdminActor();
+  const auth = await requireAiAdminCapability('ai.registry.manage');
   if (!auth.ok) return auth.response;
   const { id } = await context.params;
   let json: unknown;

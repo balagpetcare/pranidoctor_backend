@@ -4,8 +4,7 @@ import type {
   UsageReportRow,
 } from './ai-usage-analytics.types.js';
 import { getAiUsageAnalyticsService } from './ai-usage-analytics.service.js';
-import { buildUsageRecordWhere, decimalToNumber, roundUsd } from './ai-usage-analytics.util.js';
-import { getPrisma } from '../../../../shared/database/prisma.js';
+import { decimalToNumber, roundUsd } from './ai-usage-analytics.util.js';
 
 export class AiUsageReportService {
   readonly name = 'AiUsageReportService';
@@ -15,53 +14,25 @@ export class AiUsageReportService {
     options?: { limit?: number },
   ): Promise<UsageReportPayload> {
     const limit = Math.min(options?.limit ?? 5000, 10_000);
-    const prisma = getPrisma();
+    const logs = await getAiUsageAnalyticsService().listRecentUsageLogs(filters, limit);
 
-    const [records, logs] = await Promise.all([
-      prisma.aiUsageRecord.findMany({
-        where: buildUsageRecordWhere(filters),
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      }),
-      getAiUsageAnalyticsService().listRecentUsageLogs(filters, Math.min(limit, 500)),
-    ]);
-
-    const rows: UsageReportRow[] =
-      logs.length > 0
-        ? logs.map((row) => ({
-            timestamp: row.createdAt.toISOString(),
-            userId: row.userId,
-            branchId: row.branchId,
-            organizationId: row.organizationId,
-            feature: row.feature ?? 'UNKNOWN',
-            taskType: row.taskType,
-            provider: row.providerKey,
-            model: row.modelKey,
-            inputTokens: row.inputTokens,
-            outputTokens: row.outputTokens,
-            totalTokens: row.totalTokens,
-            costUsd: roundUsd(decimalToNumber(row.costUsd)),
-            latencyMs: row.latencyMs,
-            success: row.success,
-            errorCode: row.errorCode,
-          }))
-        : records.map((row) => ({
-            timestamp: row.createdAt.toISOString(),
-            userId: row.userId,
-            branchId: row.branchId,
-            organizationId: row.organizationId,
-            feature: row.feature,
-            taskType: null,
-            provider: row.provider,
-            model: row.model,
-            inputTokens: row.inputTokens,
-            outputTokens: row.outputTokens,
-            totalTokens: row.totalTokens,
-            costUsd: roundUsd(decimalToNumber(row.costUsd)),
-            latencyMs: row.latencyMs,
-            success: row.success,
-            errorCode: row.errorCode,
-          }));
+    const rows: UsageReportRow[] = logs.map((row) => ({
+      timestamp: row.createdAt.toISOString(),
+      userId: row.userId,
+      branchId: row.branchId,
+      organizationId: row.organizationId,
+      feature: row.feature ?? 'UNKNOWN',
+      taskType: row.taskType,
+      provider: row.providerKey,
+      model: row.modelKey,
+      inputTokens: row.inputTokens,
+      outputTokens: row.outputTokens,
+      totalTokens: row.totalTokens,
+      costUsd: roundUsd(decimalToNumber(row.costUsd)),
+      latencyMs: row.latencyMs,
+      success: row.success,
+      errorCode: row.errorCode,
+    }));
 
     const totalTokens = rows.reduce((sum, row) => sum + row.totalTokens, 0);
     const costUsd = roundUsd(rows.reduce((sum, row) => sum + row.costUsd, 0));
@@ -120,7 +91,6 @@ export class AiUsageReportService {
         ].join(','),
       );
     }
-
     return lines.join('\n');
   }
 }
@@ -133,13 +103,13 @@ function csvCell(value: string | null | undefined): string {
   return value;
 }
 
-let aiUsageReportService: AiUsageReportService | null = null;
+let service: AiUsageReportService | null = null;
 
 export function getAiUsageReportService(): AiUsageReportService {
-  if (!aiUsageReportService) aiUsageReportService = new AiUsageReportService();
-  return aiUsageReportService;
+  if (!service) service = new AiUsageReportService();
+  return service;
 }
 
 export function resetAiUsageReportServiceForTests(): void {
-  aiUsageReportService = null;
+  service = null;
 }

@@ -163,11 +163,15 @@ export class PanelAdminAuthService {
       };
     }
 
-    const isPanelAdmin =
+    const isPanelStaff =
       user &&
-      (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) &&
+      (user.role === UserRole.ADMIN ||
+        user.role === UserRole.SUPER_ADMIN ||
+        user.role === UserRole.SUPPORT) &&
       user.status === UserStatus.ACTIVE &&
       user.adminProfile;
+
+    const isPanelAdmin = isPanelStaff;
 
     if (!isPanelAdmin || !user) {
       logAdminLoginFailure('invalid_credentials');
@@ -209,7 +213,11 @@ export class PanelAdminAuthService {
     }
 
     const sessionRole: AdminPanelSessionRole =
-      user.role === UserRole.SUPER_ADMIN ? 'SUPER_ADMIN' : 'ADMIN';
+      user.role === UserRole.SUPER_ADMIN
+        ? 'SUPER_ADMIN'
+        : user.role === UserRole.SUPPORT
+          ? 'SUPPORT'
+          : 'ADMIN';
 
     let panelSessionId: string | undefined;
     try {
@@ -260,7 +268,7 @@ export class PanelAdminAuthService {
           email: user.email,
           displayName,
           name: displayName ?? user.email,
-          role: sessionRole,
+          role: user.role,
         },
       },
     };
@@ -292,7 +300,10 @@ export class PanelAdminAuthService {
     });
 
     if (!user?.adminProfile) return null;
-    const roleOk = user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
+    const roleOk =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.SUPPORT;
     if (!roleOk || user.status !== UserStatus.ACTIVE) return null;
 
     return {

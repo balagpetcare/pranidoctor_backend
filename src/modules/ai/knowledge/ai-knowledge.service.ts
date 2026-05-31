@@ -6,6 +6,8 @@ import {
 } from '../../../generated/prisma/index.js';
 import { getPrisma } from '../../../shared/database/prisma.js';
 import { omitUndefined } from '../../../shared/types/object.utils.js';
+import { getKnowledgePublishWorkflowService } from '../knowledge-ingestion/workflow/publish-workflow.service.js';
+import { getKnowledgeRetrievalService } from '../knowledge-retrieval/knowledge-retrieval.service.js';
 
 export class AiKnowledgeService {
   readonly name = 'AiKnowledgeService';
@@ -63,17 +65,23 @@ export class AiKnowledgeService {
     locale: 'bn' | 'en';
     species?: LivestockSpecies;
     limit?: number;
+    taskType?: import('../routing/ai-task.types.js').AiDbTaskType;
   }): Promise<string> {
-    const hits = await this.search(
+    const pack = await getKnowledgeRetrievalService().retrieve(
       omitUndefined({
         query: params.query,
         locale: params.locale,
         species: params.species,
-        limit: params.limit ?? 4,
+        taskType: params.taskType ?? 'GENERAL_CHAT',
+        feature: 'knowledge_rag',
       }),
     );
-    if (hits.length === 0) return '';
-    return hits.map((h, i) => `[${i + 1}] ${h.title}: ${h.excerpt}`).join('\n\n');
+
+    if (pack.routingDecision.action === 'BLOCK') {
+      return '';
+    }
+
+    return pack.citationBlock;
   }
 
   async listAdmin(filters?: { status?: AiKnowledgeStatus; contentType?: AiKnowledgeContentType }) {
@@ -133,14 +141,13 @@ export class AiKnowledgeService {
   }
 
   async publish(id: string, reviewedById?: string) {
-    return getPrisma().aiKnowledgeEntry.update({
-      where: { id },
-      data: omitUndefined({
-        status: AiKnowledgeStatus.PUBLISHED,
-        publishedAt: new Date(),
+    return getKnowledgePublishWorkflowService().publish(
+      omitUndefined({
+        knowledgeEntryId: id,
         reviewedById,
+        actorUserId: reviewedById,
       }),
-    });
+    );
   }
 }
 

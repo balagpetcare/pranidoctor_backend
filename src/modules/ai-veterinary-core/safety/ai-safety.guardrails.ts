@@ -2,6 +2,7 @@ const DIAGNOSIS_PATTERNS = [
   /\bdiagnos(is|e|ed)\b/i,
   /\byou have\b/i,
   /\bit is (likely|probably|certainly)\b/i,
+  /\b(definitely|certainly)\s+has\b/i,
   /\bprescri(be|ption)\b/i,
   /\btake this (medicine|antibiotic|drug)\b/i,
   /\bআপনার .* রোগ\b/u,

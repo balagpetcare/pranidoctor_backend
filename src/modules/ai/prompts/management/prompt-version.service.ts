@@ -53,7 +53,11 @@ export class PromptVersionService {
     return result.count;
   }
 
-  scopeKey(input?: { scopeKey?: string; tenantId?: string | null; branchId?: string | null }): string {
+  scopeKey(input?: {
+    scopeKey?: string | undefined;
+    tenantId?: string | null | undefined;
+    branchId?: string | null | undefined;
+  }): string {
     if (input?.scopeKey?.trim()) return input.scopeKey.trim();
     if (input?.tenantId && input?.branchId) return `tenant:${input.tenantId}:branch:${input.branchId}`;
     if (input?.tenantId) return `tenant:${input.tenantId}`;

@@ -1,5 +1,6 @@
 import type { IAIProvider } from '../providers/core/ai-provider.interface.js';
 import type { ProviderRuntimeConfig } from '../providers/core/ai-provider.types.js';
+import { omitUndefined } from '../../../shared/types/object.utils.js';
 import type { ExtensionManifest } from './marketplace.types.js';
 import { DynamicOpenAiCompatibleProvider } from './adapters/dynamic-openai.provider.js';
 import { SelfHostedLlmProvider } from './adapters/self-hosted.provider.js';
@@ -55,7 +56,7 @@ function mergeRuntimeConfig(input: AdapterBuildInput): ProviderRuntimeConfig {
       ? (input.dbConfig.configJson as Record<string, unknown>)
       : {};
 
-  return {
+  return omitUndefined({
     baseUrl:
       (cfg.baseUrl ?? input.dbConfig?.baseUrl ?? dbJson.baseUrl ?? 'http://localhost:11434/v1') as string,
     chatModel: (cfg.chatModel ?? dbJson.chatModel ?? 'default') as string,
@@ -64,7 +65,7 @@ function mergeRuntimeConfig(input: AdapterBuildInput): ProviderRuntimeConfig {
     adapterType: input.manifest.adapterType,
     authHeader: cfg.authHeader ?? 'bearer',
     extraHeaders: cfg.extraHeaders,
-  };
+  });
 }
 
 function openAiCompatibleFactory(input: AdapterBuildInput): IAIProvider {

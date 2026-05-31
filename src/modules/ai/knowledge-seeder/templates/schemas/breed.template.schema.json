@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pranidoctor.local/schemas/knowledge/breed.template.schema.json",
+  "title": "PraniDoctor Breed Knowledge Import Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "domain", "titleBn", "titleEn", "bodyBn", "bodyEn", "sourceSpanRefs", "structuredJson"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "domain": { "const": "BREED" },
+    "entityType": { "type": "string", "default": "Breed" },
+    "titleBn": { "type": "string", "minLength": 1 },
+    "titleEn": { "type": "string", "minLength": 1 },
+    "bodyBn": { "type": "string", "minLength": 1 },
+    "bodyEn": { "type": "string", "minLength": 1 },
+    "regionScope": { "enum": ["BD"], "default": "BD" },
+    "clinicalRiskTier": { "enum": ["LOW"] },
+    "chunkPolicyId": { "const": "BREED_BY_SECTION" },
+    "structuredJson": {
+      "type": "object",
+      "required": ["breedCode", "species"],
+      "properties": {
+        "breedCode": { "type": "string" },
+        "species": { "type": "string" },
+        "originRegion": { "type": "string" },
+        "purpose": { "enum": ["dairy", "meat", "dual"] },
+        "adultWeightKgRange": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+      }
+    },
+    "sourceSpanRefs": { "type": "array", "minItems": 1 }
+  }
+}

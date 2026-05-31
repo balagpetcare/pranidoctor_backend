@@ -1,5 +1,8 @@
 import { AiPromptStatus } from '../../../../generated/prisma/index.js';
+import type { Prisma } from '../../../../generated/prisma/index.js';
 import { getPrisma } from '../../../../shared/database/prisma.js';
+import { toInputJson, toNullableInputJson } from '../../../../shared/database/prisma-json.js';
+import { omitUndefined } from '../../../../shared/types/object.utils.js';
 import { logAiExecution } from '../../../../shared/monitoring/structured-logging.js';
 import {
   PromptNotDraftError,
@@ -90,9 +93,11 @@ export class AiPromptManagementService {
         userTemplateEn: input.userTemplateEn ?? null,
         status: AiPromptStatus.DRAFT,
         trafficPercent: input.trafficPercent ?? 100,
-        variablesSchemaJson: input.variablesSchemaJson ?? undefined,
-        testCasesJson: input.testCasesJson ?? undefined,
-        metadataJson: buildMetadataJson({ kind, metadataJson: input.metadataJson }),
+        ...(input.variablesSchemaJson != null
+          ? { variablesSchemaJson: toInputJson(input.variablesSchemaJson) }
+          : {}),
+        ...(input.testCasesJson != null ? { testCasesJson: toInputJson(input.testCasesJson) } : {}),
+        metadataJson: toInputJson(buildMetadataJson({ kind, metadataJson: input.metadataJson })),
         createdByUserId: input.actor?.userId ?? null,
         updatedByUserId: input.actor?.userId ?? null,
       },
@@ -114,25 +119,27 @@ export class AiPromptManagementService {
       throw new PromptNotFoundError(`No published prompt for key "${normalizedKey}"`);
     }
 
-    return this.createDraft({
-      promptKey: normalizedKey,
-      name: published.name,
-      description: published.description ?? undefined,
-      kind: published.taskType ? 'feature' : 'system',
-      taskType: published.taskType ?? undefined,
-      systemBn: published.systemBn,
-      systemEn: published.systemEn,
-      userTemplateBn: published.userTemplateBn ?? undefined,
-      userTemplateEn: published.userTemplateEn ?? undefined,
-      scopeKey,
-      tenantId: published.tenantId,
-      branchId: published.branchId,
-      trafficPercent: published.trafficPercent,
-      variablesSchemaJson: published.variablesSchemaJson ?? undefined,
-      testCasesJson: published.testCasesJson ?? undefined,
-      metadataJson: published.metadataJson ?? undefined,
-      actor: options?.actor,
-    });
+    return this.createDraft(
+      omitUndefined({
+        promptKey: normalizedKey,
+        name: published.name,
+        description: published.description ?? undefined,
+        kind: (published.taskType ? 'feature' : 'system') as 'feature' | 'system',
+        taskType: published.taskType ?? undefined,
+        systemBn: published.systemBn,
+        systemEn: published.systemEn,
+        userTemplateBn: published.userTemplateBn ?? undefined,
+        userTemplateEn: published.userTemplateEn ?? undefined,
+        scopeKey,
+        tenantId: published.tenantId ?? undefined,
+        branchId: published.branchId ?? undefined,
+        trafficPercent: published.trafficPercent,
+        variablesSchemaJson: published.variablesSchemaJson ?? undefined,
+        testCasesJson: published.testCasesJson ?? undefined,
+        metadataJson: published.metadataJson ?? undefined,
+        actor: options?.actor,
+      }),
+    );
   }
 
   async updateDraft(id: string, input: UpdatePromptDraftInput): Promise<PromptView> {
@@ -142,24 +149,30 @@ export class AiPromptManagementService {
       throw new PromptNotDraftError();
     }
 
+    const data: Prisma.AiPromptUncheckedUpdateInput = {
+      updatedByUserId: input.actor?.userId ?? null,
+    };
+    if (input.name != null) data.name = input.name;
+    if (input.description !== undefined) data.description = input.description;
+    if (input.taskType !== undefined) data.taskType = input.taskType;
+    if (input.systemBn != null) data.systemBn = input.systemBn;
+    if (input.systemEn != null) data.systemEn = input.systemEn;
+    if (input.userTemplateBn !== undefined) data.userTemplateBn = input.userTemplateBn;
+    if (input.userTemplateEn !== undefined) data.userTemplateEn = input.userTemplateEn;
+    if (input.trafficPercent != null) data.trafficPercent = input.trafficPercent;
+    if (input.variablesSchemaJson !== undefined) {
+      data.variablesSchemaJson = toNullableInputJson(input.variablesSchemaJson);
+    }
+    if (input.testCasesJson !== undefined) {
+      data.testCasesJson = toNullableInputJson(input.testCasesJson);
+    }
+    if (input.metadataJson !== undefined) {
+      data.metadataJson = toNullableInputJson(input.metadataJson);
+    }
+
     const row = await prisma.aiPrompt.update({
       where: { id },
-      data: {
-        ...(input.name != null ? { name: input.name } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.taskType !== undefined ? { taskType: input.taskType } : {}),
-        ...(input.systemBn != null ? { systemBn: input.systemBn } : {}),
-        ...(input.systemEn != null ? { systemEn: input.systemEn } : {}),
-        ...(input.userTemplateBn !== undefined ? { userTemplateBn: input.userTemplateBn } : {}),
-        ...(input.userTemplateEn !== undefined ? { userTemplateEn: input.userTemplateEn } : {}),
-        ...(input.trafficPercent != null ? { trafficPercent: input.trafficPercent } : {}),
-        ...(input.variablesSchemaJson !== undefined
-          ? { variablesSchemaJson: input.variablesSchemaJson ?? undefined }
-          : {}),
-        ...(input.testCasesJson !== undefined ? { testCasesJson: input.testCasesJson ?? undefined } : {}),
-        ...(input.metadataJson !== undefined ? { metadataJson: input.metadataJson ?? undefined } : {}),
-        updatedByUserId: input.actor?.userId ?? null,
-      },
+      data,
     });
 
     return toPromptView(row);

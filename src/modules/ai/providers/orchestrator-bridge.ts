@@ -3,16 +3,23 @@ import type {
   AiCompletionInput,
   AiCompletionOutput,
   AiProviderAdapter,
-  AiProviderName,
 } from '../orchestrator/provider.interface.js';
-import type { AiChatOutput } from './core/ai-provider.types.js';
+import type { AiChatOutput, AiProviderKey } from './core/ai-provider.types.js';
 import { ensureAiProvidersBootstrapped } from './provider-factory.js';
 import { getAiProviderRegistry } from './provider-registry.js';
+
+function normalizeRegistryKey(providerKey: string): AiProviderKey {
+  return providerKey.replace(/-/g, '_') as AiProviderKey;
+}
+
+function adapterDisplayName(providerKey: string): string {
+  return providerKey.replace(/_/g, '-');
+}
 
 function mapChatToCompletion(
   input: AiCompletionInput,
   result: AiChatOutput,
-  legacyName: AiProviderName,
+  providerKey: string,
 ): AiCompletionOutput {
   const content =
     result.content.trim() ||
@@ -23,7 +30,7 @@ function mapChatToCompletion(
   return {
     content,
     confidence: estimateLlmConfidence(content, result.inputTokens),
-    provider: legacyName,
+    provider: adapterDisplayName(providerKey),
     model: result.model,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
@@ -32,12 +39,14 @@ function mapChatToCompletion(
 }
 
 /** Bridges IAIProvider → legacy AiProviderAdapter for orchestrator compatibility. */
-export function createOrchestratorAdapter(legacyName: 'openai' | 'anthropic'): AiProviderAdapter {
+export function createOrchestratorAdapterFromKey(providerKey: string): AiProviderAdapter {
   ensureAiProvidersBootstrapped();
-  const provider = getAiProviderRegistry().getOrThrow(legacyName);
+  const registryKey = normalizeRegistryKey(providerKey);
+  const provider = getAiProviderRegistry().getOrThrow(registryKey);
+  const displayName = adapterDisplayName(registryKey);
 
   return {
-    name: legacyName,
+    name: displayName,
     isConfigured: () => provider.isConfigured(),
     complete: async (input: AiCompletionInput): Promise<AiCompletionOutput> => {
       const chatInput: Parameters<typeof provider.chat>[0] = {
@@ -50,9 +59,25 @@ export function createOrchestratorAdapter(legacyName: 'openai' | 'anthropic'): A
       if (input.locale) chatInput.locale = input.locale;
       if (input.maxTokens != null) chatInput.maxTokens = input.maxTokens;
       if (input.temperature != null) chatInput.temperature = input.temperature;
+      if (input.resolvedModelKey) chatInput.model = input.resolvedModelKey;
 
       const result = await provider.chat(chatInput);
-      return mapChatToCompletion(input, result, legacyName);
+      return mapChatToCompletion(input, result, registryKey);
     },
   };
 }
+
+/** @deprecated Use createOrchestratorAdapterFromKey */
+export function createOrchestratorAdapter(legacyName: 'openai' | 'anthropic'): AiProviderAdapter {
+  return createOrchestratorAdapterFromKey(legacyName);
+}
+
+export const REGISTRY_PROVIDER_KEYS = [
+  'openai',
+  'anthropic',
+  'gemini',
+  'grok',
+  'deepseek',
+  'openrouter',
+  'self_hosted',
+] as const;

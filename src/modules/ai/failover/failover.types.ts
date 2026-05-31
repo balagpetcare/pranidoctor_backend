@@ -30,6 +30,10 @@ export interface FailoverExecutionRequest {
   tenantId?: string | null;
   branchId?: string | null;
   feature: string;
+  /** Optional pre-hop cost gate inputs */
+  scopeKey?: string;
+  estimatedInputTokens?: number;
+  reservedOutputTokens?: number;
 }
 
 export interface FailoverHopAttempt {

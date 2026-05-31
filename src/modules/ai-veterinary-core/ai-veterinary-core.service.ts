@@ -30,7 +30,7 @@ import {
 import type { AiEscalationDisclosureTriggerKey } from '../../legacy/web/lib/ai-escalation-disclosure/ai-escalation-disclosure-defaults.js';
 import { AI_MEMORY_TTL_DAYS } from './ai-veterinary-core.types.js';
 import { getAiVeterinaryRepository } from './repository/ai-veterinary.repository.js';
-import { getAiOrchestratorService } from '../ai/orchestrator/ai-orchestrator.service.js';
+import { getAiFoundationService } from '../ai/foundation/ai-foundation.service.js';
 import { getAiPromptService } from '../ai/prompts/ai-prompt.service.js';
 import { getAiSafetyService } from './safety/ai-safety.service.js';
 import { assessSymptomRisk } from './safety/ai-safety.guardrails.js';
@@ -205,15 +205,28 @@ export class AiVeterinaryCoreService {
     const prompt = await getAiPromptService().resolveActive('farmer_chat');
     const systemPrompt = locale === 'bn' ? prompt.systemBn : prompt.systemEn;
 
-    const providerOut = await getAiOrchestratorService().complete({
+    const taskResult = await getAiFoundationService().executeTask({
       feature: 'CHAT',
+      taskType: 'GENERAL_CHAT',
       systemPrompt,
       userMessage: contextSummary
         ? `${input.message}\n\nContext: ${contextSummary}`
         : input.message,
       locale,
       userId,
+      sessionId: session.id,
+      promptId: prompt.id,
     });
+
+    const providerOut = {
+      content: taskResult.content,
+      confidence: taskResult.confidence,
+      provider: taskResult.provider,
+      model: taskResult.model,
+      inputTokens: taskResult.usage.inputTokens,
+      outputTokens: taskResult.usage.outputTokens,
+      latencyMs: taskResult.usage.latencyMs,
+    };
 
     const evaluated = safety.evaluateProviderOutput(providerOut, locale);
 

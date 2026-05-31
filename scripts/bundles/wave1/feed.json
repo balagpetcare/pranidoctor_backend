@@ -1,0 +1,433 @@
+{
+  "rows": [
+    {
+      "slug": "green-grass",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "সবুজ ঘাস",
+      "titleEn": "Green Grass",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 20%, কা crude protein 8%, TDN 55% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 20%, CP 8%, TDN 55% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "GRN-GRS",
+        "dmPercent": 20,
+        "cpPercent": 8,
+        "tdnPercent": 55
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "rice-straw",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "ধানের খড়",
+      "titleEn": "Rice Straw",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 85%, কা crude protein 4%, TDN 45% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 85%, CP 4%, TDN 45% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "RICE-STR",
+        "dmPercent": 85,
+        "cpPercent": 4,
+        "tdnPercent": 45
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "maize-grain",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "ভুট্টা দানা",
+      "titleEn": "Maize Grain",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 88%, কা crude protein 9%, TDN 85% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 88%, CP 9%, TDN 85% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "MAIZE",
+        "dmPercent": 88,
+        "cpPercent": 9,
+        "tdnPercent": 85
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "maize-germ-meal",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "ভুট্টা ভুষি",
+      "titleEn": "Maize Germ Meal",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 90%, কা crude protein 18%, TDN 80% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 90%, CP 18%, TDN 80% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "MAIZE-GM",
+        "dmPercent": 90,
+        "cpPercent": 18,
+        "tdnPercent": 80
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "wheat-bran",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "গমের ভুসি",
+      "titleEn": "Wheat Bran",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 88%, কা crude protein 15%, TDN 70% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 88%, CP 15%, TDN 70% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "WHT-BRN",
+        "dmPercent": 88,
+        "cpPercent": 15,
+        "tdnPercent": 70
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "rice-bran",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "চালের কুঁড়া",
+      "titleEn": "Rice Bran",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 90%, কা crude protein 12%, TDN 65% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 90%, CP 12%, TDN 65% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "RICE-BRN",
+        "dmPercent": 90,
+        "cpPercent": 12,
+        "tdnPercent": 65
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "soybean-meal",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "সয়াবিন মিল",
+      "titleEn": "Soybean Meal",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 90%, কা crude protein 44%, TDN 75% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 90%, CP 44%, TDN 75% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "SOY-ML",
+        "dmPercent": 90,
+        "cpPercent": 44,
+        "tdnPercent": 75
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "mustard-oil-cake",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "সরিষার খৈল",
+      "titleEn": "Mustard Oil Cake",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 92%, কা crude protein 38%, TDN 70% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 92%, CP 38%, TDN 70% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "MOC",
+        "dmPercent": 92,
+        "cpPercent": 38,
+        "tdnPercent": 70
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "commercial-poultry-feed",
+      "domain": "FEED",
+      "entityType": "FeedIngredient",
+      "titleBn": "বাণিজ্যিক মুরগির খাদ্য",
+      "titleEn": "Commercial Poultry Feed",
+      "bodyBn": "## Composition\n\nশুষ্ক পদার্থ 90%, কা crude protein 20%, TDN 75% (BAU সারণী অনুযায়ী)।",
+      "bodyEn": "## Composition\n\nDM 90%, CP 20%, TDN 75% (BAU composition table reference).",
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "CPF",
+        "dmPercent": 90,
+        "cpPercent": 20,
+        "tdnPercent": 75
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "cattle-lactating-requirement",
+      "domain": "FEED",
+      "entityType": "NutrientRequirement",
+      "titleBn": "দুগ্ধবতী গরুর পুষ্টি",
+      "titleEn": "Lactating Cow Requirements",
+      "bodyBn": "## Requirements\n\nন্যূনতম CP 14%, শক্তি 16 Mcal/kg DM (species-stage matrix)।",
+      "bodyEn": "## Requirements\n\nMinimum CP 14%, energy 16 Mcal/kg DM.",
+      "species": [
+        "COW"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "CATTLE-LACTATING-REQUIREMENT",
+        "cpPercent": 14,
+        "energyMcal": 16
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "poultry-broiler-requirement",
+      "domain": "FEED",
+      "entityType": "NutrientRequirement",
+      "titleBn": "ব্রয়লার মুরগির পুষ্টি",
+      "titleEn": "Broiler Nutrient Requirements",
+      "bodyBn": "## Requirements\n\nন্যূনতম CP 22%, শক্তি 20 Mcal/kg DM (species-stage matrix)।",
+      "bodyEn": "## Requirements\n\nMinimum CP 22%, energy 20 Mcal/kg DM.",
+      "species": [
+        "CHICKEN"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "POULTRY-BROILER-REQUIREMENT",
+        "cpPercent": 22,
+        "energyMcal": 20
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "goat-growing-requirement",
+      "domain": "FEED",
+      "entityType": "NutrientRequirement",
+      "titleBn": "ব-growing ছাগলের পুষ্টি",
+      "titleEn": "Growing Goat Requirements",
+      "bodyBn": "## Requirements\n\nন্যূনতম CP 12%, শক্তি 14 Mcal/kg DM (species-stage matrix)।",
+      "bodyEn": "## Requirements\n\nMinimum CP 12%, energy 14 Mcal/kg DM.",
+      "species": [
+        "GOAT"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "GOAT-GROWING-REQUIREMENT",
+        "cpPercent": 12,
+        "energyMcal": 14
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "aflatoxin-alert",
+      "domain": "FEED",
+      "entityType": "ToxicFeedAlert",
+      "titleBn": "আফলাটок্সিন সতর্কতা",
+      "titleEn": "Aflatoxin Alert",
+      "bodyBn": "## Signs\n\nআফলাটок্সিন সতর্কতা: দুর্বলতা, খাবার বর্জন, জ্বর/liver লক্ষণ হতে পারে।\n\n## Immediate Action\n\nসন্দেহ হলে খাদ্য বন্ধ করুন, পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nAflatoxin Alert: weakness, feed refusal, systemic signs possible.\n\n## Immediate Action\n\nStop suspect feed; call veterinarian.",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "structuredJson": {
+        "ingredientCode": "AFL"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "urea-toxicity-alert",
+      "domain": "FEED",
+      "entityType": "ToxicFeedAlert",
+      "titleBn": "ইউরিয়া বিষক্রিয়া",
+      "titleEn": "Urea Toxicity",
+      "bodyBn": "## Signs\n\nইউরিয়া বিষক্রিয়া: দুর্বলতা, খাবার বর্জন, জ্বর/liver লক্ষণ হতে পারে।\n\n## Immediate Action\n\nসন্দেহ হলে খাদ্য বন্ধ করুন, পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nUrea Toxicity: weakness, feed refusal, systemic signs possible.\n\n## Immediate Action\n\nStop suspect feed; call veterinarian.",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "structuredJson": {
+        "ingredientCode": "UREA"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "moldy-feed-alert",
+      "domain": "FEED",
+      "entityType": "ToxicFeedAlert",
+      "titleBn": "ছাঁচযুক্ত খাদ্য",
+      "titleEn": "Moldy Feed Alert",
+      "bodyBn": "## Signs\n\nছাঁচযুক্ত খাদ্য: দুর্বলতা, খাবার বর্জন, জ্বর/liver লক্ষণ হতে পারে।\n\n## Immediate Action\n\nসন্দেহ হলে খাদ্য বন্ধ করুন, পশুচিকিত্সক ডাকুন।",
+      "bodyEn": "## Signs\n\nMoldy Feed Alert: weakness, feed refusal, systemic signs possible.\n\n## Immediate Action\n\nStop suspect feed; call veterinarian.",
+      "regionScope": "BD",
+      "clinicalRiskTier": "HIGH",
+      "structuredJson": {
+        "ingredientCode": "MOLD"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    },
+    {
+      "slug": "cattle-lactating-ration-template",
+      "domain": "FEED",
+      "entityType": "RationTemplate",
+      "titleBn": "দুগ্ধবতী গরুর খাদ্য হিসাব",
+      "titleEn": "Lactating Cow Ration Template",
+      "bodyBn": "## Ration\n\nঘাস ৫০%, ভুট্টা/ভুসি ৩০%, প্রোটিন সাপ্লিমেন্ট ২০% (খামার অনুযায়ী)।",
+      "bodyEn": "## Ration\n\nForage 50%, energy concentrate 30%, protein supplement 20% (farm-adjusted).",
+      "species": [
+        "COW"
+      ],
+      "regionScope": "BD",
+      "clinicalRiskTier": "LOW",
+      "structuredJson": {
+        "ingredientCode": "RAT-LAC"
+      },
+      "sourceSpanRefs": [
+        {
+          "page": 1,
+          "sectionId": "wave1-mvc-signs"
+        },
+        {
+          "page": 2,
+          "sectionId": "wave1-mvc-mgmt"
+        }
+      ]
+    }
+  ]
+}

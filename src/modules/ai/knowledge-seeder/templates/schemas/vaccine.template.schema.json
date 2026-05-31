@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pranidoctor.local/schemas/knowledge/vaccine.template.schema.json",
+  "title": "PraniDoctor Vaccine Knowledge Import Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "domain", "titleBn", "titleEn", "bodyBn", "bodyEn", "sourceSpanRefs", "structuredJson"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "domain": { "const": "VACCINE" },
+    "entityType": { "type": "string", "default": "Vaccine" },
+    "titleBn": { "type": "string", "minLength": 1 },
+    "titleEn": { "type": "string", "minLength": 1 },
+    "bodyBn": { "type": "string", "minLength": 1 },
+    "bodyEn": { "type": "string", "minLength": 1 },
+    "species": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "regionScope": { "enum": ["BD"], "default": "BD" },
+    "clinicalRiskTier": { "enum": ["MEDIUM", "HIGH"] },
+    "chunkPolicyId": { "const": "VACCINE_BY_SCHEDULE_ROW" },
+    "structuredJson": {
+      "type": "object",
+      "required": ["antigen"],
+      "properties": {
+        "antigen": { "type": "string" },
+        "manufacturer": { "type": "string" },
+        "route": { "type": "string" },
+        "doseMl": { "type": "number" },
+        "storageTempC": { "type": "number" },
+        "boosterIntervalDays": { "type": "integer" },
+        "ageWindow": { "type": "string" }
+      }
+    },
+    "sourceSpanRefs": { "type": "array", "minItems": 1 }
+  }
+}

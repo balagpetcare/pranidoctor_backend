@@ -272,8 +272,10 @@ model CustomerProfile {
   farmTreatments     FarmTreatment[]
   fatteningBatches   FatteningBatch[]
   fatteningBatchRois FatteningBatchRoi[]
-  weightRecords      WeightRecord[]
-  batchFeedPlans     BatchFeedPlan[]
+  weightRecords              WeightRecord[]
+  animalWeightMeasurements   AnimalWeightMeasurement[]
+  animalWeightAiJobs         AnimalWeightAiJob[]
+  batchFeedPlans             BatchFeedPlan[]
   inventoryItems     InventoryItem[]
   inventoryTransactions InventoryTransaction[]
   inventoryAuditLogs InventoryAuditLog[]
@@ -296,6 +298,8 @@ model CustomerProfile {
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews            Review[]
   serviceRequests    ServiceRequest[]
+  feedFormulationRequests FeedFormulationRequest[]
+  feedAdvisorSessions AiFeedAdvisorSession[]
 
   @@index([primaryVillageId])
 }
@@ -951,10 +955,12 @@ model AnimalProfile {
   updatedAt       DateTime         @updatedAt
   animalType      AnimalType?
   gender          Gender?
-  weightKg        Decimal?         @db.Decimal(10, 3)
-  photoUrl        String?
-  pregnancyStatus PregnancyStatus?
-  customer        CustomerProfile  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  weightKg              Decimal?              @db.Decimal(10, 3)
+  lastWeightMethod      AnimalWeightMethod?
+  lastWeightMeasuredAt  DateTime?
+  photoUrl              String?
+  pregnancyStatus       PregnancyStatus?
+  customer              CustomerProfile       @relation(fields: [customerId], references: [id], onDelete: Cascade)
   prescriptions   Prescription[]
   serviceRequests ServiceRequest[]
   treatmentCases  TreatmentCase[]
@@ -965,8 +971,98 @@ model AnimalProfile {
   farmTreatments           FarmTreatment[]
   fatteningBatchMemberships FatteningBatchAnimal[]
   weightRecords             WeightRecord[]
+  weightMeasurements        AnimalWeightMeasurement[]
 
   @@index([customerId])
+}
+
+enum AnimalWeightMethod {
+  TAPE
+  SCALE
+  AI_CAMERA
+  SMART_SCALE
+}
+
+enum AnimalWeightMeasurementSource {
+  REGISTRATION
+  ANIMAL_DETAIL
+  FATTENING_BRIDGE
+  SMART_SCALE
+}
+
+enum AnimalWeightAiJobStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model AnimalWeightMeasurement {
+  id                   String                        @id @default(cuid())
+  customerId           String
+  animalId             String
+  method               AnimalWeightMethod
+  source               AnimalWeightMeasurementSource @default(REGISTRATION)
+  weightKg             Decimal                       @db.Decimal(10, 3)
+  measuredAt           DateTime                      @default(now())
+  measuredOn           DateTime                      @db.Date
+  heartGirthCm         Decimal?                      @db.Decimal(8, 2)
+  bodyLengthCm         Decimal?                      @db.Decimal(8, 2)
+  tapeFormulaId        String?
+  tapeEstimatedKg      Decimal?                      @db.Decimal(10, 3)
+  scalePhotoUrl        String?
+  aiJobId              String?                       @unique
+  aiConfidence         Decimal?                      @db.Decimal(5, 4)
+  aiModelId            String?
+  aiDisclaimerAck      Boolean                       @default(false)
+  mediaAssetIds        String[]                      @default([])
+  deviceVendor         String?
+  deviceModel          String?
+  deviceReadingId      String?
+  devicePayload        Json?
+  linkedWeightRecordId String?                       @unique
+  clientMeasurementId  String?
+  note                 String?
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  customer             CustomerProfile               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  animal               AnimalProfile                   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  aiJob                AnimalWeightAiJob?              @relation(fields: [aiJobId], references: [id])
+  linkedWeightRecord   WeightRecord?                 @relation(fields: [linkedWeightRecordId], references: [id])
+
+  @@unique([customerId, clientMeasurementId])
+  @@index([customerId, animalId, measuredAt])
+  @@index([animalId, method, measuredOn])
+}
+
+model AnimalWeightAiJob {
+  id                  String                   @id @default(cuid())
+  customerId          String
+  animalId            String?
+  registrationDraftId String?
+  status              AnimalWeightAiJobStatus  @default(PENDING)
+  animalType          AnimalType?
+  uploadIds           String[]                 @default([])
+  videoUploadId       String?
+  frameUploadIds      String[]                 @default([])
+  resultWeightKg      Decimal?                 @db.Decimal(10, 3)
+  confidence          Decimal?                 @db.Decimal(5, 4)
+  modelId             String?
+  providerId          String?
+  errorCode           String?
+  errorMessage        String?
+  promptVersion       String?
+  requestedAt         DateTime                 @default(now())
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  customer            CustomerProfile          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  measurement         AnimalWeightMeasurement?
+
+  @@index([customerId, status, requestedAt])
+  @@index([animalId])
 }
 
 enum FatteningBatchStatus {
@@ -1050,7 +1146,8 @@ model WeightRecord {
   updatedAt  DateTime           @updatedAt
   customer   CustomerProfile    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   animal     AnimalProfile      @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  batch      FatteningBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch                    FatteningBatch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  linkedAnimalWeightMeasurement AnimalWeightMeasurement?
 
   @@unique([batchId, animalId, recordedOn])
   @@index([customerId, batchId, recordedOn])
@@ -2970,6 +3067,12 @@ enum MobileUploadPurpose {
   CUSTOMER_COVER_IMAGE
   /// Customer animal photo (stored on AnimalProfile.photoUrl only).
   ANIMAL_PHOTO
+  /// Scale evidence during animal weight capture.
+  ANIMAL_WEIGHT_SCALE_PHOTO
+  /// AI weight estimation — still images.
+  ANIMAL_WEIGHT_AI_IMAGE
+  /// AI weight estimation — short video.
+  ANIMAL_WEIGHT_AI_VIDEO
   /// Admin panel — semen provider logo (owner = admin user).
   ADMIN_SEMEN_PROVIDER_LOGO
   /// Admin panel — semen service template cover image.
@@ -3265,6 +3368,7 @@ model Livestock {
   consumptions          FeedConsumption[]
   expenses              LivestockExpense[]
   recommendationLogs    FeedRecommendationLog[]
+  feedFormulationRequests FeedFormulationRequest[]
 
   @@unique([customerId, earTagNumber])
   @@index([customerId, farmRef, lifecycleStatus])
@@ -3356,6 +3460,7 @@ model FeedItem {
   purchases       FeedPurchase[]
   consumptions    FeedConsumption[]
   vendorProducts  FeedVendorProduct[]
+  vkIngredient    VkFeedIngredient?
 
   @@index([category, isActive])
   @@index([isActive, sortOrder])
@@ -3583,8 +3688,141 @@ enum AiKnowledgeAudience {
 enum AiKnowledgeStatus {
   DRAFT
   IN_REVIEW
+  VET_APPROVAL
+  CHANGES_REQUESTED
   PUBLISHED
   DEPRECATED
+  REJECTED
+}
+
+enum AiKnowledgeSourceClass {
+  VETERINARY_TEXTBOOK
+  CLINICAL_PROTOCOL
+  BPA_GUIDELINE
+  WPA_GUIDELINE
+  GOVT_LIVESTOCK
+  VACCINE_SCHEDULE
+  MEDICINE_REFERENCE
+  FEED_REFERENCE
+  BREED_REFERENCE
+  EMERGENCY_PROTOCOL
+}
+
+enum AiKnowledgeCatalogSourceType {
+  PEER_REVIEWED
+  GOVT_EXTENSION
+  TEXTBOOK
+  MANUFACTURER_LABEL
+  FIELD_TRIAL
+  EXPERT_CONSENSUS
+  INTERNAL_SOP
+}
+
+enum AiKnowledgeSourceStatus {
+  ACTIVE
+  DEPRECATED
+  RETIRED
+}
+
+enum AiKnowledgeLicenseType {
+  PUBLIC_DOMAIN
+  GOVT_OPEN
+  PURCHASED
+  SUBSCRIPTION
+  PARTNER_MO
+  INTERNAL
+}
+
+enum AiKnowledgeDocumentMediaType {
+  PDF
+  DOCX
+  CSV
+  JSON
+  HTML
+  API_SNAPSHOT
+}
+
+enum AiKnowledgeImportRunStatus {
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum AiKnowledgeImportPipelineStage {
+  QUEUED
+  INTAKE
+  EXTRACTING
+  EXTRACT_COMPLETE
+  VALIDATING
+  NORMALIZING
+  DEDUPING
+  VERSIONING
+  ROUTING
+  COMPLETED
+}
+
+enum AiKnowledgeImportJobStage {
+  IMPORT
+  VALIDATE
+  NORMALIZE
+  DEDUP
+  VERSION
+  ROUTE
+}
+
+enum AiKnowledgeImportJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRY_SCHEDULED
+}
+
+enum AiKnowledgeValidationItemStatus {
+  PENDING
+  PASSED
+  FAILED
+  WAIVED
+}
+
+enum AiKnowledgeReviewStage {
+  EDITORIAL
+  VET
+}
+
+enum AiKnowledgeReviewDecision {
+  APPROVE
+  REQUEST_CHANGES
+  REJECT
+}
+
+enum AiKnowledgeEvidenceLevel {
+  L1
+  L2
+  L3
+  L4
+  L5
+}
+
+enum AiKnowledgeClinicalRiskTier {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AiKnowledgeChunkStage {
+  STAGING
+  PUBLISHED
+}
+
+enum AiKnowledgeEmbeddingStatus {
+  PENDING
+  READY
+  FAILED
+  NOT_APPLICABLE
 }
 
 enum SmartRecommendationType {
@@ -3625,28 +3863,1468 @@ enum AiAlertStatus {
 }
 
 model AiKnowledgeEntry {
-  id           String                 @id @default(cuid())
-  contentType  AiKnowledgeContentType
-  slug         String                 @unique
-  audience     AiKnowledgeAudience    @default(FARMER)
-  titleBn      String
-  titleEn      String
-  bodyBn       String                 @db.Text
-  bodyEn       String                 @db.Text
-  species      LivestockSpecies[]
-  status       AiKnowledgeStatus      @default(DRAFT)
-  version      Int                    @default(1)
-  publishedAt  DateTime?
-  createdById  String?
-  reviewedById String?
-  metadataJson Json?
-  searchText   String?                @db.Text
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
-  symptomLinks AiSymptomDiseaseLink[]
+  id                        String                      @id @default(cuid())
+  contentType               AiKnowledgeContentType
+  slug                      String                      @unique
+  audience                  AiKnowledgeAudience         @default(FARMER)
+  titleBn                   String
+  titleEn                   String
+  bodyBn                    String                      @db.Text
+  bodyEn                    String                      @db.Text
+  species                   LivestockSpecies[]
+  status                    AiKnowledgeStatus           @default(DRAFT)
+  version                   Int                         @default(1)
+  publishedAt               DateTime?
+  createdById               String?
+  reviewedById              String?
+  approvedByVetId           String?
+  metadataJson              Json?
+  searchText                String?                     @db.Text
+  sourceId                  String?
+  importRunId               String?
+  chunkPolicyId             String?                     @db.VarChar(64)
+  evidenceLevel             AiKnowledgeEvidenceLevel?
+  provisionalEvidenceLevel  AiKnowledgeEvidenceLevel?
+  confidenceScore           Float?
+  provisionalConfidenceScore Float?
+  clinicalRiskTier          AiKnowledgeClinicalRiskTier @default(LOW)
+  embeddingStatus           AiKnowledgeEmbeddingStatus  @default(NOT_APPLICABLE)
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  source                    AiKnowledgeSource?          @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  importRun                 AiKnowledgeImportRun?       @relation(fields: [importRunId], references: [id], onDelete: SetNull)
+  symptomLinks              AiSymptomDiseaseLink[]
+  chunks                    AiKnowledgeChunk[]
+  embeddingChunks           AiKnowledgeEmbeddingChunk[]
+  reviews                   AiKnowledgeReview[]
+  approvals                 AiKnowledgeApproval[]
+  medicineGeneric           MedicineGeneric?
 
   @@index([contentType, status])
   @@index([status])
+  @@index([sourceId])
+  @@index([importRunId])
+  @@index([clinicalRiskTier, status])
+}
+
+model AiKnowledgeSourceLicense {
+  id                       String               @id @default(cuid())
+  licenseType              AiKnowledgeLicenseType
+  allowsAiExtraction       Boolean              @default(true)
+  allowsFarmerDistribution Boolean              @default(true)
+  allowsVerbatimQuote      Boolean              @default(false)
+  expiryDate               DateTime?
+  attributionTemplateBn    String?              @db.Text
+  attributionTemplateEn    String?              @db.Text
+  rightsNote               String?              @db.Text
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  sources                  AiKnowledgeSource[]
+
+  @@index([licenseType])
+}
+
+model AiKnowledgeSource {
+  id                   String                       @id @default(cuid())
+  sourceKey            String                       @unique @db.VarChar(128)
+  sourceClass          AiKnowledgeSourceClass
+  sourceType           AiKnowledgeCatalogSourceType
+  titleBn              String
+  titleEn              String
+  publisher            String?
+  publishYear          Int?
+  edition              String?
+  jurisdiction         String                       @default("BD") @db.VarChar(16)
+  trustTier            Int                          @default(2)
+  defaultEvidenceLevel AiKnowledgeEvidenceLevel     @default(L2)
+  allowedDomains       AiKnowledgeContentType[]
+  licenseId            String?
+  refreshPolicyDays    Int?
+  status               AiKnowledgeSourceStatus      @default(ACTIVE)
+  metadataJson         Json?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  license              AiKnowledgeSourceLicense?    @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  documents            AiKnowledgeSourceDocument[]
+  importRuns           AiKnowledgeImportRun[]
+  entries              AiKnowledgeEntry[]
+  vkCitations          VkKnowledgeCitation[]
+
+  @@index([sourceClass, status])
+  @@index([status])
+}
+
+model AiKnowledgeSourceDocument {
+  id                   String                       @id @default(cuid())
+  sourceId             String
+  documentVersion      String                       @db.VarChar(64)
+  mediaType            AiKnowledgeDocumentMediaType
+  storageUri           String                       @db.VarChar(512)
+  checksumSha256       String                       @db.VarChar(64)
+  pageCount            Int?
+  languagePrimary      String                       @default("bn") @db.VarChar(8)
+  parseProfileId       String?                      @db.VarChar(64)
+  rightsNote           String?                      @db.Text
+  supersedesDocumentId String?
+  ingestedAt           DateTime                     @default(now())
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  source               AiKnowledgeSource            @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  importRuns           AiKnowledgeImportRun[]
+  vkCitations          VkKnowledgeCitation[]
+
+  @@unique([sourceId, checksumSha256])
+  @@index([sourceId, ingestedAt])
+}
+
+model AiKnowledgeImportRun {
+  id                     String                         @id @default(cuid())
+  sourceId               String
+  documentId             String?
+  adapterId              String                         @db.VarChar(64)
+  profileKey             String?                        @db.VarChar(64)
+  pipelineVersion        String                         @default("6b2.0") @db.VarChar(16)
+  mode                   String                         @default("LIVE") @db.VarChar(32)
+  pipelineStage          AiKnowledgeImportPipelineStage @default(QUEUED)
+  status                 AiKnowledgeImportRunStatus     @default(RUNNING)
+  dryRun                 Boolean                        @default(false)
+  triggeredById          String?
+  statsJson              Json?
+  validationSummaryJson  Json?
+  errorSummary           String?                        @db.Text
+  startedAt              DateTime                       @default(now())
+  completedAt            DateTime?
+  source                 AiKnowledgeSource              @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  document               AiKnowledgeSourceDocument?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  entries                AiKnowledgeEntry[]
+  importJobs             AiKnowledgeImportJob[]
+  validationItems        AiKnowledgeValidationItem[]
+  quarantineRecords      AiKnowledgeQuarantineRecord[]
+
+  @@index([sourceId, startedAt])
+  @@index([status, startedAt])
+  @@index([pipelineStage, startedAt])
+}
+
+model AiKnowledgeImportJob {
+  id           String                     @id @default(cuid())
+  importRunId  String
+  jobStage     AiKnowledgeImportJobStage
+  status       AiKnowledgeImportJobStatus @default(QUEUED)
+  payloadJson  Json
+  resultJson   Json?
+  attemptCount Int                        @default(0)
+  maxAttempts  Int                        @default(3)
+  lastError    String?                    @db.Text
+  scheduledAt  DateTime                   @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  importRun    AiKnowledgeImportRun       @relation(fields: [importRunId], references: [id], onDelete: Cascade)
+
+  @@index([importRunId, jobStage])
+  @@index([status, scheduledAt])
+}
+
+model AiKnowledgeValidationItem {
+  id           String                          @id @default(cuid())
+  importRunId  String
+  extractIndex Int
+  payloadJson  Json
+  status       AiKnowledgeValidationItemStatus @default(PENDING)
+  failureCodes String[]
+  waivedById   String?
+  createdAt    DateTime                        @default(now())
+  updatedAt    DateTime                        @updatedAt
+  importRun    AiKnowledgeImportRun            @relation(fields: [importRunId], references: [id], onDelete: Cascade)
+
+  @@index([importRunId, status])
+  @@index([importRunId, extractIndex])
+}
+
+model AiKnowledgeQuarantineRecord {
+  id              String               @id @default(cuid())
+  importRunId     String
+  extractIndex    Int?
+  reasonCode      String               @db.VarChar(64)
+  message         String?              @db.Text
+  rawSnapshotJson Json?
+  resolution      String?              @db.VarChar(32)
+  resolvedAt      DateTime?
+  createdAt       DateTime             @default(now())
+  importRun       AiKnowledgeImportRun @relation(fields: [importRunId], references: [id], onDelete: Cascade)
+
+  @@index([importRunId, reasonCode])
+}
+
+model AiKnowledgeChunk {
+  id               String                @id @default(cuid())
+  knowledgeEntryId String
+  chunkIndex       Int
+  chunkPolicyId    String                @db.VarChar(64)
+  stage            AiKnowledgeChunkStage @default(STAGING)
+  contentBn        String                @db.Text
+  contentEn        String                @db.Text
+  tokenEstimate    Int                   @default(0)
+  headingPath      String?               @db.VarChar(256)
+  citationJson     Json?
+  metadataJson     Json?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  knowledgeEntry   AiKnowledgeEntry      @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeEntryId, chunkIndex, stage])
+  @@index([knowledgeEntryId, stage])
+}
+
+model AiKnowledgeEmbeddingChunk {
+  id                String           @id @default(cuid())
+  knowledgeEntryId  String
+  chunkIndex        Int
+  entryVersion      Int
+  providerKey       String           @db.VarChar(32)
+  modelKey          String           @db.VarChar(128)
+  dimensions        Int
+  vectorJson        Json
+  metadataSidecarJson Json?
+  embeddingTextHash String           @db.VarChar(64)
+  active            Boolean          @default(true)
+  embeddedAt        DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  knowledgeEntry    AiKnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeEntryId, chunkIndex, entryVersion])
+  @@index([knowledgeEntryId, active])
+  @@index([active, embeddedAt])
+}
+
+model AiKnowledgeReview {
+  id               String                      @id @default(cuid())
+  knowledgeEntryId String
+  stage            AiKnowledgeReviewStage
+  decision         AiKnowledgeReviewDecision?
+  reviewerId       String?
+  comments         String?                     @db.Text
+  checklistJson    Json?
+  queueSource      String                      @default("MANUAL") @db.VarChar(32)
+  importRunId      String?
+  completedAt      DateTime?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  knowledgeEntry   AiKnowledgeEntry            @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeEntryId, stage])
+  @@index([stage, completedAt])
+}
+
+model AiKnowledgeApproval {
+  id               String           @id @default(cuid())
+  knowledgeEntryId String
+  approverVetId    String
+  vetLicenseNo     String?          @db.VarChar(64)
+  signOffHash      String?          @db.VarChar(128)
+  approvedAt       DateTime         @default(now())
+  validUntil       DateTime?
+  notes            String?          @db.Text
+  knowledgeEntry   AiKnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeEntryId, approvedAt])
+  @@index([approverVetId])
+}
+
+// ─── Phase 6B.1 — Veterinary Knowledge Foundation (VKF) ───────────────────
+
+enum VkKnowledgeDomain {
+  DISEASE
+  MEDICINE
+  VACCINE
+  FEED
+  BREED
+  REPRODUCTION
+  EMERGENCY
+  CLINICAL_PROTOCOL
+  REGULATORY_BD
+  FARM_MGMT
+}
+
+enum VkVersionStatus {
+  DRAFT
+  IN_REVIEW
+  VET_APPROVAL
+  CHANGES_REQUESTED
+  PUBLISHED
+  DEPRECATED
+  REJECTED
+}
+
+enum VkReviewStage {
+  EDITORIAL
+  LANGUAGE_BN
+  LANGUAGE_EN
+  DOMAIN_LEAD
+  VET
+}
+
+enum VkChangeRequestSeverity {
+  MINOR
+  MAJOR
+  BLOCKING
+}
+
+enum VkChangeRequestStatus {
+  OPEN
+  RESOLVED
+  CANCELLED
+}
+
+enum VkGovernanceConflictType {
+  C1
+  C2
+  C3
+  C4
+  C5
+  C6
+}
+
+enum VkGovernanceConflictStatus {
+  OPEN
+  ESCALATED
+  RESOLVED
+  OVERRIDDEN
+}
+
+enum VkEvidenceAssessmentMethod {
+  INGEST_HEURISTIC
+  EDITORIAL_REVIEW
+  VET_REVIEW
+  SYSTEMATIC_REVIEW
+}
+
+enum VkConfidenceComputedBy {
+  INGEST_PIPELINE
+  REVIEW_WORKFLOW
+  PUBLISH_JOB
+  ADMIN_RECOMPUTE
+}
+
+model VkKnowledgeEntity {
+  id                        String            @id @default(cuid())
+  domain                    VkKnowledgeDomain
+  entityType                String            @db.VarChar(64)
+  slug                      String            @unique @db.VarChar(128)
+  currentPublishedVersionId String?           @unique
+  currentDraftVersionId     String?           @unique
+  legacyEntryId             String?           @unique
+  createdById               String?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+
+  versions         VkKnowledgeVersion[] @relation("EntityVersions")
+  publishedVersion VkKnowledgeVersion?  @relation("PublishedPointer", fields: [currentPublishedVersionId], references: [id], onDelete: SetNull)
+  draftVersion     VkKnowledgeVersion?  @relation("DraftPointer", fields: [currentDraftVersionId], references: [id], onDelete: SetNull)
+  linksFrom        VkKnowledgeLink[]    @relation("UvkgLinkFrom")
+  linksTo          VkKnowledgeLink[]    @relation("UvkgLinkTo")
+
+  @@index([domain, entityType])
+}
+
+model VkKnowledgeVersion {
+  id                  String                      @id @default(cuid())
+  entityId            String
+  versionNumber       Int
+  supersedesVersionId String?
+  status              VkVersionStatus             @default(DRAFT)
+  titleBn             String
+  titleEn             String
+  summaryBn           String?                     @db.Text
+  summaryEn           String?                     @db.Text
+  bodyBn              String                      @db.Text
+  bodyEn              String                      @db.Text
+  species             LivestockSpecies[]
+  audience            AiKnowledgeAudience         @default(FARMER)
+  regionScope         String                      @default("BD") @db.VarChar(16)
+  structuredJson      Json?
+  keywordsBn          String[]
+  keywordsEn          String[]
+  colloquialBn        String[]
+  searchText          String?                     @db.Text
+  chunkPolicyId       String?                     @db.VarChar(64)
+  clinicalRiskTier    AiKnowledgeClinicalRiskTier @default(LOW)
+  embeddingStatus     AiKnowledgeEmbeddingStatus  @default(NOT_APPLICABLE)
+  changeSummary       String?                     @db.Text
+  changedFields       String[]
+  diffJson            Json?
+  aiGeneratedDraft    Boolean                     @default(false)
+  importRunId         String?
+  publishedAt         DateTime?
+  deprecatedAt        DateTime?
+  deprecationReason   String?                     @db.Text
+  createdById         String?
+  publishedById       String?
+  submittedAt         DateTime?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  entity              VkKnowledgeEntity       @relation("EntityVersions", fields: [entityId], references: [id], onDelete: Cascade)
+  supersedes          VkKnowledgeVersion?     @relation("VersionChain", fields: [supersedesVersionId], references: [id], onDelete: SetNull)
+  supersededBy        VkKnowledgeVersion[]    @relation("VersionChain")
+  publishedForEntity  VkKnowledgeEntity?      @relation("PublishedPointer")
+  draftForEntity      VkKnowledgeEntity?      @relation("DraftPointer")
+  citations           VkKnowledgeCitation[]
+  reviews             VkKnowledgeReview[]
+  approvals           VkKnowledgeApproval[]
+  auditEvents         VkKnowledgeAuditEvent[]
+  chunks              VkKnowledgeChunk[]
+  evidenceRecords     VkKnowledgeEvidence[]
+  confidenceRecords   VkKnowledgeConfidence[]
+  changeRequests      VkKnowledgeChangeRequest[]
+  governanceConflicts VkGovernanceConflict[]
+
+  feedIngredients      VkFeedIngredient[]         @relation("FeedIngredientVersion")
+  nutrientRequirements VkNutrientRequirement[]    @relation("NutrientRequirementVersion")
+  toxicFeedAlerts      VkToxicFeedAlert[]         @relation("ToxicFeedAlertVersion")
+  rationTemplates      VkRationTemplate[]         @relation("RationTemplateVersion")
+  seasonalCalendars    VkSeasonalFeedCalendar[]   @relation("SeasonalCalendarVersion")
+  medicineGenerics     MedicineGeneric[]          @relation("MedicineGenericVersion")
+  knowledgeLinks       VkKnowledgeLink[]
+
+  @@unique([entityId, versionNumber])
+  @@index([entityId, status])
+  @@index([status, clinicalRiskTier])
+  @@index([publishedAt])
+}
+
+model VkKnowledgeCitation {
+  id                 String   @id @default(cuid())
+  versionId          String
+  chunkId            String?
+  sourceId           String
+  documentId         String?
+  pageRef            String?  @db.VarChar(64)
+  sectionRef         String?  @db.VarChar(128)
+  tableRef           String?  @db.VarChar(64)
+  rowRef             String?  @db.VarChar(64)
+  spanRefsJson       Json?
+  contributionWeight Float    @default(1)
+  quotedFrom         Boolean  @default(false)
+  inlineCitationKey  String   @db.VarChar(128)
+  humanCitationBn    String?  @db.Text
+  humanCitationEn    String?  @db.Text
+  accessedAt         DateTime @default(now())
+  createdAt          DateTime @default(now())
+
+  version  VkKnowledgeVersion           @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  chunk    VkKnowledgeChunk?            @relation(fields: [chunkId], references: [id], onDelete: SetNull)
+  source   AiKnowledgeSource            @relation(fields: [sourceId], references: [id])
+  document AiKnowledgeSourceDocument?   @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([versionId])
+  @@index([chunkId])
+  @@index([sourceId])
+}
+
+model VkKnowledgeChunk {
+  id                String                @id @default(cuid())
+  versionId         String
+  chunkIndex        Int
+  chunkPolicyId     String                @db.VarChar(64)
+  stage             AiKnowledgeChunkStage @default(STAGING)
+  contentBn         String                @db.Text
+  contentEn         String                @db.Text
+  tokenEstimate     Int                   @default(0)
+  headingPath       String?               @db.VarChar(256)
+  structuredOverlay Json?
+  metadataJson      Json?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  version   VkKnowledgeVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  citations VkKnowledgeCitation[]
+
+  @@unique([versionId, chunkIndex, stage])
+  @@index([versionId, stage])
+}
+
+model VkKnowledgeEvidence {
+  id                   String                     @id @default(cuid())
+  versionId            String
+  evidenceLevel        AiKnowledgeEvidenceLevel
+  assessmentMethod     VkEvidenceAssessmentMethod
+  rationaleBn          String?                    @db.Text
+  rationaleEn          String?                    @db.Text
+  assessorId           String?
+  provisional          Boolean                    @default(true)
+  supersedesEvidenceId String?
+  assessedAt           DateTime                   @default(now())
+  createdAt            DateTime                   @default(now())
+
+  version VkKnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, assessedAt])
+}
+
+model VkKnowledgeConfidence {
+  id                    String                 @id @default(cuid())
+  versionId             String
+  score                 Float
+  formulaVersion        String                 @default("v2") @db.VarChar(16)
+  componentsJson        Json
+  provisional           Boolean                @default(true)
+  computedBy            VkConfidenceComputedBy
+  meetsProfileGatesJson Json?
+  computedAt            DateTime               @default(now())
+
+  version VkKnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, computedAt])
+}
+
+model VkKnowledgeReview {
+  id            String                      @id @default(cuid())
+  versionId     String
+  stage         VkReviewStage
+  decision      AiKnowledgeReviewDecision?
+  reviewerId    String?
+  checklistJson Json?
+  comments      String?                     @db.Text
+  queueSource   String                      @default("MANUAL") @db.VarChar(32)
+  importRunId   String?
+  startedAt     DateTime                    @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  version VkKnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, stage])
+  @@index([stage, completedAt])
+}
+
+model VkKnowledgeApproval {
+  id                   String   @id @default(cuid())
+  versionId            String
+  approverVetId        String
+  vetLicenseNo         String?  @db.VarChar(64)
+  approvalScope        String[]
+  signOffHash          String?  @db.VarChar(128)
+  approvedAt           DateTime @default(now())
+  validUntil           DateTime?
+  dualApprovalRequired Boolean  @default(false)
+  coApproverVetId      String?
+  notes                String?  @db.Text
+  createdAt            DateTime @default(now())
+
+  version VkKnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, approvedAt])
+  @@index([approverVetId])
+}
+
+model VkKnowledgeAuditEvent {
+  id         String   @id @default(cuid())
+  entityId   String?
+  versionId  String?
+  eventType  String   @db.VarChar(64)
+  actorId    String?
+  actorRole  String?  @db.VarChar(32)
+  detailJson Json?
+  createdAt  DateTime @default(now())
+
+  version VkKnowledgeVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@index([entityId, createdAt])
+  @@index([versionId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model VkKnowledgeChangeRequest {
+  id            String                  @id @default(cuid())
+  versionId     String
+  reviewId      String
+  stage         VkReviewStage
+  requestedById String
+  summaryBn     String?                 @db.Text
+  summaryEn     String?                 @db.Text
+  severity      VkChangeRequestSeverity @default(MINOR)
+  status        VkChangeRequestStatus   @default(OPEN)
+  checklistJson Json
+  dueAt         DateTime?
+  resolvedAt    DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  version VkKnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, status])
+  @@index([requestedById])
+}
+
+model VkGovernanceConflict {
+  id             String                     @id @default(cuid())
+  versionId      String
+  conflictType   VkGovernanceConflictType
+  status         VkGovernanceConflictStatus @default(OPEN)
+  openedById     String
+  assignedToId   String?
+  detailJson     Json?
+  resolutionJson Json?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  version VkKnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, status])
+  @@index([conflictType, status])
+}
+
+// ─── Phase F1 — Feed Intelligence Ecosystem (VKL Extension) ───────────────────
+
+enum BdFeedAvailability {
+  WIDELY_AVAILABLE
+  SEASONALLY_AVAILABLE
+  REGIONAL_LIMITED
+  IMPORT_DEPENDENT
+  RARELY_AVAILABLE
+}
+
+enum FeedPriceVolatility {
+  STABLE
+  MODERATE
+  HIGH
+  VERY_HIGH
+}
+
+enum ProductionStage {
+  CALF_PRE_WEANING
+  CALF_POST_WEANING
+  GROWING
+  FATTENING
+  DRY_COW
+  EARLY_LACTATION
+  MID_LACTATION
+  LATE_LACTATION
+  MAINTENANCE
+  BREEDING
+  PREGNANT
+  LATE_PREGNANT
+  LAYING
+  BROODING
+  STARTER
+  FINISHER
+}
+
+enum BreedCategory {
+  LOCAL_DESI
+  CROSSBRED
+  EXOTIC_PURE
+  INDIGENOUS_IMPROVED
+}
+
+enum FeedAdvisorSessionState {
+  CREATED
+  CONTEXT_GATHERING
+  ANALYZING
+  FORMULATING
+  COMPLETE
+  ESCALATED
+  ABANDONED
+}
+
+enum FormulationStatus {
+  PENDING
+  OPTIMIZING
+  COMPLETED
+  FAILED
+  INFEASIBLE
+}
+
+enum FeedKnowledgeEntityType {
+  FEED_INGREDIENT
+  NUTRIENT_REQUIREMENT
+  RATION_TEMPLATE
+  TOXIC_FEED_ALERT
+  FEEDING_GUIDELINE
+  SEASONAL_CALENDAR
+  ANTINUTRIENT_LIMIT
+}
+
+model VkFeedIngredient {
+  id                   String              @id @default(cuid())
+  versionId            String
+  ingredientCode       String              @unique @db.VarChar(64)
+  localNamesBn         String[]
+  localNamesEn         String[]
+
+  dmPercent            Decimal             @db.Decimal(6, 2)
+  cpPercent            Decimal?            @db.Decimal(6, 2)
+  tdnPercent           Decimal?            @db.Decimal(6, 2)
+  ndfPercent           Decimal?            @db.Decimal(6, 2)
+  adfPercent           Decimal?            @db.Decimal(6, 2)
+  meValueMjPerKg       Decimal?            @db.Decimal(8, 3)
+  caPercent            Decimal?            @db.Decimal(6, 3)
+  pPercent             Decimal?            @db.Decimal(6, 3)
+  cfPercent            Decimal?            @db.Decimal(6, 2)
+  eePercent            Decimal?            @db.Decimal(6, 2)
+  ashPercent           Decimal?            @db.Decimal(6, 2)
+
+  bdAvailability       BdFeedAvailability  @default(WIDELY_AVAILABLE)
+  seasonalityJson      Json?
+  avgPriceBdtPerKg     Decimal?            @db.Decimal(10, 2)
+  priceVolatility      FeedPriceVolatility @default(MODERATE)
+  lastPriceUpdateAt    DateTime?
+
+  speciesRestrictions  LivestockSpecies[]
+  antinutrientJson     Json?
+  maxInclusionJson     Json?
+
+  feedItemId           String?             @unique
+  sourceAttributionsJson Json?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  version              VkKnowledgeVersion  @relation("FeedIngredientVersion", fields: [versionId], references: [id], onDelete: Cascade)
+  feedItem             FeedItem?           @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+
+  @@index([bdAvailability])
+  @@index([versionId])
+  @@map("vk_feed_ingredients")
+}
+
+model VkNutrientRequirement {
+  id                   String              @id @default(cuid())
+  versionId            String
+
+  species              LivestockSpecies
+  breedCategory        BreedCategory?
+  productionStage      ProductionStage
+  weightRangeMinKg     Decimal?            @db.Decimal(8, 2)
+  weightRangeMaxKg     Decimal?            @db.Decimal(8, 2)
+
+  dmIntakeKgPerDay     Decimal?            @db.Decimal(6, 2)
+  dmIntakePercentBw    Decimal?            @db.Decimal(5, 2)
+  cpPercentMin         Decimal?            @db.Decimal(6, 2)
+  cpPercentMax         Decimal?            @db.Decimal(6, 2)
+  tdnPercentMin        Decimal?            @db.Decimal(6, 2)
+  meMinMjPerKg         Decimal?            @db.Decimal(6, 2)
+  ndfPercentMax        Decimal?            @db.Decimal(6, 2)
+  caPercentMin         Decimal?            @db.Decimal(6, 3)
+  pPercentMin          Decimal?            @db.Decimal(6, 3)
+
+  milkYieldLiters      Decimal?            @db.Decimal(6, 2)
+  adgKg                Decimal?            @db.Decimal(6, 3)
+
+  sourceNotes          String?             @db.Text
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  version              VkKnowledgeVersion  @relation("NutrientRequirementVersion", fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([species, productionStage, breedCategory])
+  @@index([versionId])
+  @@index([species, productionStage])
+  @@map("vk_nutrient_requirements")
+}
+
+model VkToxicFeedAlert {
+  id                   String              @id @default(cuid())
+  versionId            String
+
+  substance            String              @db.VarChar(128)
+  commonNamesBn        String[]
+  commonNamesEn        String[]
+  speciesAffected      LivestockSpecies[]
+
+  toxicThreshold       String              @db.VarChar(128)
+  lethalThreshold      String?             @db.VarChar(128)
+
+  clinicalSignsBn      String[]
+  clinicalSignsEn      String[]
+  onsetTime            String?             @db.VarChar(64)
+
+  immediateActionBn    String              @db.Text
+  immediateActionEn    String              @db.Text
+  vetRequired          Boolean             @default(true)
+
+  relatedIngredientCodes String[]
+  sourceAttributionsJson Json?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  version              VkKnowledgeVersion  @relation("ToxicFeedAlertVersion", fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([substance])
+  @@index([versionId])
+  @@map("vk_toxic_feed_alerts")
+}
+
+model VkRationTemplate {
+  id                   String              @id @default(cuid())
+  versionId            String
+
+  templateCode         String              @unique @db.VarChar(64)
+  templateNameBn       String
+  templateNameEn       String
+  species              LivestockSpecies
+  productionStage      ProductionStage
+  targetProduction     String?             @db.VarChar(128)
+
+  ingredientsJson      Json
+  concentrateRatio     Decimal?            @db.Decimal(5, 2)
+  roughageRatio        Decimal?            @db.Decimal(5, 2)
+
+  calculatedCpPercent  Decimal?            @db.Decimal(6, 2)
+  calculatedTdnPercent Decimal?            @db.Decimal(6, 2)
+  calculatedMeMjPerKg  Decimal?            @db.Decimal(6, 2)
+  estimatedCostBdtPerKg Decimal?           @db.Decimal(10, 2)
+
+  suitabilityNotesBn   String?             @db.Text
+  suitabilityNotesEn   String?             @db.Text
+  sourceAttributionsJson Json?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  version              VkKnowledgeVersion  @relation("RationTemplateVersion", fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([species, productionStage])
+  @@index([versionId])
+  @@map("vk_ration_templates")
+}
+
+model VkSeasonalFeedCalendar {
+  id                   String              @id @default(cuid())
+  versionId            String
+
+  month                Int
+  regionCode           String              @default("BD") @db.VarChar(16)
+
+  availableIngredientCodes String[]
+  peakIngredientCodes  String[]
+  scarcityIngredientCodes String[]
+  priceIndexJson       Json?
+
+  guidelinesBn         String?             @db.Text
+  guidelinesEn         String?             @db.Text
+  sourceAttributionsJson Json?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  version              VkKnowledgeVersion  @relation("SeasonalCalendarVersion", fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([month, regionCode, versionId])
+  @@index([versionId])
+  @@map("vk_seasonal_feed_calendars")
+}
+
+model FeedFormulationRequest {
+  id                   String              @id @default(cuid())
+  customerId           String
+  livestockId          String?
+
+  species              LivestockSpecies
+  productionStage      ProductionStage
+  breedCategory        BreedCategory?
+  weightKg             Decimal?            @db.Decimal(8, 2)
+  targetOutput         String?             @db.VarChar(128)
+
+  availableIngredients String[]
+  budgetBdtPerDay      Decimal?            @db.Decimal(10, 2)
+  excludeIngredients   String[]
+
+  formulationJson      Json?
+  totalCostBdtPerDay   Decimal?            @db.Decimal(10, 2)
+  nutritionalMatchScore Decimal?           @db.Decimal(5, 2)
+
+  packId               String?
+  citationsJson        Json?
+  confidenceScore      Decimal?            @db.Decimal(5, 4)
+
+  status               FormulationStatus   @default(PENDING)
+  errorMessage         String?             @db.Text
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  customer             CustomerProfile     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  livestock            Livestock?          @relation(fields: [livestockId], references: [id], onDelete: SetNull)
+  advisorSession       AiFeedAdvisorSession?
+
+  @@index([customerId, createdAt])
+  @@index([status])
+  @@map("feed_formulation_requests")
+}
+
+model AiFeedAdvisorSession {
+  id                   String                   @id @default(cuid())
+  userId               String
+  customerId           String
+  sessionId            String?                  @unique
+
+  species              LivestockSpecies
+  productionStage      ProductionStage?
+  breedCategory        BreedCategory?
+  livestockId          String?
+  breedSlug            String?                  @db.VarChar(64)
+
+  state                FeedAdvisorSessionState  @default(CREATED)
+  locale               String                   @default("bn") @db.VarChar(8)
+
+  contextJson          Json?
+  queryHistory         Json?
+  ingredientCodesQueried String[]
+
+  confidenceScore      Decimal?                 @db.Decimal(5, 4)
+  packId               String?
+
+  toxicAlertTriggered  Boolean                  @default(false)
+  escalationIds        String[]
+
+  formRequestId        String?                  @unique
+  formRequest          FeedFormulationRequest?  @relation(fields: [formRequestId], references: [id], onDelete: SetNull)
+
+  customer             CustomerProfile          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  @@index([customerId, createdAt])
+  @@index([userId, createdAt])
+  @@index([state])
+  @@map("ai_feed_advisor_sessions")
+}
+
+model VkFeedKnowledgeGraphEdge {
+  id                   String              @id @default(cuid())
+  edgeType             String              @db.VarChar(64)
+  fromEntitySlug       String              @db.VarChar(128)
+  toEntitySlug         String              @db.VarChar(128)
+  weight               Float               @default(1.0)
+  labelBn              String?
+  labelEn              String?
+  metadataJson         Json?
+  createdAt            DateTime            @default(now())
+
+  @@unique([edgeType, fromEntitySlug, toEntitySlug])
+  @@index([edgeType])
+  @@index([fromEntitySlug])
+  @@index([toEntitySlug])
+  @@map("vk_feed_knowledge_graph_edges")
+}
+
+// ─── Phase M1 — Medicine Commercial Intelligence Ecosystem ───────────────────
+
+enum VetCompanyStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum MedicineContractType {
+  SPONSOR
+  CAMPAIGN
+  ORGANIZATION
+  REGIONAL
+}
+
+enum MedicineContractStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+  CANCELLED
+}
+
+enum MedicineForm {
+  TABLET
+  CAPSULE
+  INJECTION
+  POWDER
+  LIQUID
+  BOLUS
+  OINTMENT
+  SPRAY
+  OTHER
+}
+
+enum RecommendationReasonCode {
+  GENERIC_FIRST
+  CONTRACT_SPONSOR
+  CONTRACT_CAMPAIGN
+  CONTRACT_ORGANIZATION
+  CONTRACT_REGIONAL
+  AVAILABILITY_SCORE
+  PRICE_COMPETITIVE
+  VET_PREFERRED
+}
+
+model VetCompany {
+  id                String            @id @default(cuid())
+  companyCode       String            @unique @db.VarChar(32)
+  nameBn            String
+  nameEn            String
+  shortNameEn       String?           @db.VarChar(64)
+  licenseNumber     String?           @db.VarChar(64)
+  status            VetCompanyStatus  @default(ACTIVE)
+
+  contactEmail      String?           @db.VarChar(256)
+  contactPhone      String?           @db.VarChar(32)
+  websiteUrl        String?           @db.VarChar(512)
+  headOfficeAddress String?           @db.Text
+
+  regionCoverageJson Json?
+  logoUrl           String?           @db.VarChar(512)
+
+  isVerified        Boolean           @default(false)
+  verifiedAt        DateTime?
+  verifiedById      String?
+
+  sortOrder         Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  brands            MedicineBrand[]
+  contracts         MedicineContract[]
+
+  @@index([status])
+  @@index([nameEn])
+  @@index([nameBn])
+  @@map("vet_companies")
+}
+
+model MedicineGeneric {
+  id                      String               @id @default(cuid())
+  versionId               String
+  genericCode             String               @unique @db.VarChar(64)
+
+  genericNameEn           String
+  genericNameBn           String
+
+  drugClass               String?              @db.VarChar(128)
+  antimicrobialClass      String?              @db.VarChar(64)
+  therapeuticCategory     String?              @db.VarChar(128)
+
+  species                 LivestockSpecies[]
+  indicationsJson         Json?
+  contraindicationsJson   Json?
+
+  prescriptionRequired    Boolean              @default(true)
+  bannedSubstance         Boolean              @default(false)
+  controlledSubstance     Boolean              @default(false)
+
+  defaultWithdrawalMeatDays Int?
+  defaultWithdrawalMilkDays Int?
+
+  knowledgeEntryId        String?              @unique
+  sourceAttributionsJson  Json?
+
+  isActive                Boolean              @default(true)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  version                 VkKnowledgeVersion   @relation("MedicineGenericVersion", fields: [versionId], references: [id], onDelete: Cascade)
+  knowledgeEntry          AiKnowledgeEntry?    @relation(fields: [knowledgeEntryId], references: [id], onDelete: SetNull)
+  brands                  MedicineBrand[]
+
+  @@index([versionId])
+  @@index([drugClass])
+  @@index([therapeuticCategory])
+  @@index([isActive])
+  @@map("medicine_generics")
+}
+
+model MedicineBrand {
+  id                      String               @id @default(cuid())
+  brandCode               String               @unique @db.VarChar(64)
+
+  brandNameEn             String
+  brandNameBn             String
+
+  genericId               String
+  companyId               String
+
+  strengthValue           Decimal?             @db.Decimal(10, 4)
+  strengthUnit            String?              @db.VarChar(32)
+  form                    MedicineForm         @default(OTHER)
+  packSizeValue           Decimal?             @db.Decimal(10, 2)
+  packSizeUnit            String?              @db.VarChar(32)
+
+  mrpBdt                  Decimal?             @db.Decimal(12, 2)
+  wholesaleBdt            Decimal?             @db.Decimal(12, 2)
+
+  bdAvailability          BdFeedAvailability   @default(WIDELY_AVAILABLE)
+  regionAvailabilityJson  Json?
+
+  registrationNumber      String?              @db.VarChar(64)
+  registrationExpiry      DateTime?
+
+  isActive                Boolean              @default(true)
+  discontinuedAt          DateTime?
+
+  sortOrder               Int                  @default(0)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  generic                 MedicineGeneric      @relation(fields: [genericId], references: [id], onDelete: Cascade)
+  company                 VetCompany           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contractBrands          MedicineContractBrand[]
+
+  @@index([genericId])
+  @@index([companyId])
+  @@index([form])
+  @@index([isActive])
+  @@map("medicine_brands")
+}
+
+model MedicineContract {
+  id                  String                  @id @default(cuid())
+  contractCode        String                  @unique @db.VarChar(64)
+
+  contractType        MedicineContractType
+  status              MedicineContractStatus  @default(DRAFT)
+
+  sponsorCompanyId    String?
+  organizationId      String?                 @db.VarChar(64)
+  campaignId          String?                 @db.VarChar(64)
+  regionScope         String[]
+
+  titleEn             String
+  titleBn             String?
+  description         String?                 @db.Text
+
+  priorityScore       Int                     @default(100)
+  sponsorWeight       Decimal                 @default(1.0) @db.Decimal(5, 2)
+  campaignWeight      Decimal                 @default(1.0) @db.Decimal(5, 2)
+  regionWeight        Decimal                 @default(1.0) @db.Decimal(5, 2)
+  organizationWeight  Decimal                 @default(1.0) @db.Decimal(5, 2)
+
+  effectiveFrom       DateTime
+  effectiveUntil      DateTime?
+
+  rulesJson           Json?
+  exclusionsJson      Json?
+
+  budgetBdt           Decimal?                @db.Decimal(14, 2)
+  spentBdt            Decimal                 @default(0) @db.Decimal(14, 2)
+
+  createdById         String?
+  approvedById        String?
+  approvedAt          DateTime?
+
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  sponsorCompany      VetCompany?             @relation(fields: [sponsorCompanyId], references: [id], onDelete: SetNull)
+  contractBrands      MedicineContractBrand[]
+  auditEvents         MedicineContractAudit[]
+
+  @@index([contractType, status])
+  @@index([sponsorCompanyId])
+  @@index([effectiveFrom, effectiveUntil])
+  @@index([organizationId])
+  @@index([status])
+  @@map("medicine_contracts")
+}
+
+model MedicineContractBrand {
+  id                  String            @id @default(cuid())
+  contractId          String
+  brandId             String
+
+  boostScore          Decimal           @default(0) @db.Decimal(5, 2)
+  exclusiveInContract Boolean           @default(false)
+
+  createdAt           DateTime          @default(now())
+
+  contract            MedicineContract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  brand               MedicineBrand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, brandId])
+  @@index([brandId])
+  @@map("medicine_contract_brands")
+}
+
+model MedicineContractAudit {
+  id                String            @id @default(cuid())
+  contractId        String
+  eventType         String            @db.VarChar(64)
+  actorId           String?
+  previousStateJson Json?
+  newStateJson      Json?
+  reason            String?           @db.Text
+  createdAt         DateTime          @default(now())
+
+  contract          MedicineContract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId, createdAt])
+  @@map("medicine_contract_audits")
+}
+
+model MedicineRecommendationLog {
+  id                  String              @id @default(cuid())
+  sessionId           String?             @db.VarChar(64)
+  userId              String?
+  customerId          String?
+  organizationId      String?             @db.VarChar(64)
+
+  genericId           String
+  query               String?             @db.Text
+  species             LivestockSpecies?
+  region              String?             @db.VarChar(64)
+
+  rankedBrandsJson    Json
+  winningBrandId      String?
+
+  contractFactorsJson Json?
+  sponsorFactorsJson  Json?
+  reasonCodesJson     Json
+
+  totalScore          Decimal             @db.Decimal(8, 4)
+  confidence          Decimal             @db.Decimal(5, 4)
+
+  impressedAt         DateTime            @default(now())
+  clickedAt           DateTime?
+  selectedAt          DateTime?
+
+  @@index([genericId, impressedAt])
+  @@index([customerId, impressedAt])
+  @@index([organizationId, impressedAt])
+  @@index([sessionId])
+  @@map("medicine_recommendation_logs")
+}
+
+model VkMedicineKnowledgeGraphEdge {
+  id              String   @id @default(cuid())
+  edgeType        String   @db.VarChar(64)
+  fromEntitySlug  String   @db.VarChar(128)
+  toEntitySlug    String   @db.VarChar(128)
+  weight          Float    @default(1.0)
+  labelBn         String?
+  labelEn         String?
+  metadataJson    Json?
+  createdAt       DateTime @default(now())
+
+  @@unique([edgeType, fromEntitySlug, toEntitySlug])
+  @@index([edgeType])
+  @@index([fromEntitySlug])
+  @@index([toEntitySlug])
+  @@map("vk_medicine_knowledge_graph_edges")
+}
+
+// ─── UVKG Phase 1–3 — Unified Veterinary Knowledge Graph ─────────────────────
+
+enum VkKnowledgeLinkStatus {
+  DRAFT
+  IN_REVIEW
+  VET_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  DEPRECATED
+  REJECTED
+}
+
+enum VkKnowledgeEdgeClass {
+  CLINICAL
+  NUTRITIONAL
+  REGULATORY
+  COMMERCIAL
+  METADATA
+}
+
+enum VkKnowledgeLinkDirection {
+  DIRECTED
+  UNDIRECTED
+}
+
+enum VkKnowledgeLinkSourceSystem {
+  FEED_GRAPH
+  MEDICINE_GRAPH
+  DISEASE_GRAPH
+  EDITORIAL
+  IMPORT
+  LEGACY_SYMPTOM
+}
+
+enum VkKnowledgeNodeRefType {
+  DISEASE
+  SYMPTOM
+  MEDICINE_GENERIC
+  MEDICINE_BRAND
+  FEED_INGREDIENT
+  FEED_FORMULA
+  NUTRIENT
+  SPECIES
+  BREED
+  VACCINE
+  CONDITION
+  RISK_FACTOR
+  OUTBREAK
+  REGION
+  KNOWLEDGE_ENTITY
+  PROTOCOL
+  EMERGENCY
+  OTHER
+}
+
+enum UvkgSyncConflictStatus {
+  OPEN
+  AUTO_RESOLVED
+  MANUAL_REQUIRED
+}
+
+model VkKnowledgeLink {
+  id                String                      @id @default(cuid())
+  linkKey           String                      @unique @db.VarChar(128)
+  edgeType          String                      @db.VarChar(64)
+  edgeClass         VkKnowledgeEdgeClass        @default(CLINICAL)
+  fromEntityId      String?
+  fromRefType       VkKnowledgeNodeRefType
+  fromRefId         String                      @db.VarChar(128)
+  toEntityId        String?
+  toRefType         VkKnowledgeNodeRefType
+  toRefId           String                      @db.VarChar(128)
+  direction         VkKnowledgeLinkDirection    @default(DIRECTED)
+  weight            Float                       @default(0.5)
+  lineOrder         Int?
+  species           LivestockSpecies[]
+  regionScope       String[]                    @default(["BD"])
+  evidenceLevel     String                      @default("L2") @db.VarChar(8)
+  confidenceScore   Float                       @default(0.8)
+  clinicalRiskTier  AiKnowledgeClinicalRiskTier @default(LOW)
+  status            VkKnowledgeLinkStatus       @default(DRAFT)
+  vkVersionId       String?
+  sourceEdgeId      String?                     @db.VarChar(64)
+  sourceSystem      VkKnowledgeLinkSourceSystem
+  labelBn           String?
+  labelEn           String?
+  metadataJson      Json?
+  effectiveFrom     DateTime                    @default(now())
+  effectiveTo       DateTime?
+  createdById       String?
+  updatedById       String?
+  publishedAt       DateTime?
+  deprecatedAt      DateTime?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  fromEntity  VkKnowledgeEntity?  @relation("UvkgLinkFrom", fields: [fromEntityId], references: [id], onDelete: SetNull)
+  toEntity    VkKnowledgeEntity?  @relation("UvkgLinkTo", fields: [toEntityId], references: [id], onDelete: SetNull)
+  vkVersion   VkKnowledgeVersion? @relation(fields: [vkVersionId], references: [id], onDelete: SetNull)
+  reviews     VkKnowledgeLinkReview[]
+  approvals   VkKnowledgeLinkApproval[]
+  auditEvents VkKnowledgeLinkAuditEvent[]
+
+  @@index([edgeType, status])
+  @@index([fromRefType, fromRefId])
+  @@index([toRefType, toRefId])
+  @@index([sourceSystem, sourceEdgeId])
+  @@index([status, edgeClass])
+  @@map("vk_knowledge_links")
+}
+
+model VkKnowledgeLinkStaging {
+  id                String                      @id @default(cuid())
+  linkKey           String                      @db.VarChar(128)
+  edgeType          String                      @db.VarChar(64)
+  edgeClass         VkKnowledgeEdgeClass        @default(CLINICAL)
+  fromEntityId      String?
+  fromRefType       VkKnowledgeNodeRefType
+  fromRefId         String                      @db.VarChar(128)
+  toEntityId        String?
+  toRefType         VkKnowledgeNodeRefType
+  toRefId           String                      @db.VarChar(128)
+  direction         VkKnowledgeLinkDirection    @default(DIRECTED)
+  weight            Float                       @default(0.5)
+  lineOrder         Int?
+  species           LivestockSpecies[]
+  regionScope       String[]                    @default(["BD"])
+  evidenceLevel     String                      @default("L2") @db.VarChar(8)
+  confidenceScore   Float                       @default(0.8)
+  clinicalRiskTier  AiKnowledgeClinicalRiskTier @default(LOW)
+  status            VkKnowledgeLinkStatus       @default(DRAFT)
+  vkVersionId       String?
+  sourceEdgeId      String?                     @db.VarChar(64)
+  sourceSystem      VkKnowledgeLinkSourceSystem
+  labelBn           String?
+  labelEn           String?
+  metadataJson      Json?
+  rebuildBatchId    String                      @db.VarChar(64)
+  createdAt         DateTime                    @default(now())
+
+  @@unique([rebuildBatchId, linkKey])
+  @@index([rebuildBatchId])
+  @@map("vk_knowledge_links_staging")
+}
+
+model VkKnowledgeLinkReview {
+  id          String                @id @default(cuid())
+  linkId      String
+  stage       VkReviewStage
+  outcome     String                @db.VarChar(32)
+  notes       String?               @db.Text
+  reviewerId  String?
+  createdAt   DateTime              @default(now())
+
+  link        VkKnowledgeLink       @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, createdAt])
+  @@map("vk_knowledge_link_reviews")
+}
+
+model VkKnowledgeLinkApproval {
+  id           String          @id @default(cuid())
+  linkId       String
+  vetId        String?
+  signOffHash  String?         @db.VarChar(128)
+  validUntil   DateTime?
+  notes        String?         @db.Text
+  createdAt    DateTime        @default(now())
+
+  link         VkKnowledgeLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, createdAt])
+  @@map("vk_knowledge_link_approvals")
+}
+
+model VkKnowledgeLinkAuditEvent {
+  id         String   @id @default(cuid())
+  linkId     String?
+  eventType  String   @db.VarChar(64)
+  actorId    String?
+  detailJson Json?
+  createdAt  DateTime @default(now())
+
+  link       VkKnowledgeLink? @relation(fields: [linkId], references: [id], onDelete: SetNull)
+
+  @@index([linkId, createdAt])
+  @@index([eventType, createdAt])
+  @@map("vk_knowledge_link_audit_events")
+}
+
+model UvkgSyncConflict {
+  id              String                 @id @default(cuid())
+  linkKey         String                 @db.VarChar(128)
+  sourceSystem    VkKnowledgeLinkSourceSystem
+  sourceEdgeId    String?                @db.VarChar(64)
+  conflictType    String                 @db.VarChar(64)
+  legacySnapshot  Json
+  uvkgSnapshot    Json?
+  status          UvkgSyncConflictStatus @default(OPEN)
+  resolutionNotes String?                @db.Text
+  resolvedAt      DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([status, createdAt])
+  @@index([linkKey])
+  @@map("uvkg_sync_conflicts")
 }
 
 model AiSymptomNode {
@@ -3764,6 +5442,563 @@ model RegionalOutbreakSignal {
 
   @@index([effectiveDate])
   @@index([diseaseSlug])
+}
+
+// ─── Disease Intelligence Ecosystem (D1–D10) ───────────────────────────────
+
+enum DiDiseaseStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+  MERGED
+}
+
+enum DiDiseaseCategory {
+  INFECTIOUS
+  PARASITIC
+  METABOLIC
+  NUTRITIONAL
+  TOXIC
+  TRAUMA
+  REPRODUCTIVE
+  GENETIC
+  NEOPLASTIC
+  IDIOPATHIC
+  OTHER
+}
+
+enum DiNotifiableClass {
+  NONE
+  BD_NOTIFIABLE
+  OIE_LISTED
+  ZOONOTIC
+}
+
+enum DiGraphNodeKind {
+  DISEASE
+  SYMPTOM
+  PROTOCOL
+  MEDICINE_GENERIC
+  VACCINE
+  EMERGENCY
+}
+
+enum DiGraphEdgeStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+}
+
+enum DiSymptomAliasType {
+  COMMON
+  SCIENTIFIC
+  LEGACY
+}
+
+enum DiCaseSessionState {
+  CREATED
+  INTAKE
+  AWAITING_CLARIFICATION
+  ANALYZING
+  EMERGENCY_TRIAGE
+  COMPLETE
+  ESCALATED
+  ABANDONED
+}
+
+enum DiSafetyDecisionAction {
+  PROCEED
+  BLOCK
+  ESCALATE
+  EMERGENCY_HANDOFF
+}
+
+enum DiOutbreakSignalSource {
+  ADMIN
+  OFFICIAL
+  SYNDROMIC
+  LEGACY
+}
+
+enum DiVetReviewStatus {
+  PENDING
+  IN_REVIEW
+  VALIDATED
+  OVERRIDDEN
+  CLOSED
+}
+
+enum DiPrevalenceBand {
+  RARE
+  UNCOMMON
+  COMMON
+  ENDEMIC
+}
+
+enum DiAnalyticsEventType {
+  REGISTRY_VIEW
+  SYMPTOM_RESOLVE
+  DIFFERENTIAL_COMPUTE
+  CASE_CREATED
+  CASE_ANALYZE
+  SAFETY_BLOCK
+  OUTBREAK_ALERT
+  VET_REVIEW
+  CORPUS_GAP
+}
+
+model DiDiseaseRegistry {
+  id                   String              @id @default(cuid())
+  code                 String              @unique @db.VarChar(32)
+  slug                 String              @unique @db.VarChar(128)
+  labelBn              String
+  labelEn              String
+  category             DiDiseaseCategory
+  notifiableClass      DiNotifiableClass   @default(NONE)
+  zoonoticRisk         Boolean             @default(false)
+  status               DiDiseaseStatus     @default(DRAFT)
+  vkEntityId           String?             @unique
+  legacyKnowledgeEntryId String?
+  defaultEvidenceLevel String              @default("L2") @db.VarChar(8)
+  clinicalRiskTier     AiKnowledgeClinicalRiskTier @default(LOW)
+  metadataJson         Json?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  aliases              DiDiseaseAlias[]
+  speciesMatrix        DiDiseaseSpeciesMatrix[]
+  versionPointers      DiDiseaseVersionPointer[]
+  graphNodes           DiGraphNode[]       @relation("DiseaseGraphNodes")
+  outbreakSignals      DiOutbreakSignal[]
+  prevalenceRows       DiPrevalenceTable[]
+  differentialCandidates DiDifferentialCandidate[]
+
+  @@index([status, category])
+  @@map("di_disease_registry")
+}
+
+model DiDiseaseAlias {
+  id         String   @id @default(cuid())
+  registryId String
+  locale     String   @db.VarChar(8)
+  alias      String   @db.VarChar(256)
+  aliasType  DiSymptomAliasType @default(COMMON)
+  createdAt  DateTime @default(now())
+
+  registry   DiDiseaseRegistry @relation(fields: [registryId], references: [id], onDelete: Cascade)
+
+  @@index([alias])
+  @@index([registryId])
+  @@map("di_disease_aliases")
+}
+
+model DiDiseaseSpeciesMatrix {
+  id            String           @id @default(cuid())
+  registryId    String
+  species       LivestockSpecies
+  prevalenceBand DiPrevalenceBand @default(COMMON)
+  endemicBd     Boolean          @default(true)
+  ageMinMonths  Int?
+  ageMaxMonths  Int?
+
+  registry      DiDiseaseRegistry @relation(fields: [registryId], references: [id], onDelete: Cascade)
+
+  @@unique([registryId, species])
+  @@map("di_disease_species_matrix")
+}
+
+model DiDiseaseVersionPointer {
+  id                  String   @id @default(cuid())
+  registryId          String
+  vkPublishedVersionId String  @db.VarChar(64)
+  effectiveFrom       DateTime @default(now())
+  supersededAt        DateTime?
+
+  registry            DiDiseaseRegistry @relation(fields: [registryId], references: [id], onDelete: Cascade)
+
+  @@index([registryId, effectiveFrom])
+  @@map("di_disease_version_pointer")
+}
+
+model DiGraphNode {
+  id          String          @id @default(cuid())
+  nodeKind    DiGraphNodeKind
+  refId       String          @db.VarChar(128)
+  labelBn     String?
+  labelEn     String?
+  registryId  String?
+  legacySymptomNodeId String? @unique
+  createdAt   DateTime        @default(now())
+
+  registry    DiDiseaseRegistry? @relation("DiseaseGraphNodes", fields: [registryId], references: [id], onDelete: SetNull)
+  edgesFrom   DiGraphEdge[]   @relation("EdgeFrom")
+  edgesTo     DiGraphEdge[]   @relation("EdgeTo")
+
+  @@unique([nodeKind, refId])
+  @@index([nodeKind])
+  @@map("di_graph_nodes")
+}
+
+model DiGraphEdge {
+  id            String            @id @default(cuid())
+  fromNodeId    String
+  toNodeId      String
+  edgeType      String            @db.VarChar(64)
+  weight        Float             @default(0.5)
+  species       LivestockSpecies[]
+  evidenceLevel String            @default("L2") @db.VarChar(8)
+  status        DiGraphEdgeStatus @default(DRAFT)
+  vkVersionId   String?           @db.VarChar(64)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  fromNode      DiGraphNode @relation("EdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode        DiGraphNode @relation("EdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+  evidence      DiGraphEdgeEvidence[]
+
+  @@unique([fromNodeId, toNodeId, edgeType])
+  @@index([edgeType, status])
+  @@map("di_graph_edges")
+}
+
+model DiGraphEdgeEvidence {
+  id           String   @id @default(cuid())
+  edgeId       String
+  sourceId     String?  @db.VarChar(64)
+  spanLocator  String?  @db.VarChar(128)
+  confidence   Float    @default(0.8)
+  createdAt    DateTime @default(now())
+
+  edge         DiGraphEdge @relation(fields: [edgeId], references: [id], onDelete: Cascade)
+
+  @@map("di_graph_edge_evidence")
+}
+
+model DiSymptomTaxonomy {
+  id           String             @id @default(cuid())
+  code         String             @unique
+  species      LivestockSpecies[]
+  bodySystem   String
+  labelBn      String
+  labelEn      String
+  redFlag      Boolean            @default(false)
+  weight       Float              @default(0.5)
+  parentCode   String?
+  legacyNodeId String?            @unique
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  colloquials  DiSymptomColloquial[]
+
+  @@index([bodySystem])
+  @@map("di_symptom_taxonomy")
+}
+
+model DiSymptomColloquial {
+  id          String   @id @default(cuid())
+  symptomCode String
+  locale      String   @db.VarChar(8)
+  phrase      String   @db.VarChar(256)
+  createdAt   DateTime @default(now())
+
+  symptom     DiSymptomTaxonomy @relation(fields: [symptomCode], references: [code], onDelete: Cascade)
+
+  @@index([phrase])
+  @@map("di_symptom_colloquial")
+}
+
+model DiDifferentialRun {
+  id           String   @id @default(cuid())
+  caseId       String?
+  inputsHash   String   @db.VarChar(64)
+  modelVersion String   @default("die-v1") @db.VarChar(32)
+  outputJson   Json
+  createdAt    DateTime @default(now())
+
+  candidates   DiDifferentialCandidate[]
+
+  @@index([caseId, createdAt])
+  @@map("di_differential_runs")
+}
+
+model DiDifferentialCandidate {
+  id           String   @id @default(cuid())
+  runId        String
+  registryId   String?
+  slug         String   @db.VarChar(128)
+  rank         Int
+  score        Decimal  @db.Decimal(8, 4)
+  reasonCodesJson Json
+  citationsJson   Json
+
+  run          DiDifferentialRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  registry     DiDiseaseRegistry? @relation(fields: [registryId], references: [id], onDelete: SetNull)
+
+  @@index([runId, rank])
+  @@map("di_differential_candidates")
+}
+
+model DiSpeciesProfile {
+  id          String           @id @default(cuid())
+  species     LivestockSpecies @unique
+  profileJson Json
+  updatedAt   DateTime         @updatedAt
+
+  @@map("di_species_profiles")
+}
+
+model DiPrevalenceTable {
+  id             String           @id @default(cuid())
+  registryId     String
+  species        LivestockSpecies
+  divisionId     String?          @db.VarChar(32)
+  season         String?          @db.VarChar(16)
+  prevalenceBand DiPrevalenceBand
+  effectiveFrom  DateTime         @default(now())
+  effectiveTo    DateTime?
+
+  registry       DiDiseaseRegistry @relation(fields: [registryId], references: [id], onDelete: Cascade)
+
+  @@index([registryId, species])
+  @@map("di_prevalence_table")
+}
+
+model DiOutbreakSignal {
+  id            String                @id @default(cuid())
+  registryId    String?
+  diseaseSlug   String                @db.VarChar(128)
+  divisionId    String?               @db.VarChar(32)
+  districtId    String?               @db.VarChar(32)
+  riskIndex     Int
+  confidence    Float                 @default(0.8)
+  effectiveDate DateTime              @db.Date
+  source        DiOutbreakSignalSource @default(ADMIN)
+  sourceAttributionId String?         @db.VarChar(64)
+  notes         String?
+  legacyRegionalId String?            @unique
+  createdAt     DateTime              @default(now())
+
+  registry      DiDiseaseRegistry? @relation(fields: [registryId], references: [id], onDelete: SetNull)
+
+  @@index([effectiveDate])
+  @@index([diseaseSlug])
+  @@index([registryId])
+  @@map("di_outbreak_signals")
+}
+
+model DiOutbreakAggregate {
+  id            String   @id @default(cuid())
+  diseaseSlug   String   @db.VarChar(128)
+  registryId    String?  @db.VarChar(64)
+  divisionId    String?  @db.VarChar(32)
+  districtId    String?  @db.VarChar(32)
+  aggregateDate DateTime @db.Date
+  avgRiskIndex  Int
+  signalCount   Int
+  createdAt     DateTime @default(now())
+
+  @@unique([diseaseSlug, divisionId, districtId, aggregateDate])
+  @@map("di_outbreak_aggregates")
+}
+
+model DiOutbreakSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String?
+  species    LivestockSpecies[]
+  divisionId String?  @db.VarChar(32)
+  channelsJson Json   @default("[]")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, active])
+  @@map("di_outbreak_subscriptions")
+}
+
+model DiOutbreakAlertLog {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  signalId       String?
+  deliveredAt    DateTime @default(now())
+  channel        String   @db.VarChar(32)
+  metadataJson   Json?
+
+  @@index([subscriptionId, deliveredAt])
+  @@map("di_outbreak_alert_logs")
+}
+
+model DiSafetyPolicy {
+  id            String   @id @default(cuid())
+  version       String   @unique @db.VarChar(32)
+  rulesJson     Json
+  effectiveFrom DateTime @default(now())
+  approvedByVetId String? @db.VarChar(64)
+  createdAt     DateTime @default(now())
+
+  evaluations   DiSafetyEvaluationLog[]
+
+  @@map("di_safety_policies")
+}
+
+model DiSafetyEvaluationLog {
+  id           String                 @id @default(cuid())
+  caseId       String?
+  policyVersion String                @db.VarChar(32)
+  action       DiSafetyDecisionAction
+  reasonCodesJson Json
+  createdAt    DateTime               @default(now())
+
+  policy       DiSafetyPolicy @relation(fields: [policyVersion], references: [version], onDelete: Restrict)
+
+  @@index([caseId, createdAt])
+  @@map("di_safety_evaluation_logs")
+}
+
+model DiCaseSession {
+  id           String              @id @default(cuid())
+  userId       String
+  customerId   String?
+  livestockId  String?
+  species      LivestockSpecies
+  locale       String              @default("bn") @db.VarChar(8)
+  state        DiCaseSessionState  @default(CREATED)
+  sessionId    String?
+  symptomsJson Json?
+  contextJson  Json?
+  legacyMemoryKey String?          @unique
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  turns        DiCaseTurn[]
+  escalations  DiCaseEscalation[]
+  vetReviews   DiVetCaseReview[]
+
+  @@index([userId, createdAt])
+  @@index([customerId])
+  @@map("di_case_sessions")
+}
+
+model DiCaseTurn {
+  id              String   @id @default(cuid())
+  caseId          String
+  turnIndex       Int
+  retrievalPackId String?  @db.VarChar(64)
+  routingJson     Json?
+  inputJson       Json?
+  outputJson      Json?
+  safetyAction    DiSafetyDecisionAction?
+  createdAt       DateTime @default(now())
+
+  case            DiCaseSession @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, turnIndex])
+  @@map("di_case_turns")
+}
+
+model DiCaseEscalation {
+  id           String   @id @default(cuid())
+  caseId       String
+  reasonCode   String   @db.VarChar(64)
+  urgencyTier  String?  @db.VarChar(32)
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+
+  case         DiCaseSession @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("di_case_escalations")
+}
+
+model DiAnalyticsEvent {
+  id           String               @id @default(cuid())
+  eventType    DiAnalyticsEventType
+  caseId       String?
+  registryId   String?
+  metadataJson Json?
+  createdAt    DateTime             @default(now())
+
+  @@index([eventType, createdAt])
+  @@map("di_analytics_events")
+}
+
+model DiAnalyticsDaily {
+  id           String   @id @default(cuid())
+  metricDate   DateTime @db.Date
+  dimensionKey String   @db.VarChar(128)
+  countsJson   Json
+  createdAt    DateTime @default(now())
+
+  @@unique([metricDate, dimensionKey])
+  @@map("di_analytics_daily")
+}
+
+model DiCorpusGapTicket {
+  id           String   @id @default(cuid())
+  queryText    String   @db.Text
+  locale       String   @db.VarChar(8)
+  species      LivestockSpecies?
+  status       String   @default("OPEN") @db.VarChar(32)
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  resolvedAt   DateTime?
+
+  @@index([status, createdAt])
+  @@map("di_corpus_gap_tickets")
+}
+
+model DiVetCaseReview {
+  id        String            @id @default(cuid())
+  caseId    String
+  vetId     String            @db.VarChar(64)
+  status    DiVetReviewStatus @default(PENDING)
+  notes     String?           @db.Text
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  case      DiCaseSession @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  overrides DiVetDifferentialOverride[]
+  signOffs  DiVetSignOff[]
+
+  @@index([vetId, status])
+  @@map("di_vet_case_reviews")
+}
+
+model DiVetDifferentialOverride {
+  id           String   @id @default(cuid())
+  reviewId     String
+  registryId   String?  @db.VarChar(64)
+  slug         String   @db.VarChar(128)
+  rank         Int
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  review       DiVetCaseReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("di_vet_differential_overrides")
+}
+
+model DiVetSignOff {
+  id           String   @id @default(cuid())
+  reviewId     String
+  attestation  String   @db.Text
+  signedAt     DateTime @default(now())
+
+  review       DiVetCaseReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("di_vet_sign_offs")
+}
+
+model DiVetGapTicket {
+  id           String   @id @default(cuid())
+  reviewId     String?
+  caseId       String?
+  description  String   @db.Text
+  status       String   @default("OPEN") @db.VarChar(32)
+  vkChangeRequestId String? @db.VarChar(64)
+  createdAt    DateTime @default(now())
+
+  @@index([status])
+  @@map("di_vet_gap_tickets")
 }
 
 model AiUsageRecord {
@@ -3913,6 +6148,43 @@ model AiUsageAlert {
   @@index([acknowledged, createdAt])
 }
 
+/// Admin analytics scope membership — decouples org/branch scope from UserRole enum.
+model AdminAnalyticsScope {
+  id             String   @id @default(cuid())
+  userId         String
+  scopeLevel     String   @db.VarChar(16)
+  organizationId String?  @db.VarChar(64)
+  branchId       String?  @db.VarChar(64)
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, scopeLevel, organizationId, branchId])
+  @@index([userId, enabled])
+  @@map("admin_analytics_scopes")
+}
+
+/// Operational audit trail for AI analytics reconciliation and validation runs.
+model AiAnalyticsReconciliationRun {
+  id              String    @id @default(cuid())
+  runType         String    @db.VarChar(32)
+  bucketKey       String    @db.VarChar(32)
+  status          String    @db.VarChar(16)
+  logCount        Int       @default(0)
+  rollupsUpserted Int       @default(0)
+  driftUsd        Decimal?  @db.Decimal(12, 6)
+  driftRequests   Int?
+  durationMs      Int
+  errorMessage    String?   @db.Text
+  metadataJson    Json?
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  @@index([runType, bucketKey])
+  @@index([status, startedAt])
+  @@map("ai_analytics_reconciliation_runs")
+}
+
 model AiPromptTemplate {
   id          String         @id @default(cuid())
   key         String         @unique
@@ -3980,6 +6252,7 @@ model AiFollowUpSuggestion {
 // ---------------------------------------------------------------------------
 
 enum AiApiKeyStatus {
+  PENDING_TEST
   ACTIVE
   ROTATED
   REVOKED
@@ -4022,6 +6295,18 @@ enum AiModelSource {
   EXTERNAL
   VETERINARY
   SELF_HOSTED
+  ADMIN
+  SYNC
+}
+
+enum AiModelFamily {
+  gpt
+  gemini
+  claude
+  deepseek
+  qwen
+  llama
+  grok
 }
 
 enum AiExtensionStatus {
@@ -4057,6 +6342,8 @@ model AiProvider {
   configJson        Json?
   healthScore       Float     @default(1.0)
   lastHealthCheckAt DateTime?
+  lastConnectionTestAt DateTime?
+  lastConnectionTestOk Boolean?
   costTier          String    @default("standard") @db.VarChar(16)
   version           Int       @default(1)
   createdByUserId   String?
@@ -4082,33 +6369,43 @@ model AiProvider {
 
 /// Provider model catalog with cost rates and capability metadata.
 model AiModel {
-  id                 String    @id @default(cuid())
-  scopeKey           String    @default("platform") @db.VarChar(128)
-  tenantId           String?   @db.VarChar(64)
-  branchId           String?   @db.VarChar(64)
-  providerId         String
-  modelKey           String    @db.VarChar(128)
-  displayName        String
-  modelType          String    @default("chat") @db.VarChar(32)
-  contextWindow      Int?
-  maxOutputTokens    Int?
-  inputCostPerToken  Decimal   @default(0) @db.Decimal(16, 12)
-  outputCostPerToken Decimal   @default(0) @db.Decimal(16, 12)
-  enabled            Boolean   @default(true)
-  isDefault          Boolean   @default(false)
-  source             AiModelSource @default(BUILTIN)
-  externalModelId    String?   @db.VarChar(256)
-  modelCategory      String    @default("general_chat") @db.VarChar(64)
-  extensionId        String?
-  capabilitiesJson   Json      @default("[]")
-  metadataJson       Json?
-  version            Int       @default(1)
-  createdByUserId    String?
-  updatedByUserId      String?
-  deletedAt          DateTime?
-  deletedByUserId    String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                      String         @id @default(cuid())
+  scopeKey                String         @default("platform") @db.VarChar(128)
+  tenantId                String?        @db.VarChar(64)
+  branchId                String?        @db.VarChar(64)
+  providerId              String
+  modelKey                String         @db.VarChar(128)
+  displayName             String
+  modelFamily             AiModelFamily?
+  modelType               String         @default("chat") @db.VarChar(32)
+  contextWindow           Int?
+  maxInputTokens          Int?
+  maxOutputTokens         Int?
+  contextWindowSource     String         @default("ADVERTISED") @db.VarChar(32)
+  inputCostPerToken       Decimal        @default(0) @db.Decimal(16, 12)
+  outputCostPerToken      Decimal        @default(0) @db.Decimal(16, 12)
+  cachedInputCostPerToken Decimal?       @db.Decimal(16, 12)
+  batchInputCostPerToken  Decimal?       @db.Decimal(16, 12)
+  batchOutputCostPerToken Decimal?       @db.Decimal(16, 12)
+  currency                String         @default("USD") @db.VarChar(8)
+  rateVersion             Int            @default(1)
+  enabled                 Boolean        @default(false)
+  isDefault               Boolean        @default(false)
+  source                  AiModelSource  @default(BUILTIN)
+  externalModelId         String?        @db.VarChar(256)
+  modelCategory           String         @default("general_chat") @db.VarChar(64)
+  extensionId             String?
+  capabilitiesJson        Json           @default("[]")
+  metadataJson            Json?
+  deprecatedAt            DateTime?
+  retiredAt               DateTime?
+  version                 Int            @default(1)
+  createdByUserId         String?
+  updatedByUserId         String?
+  deletedAt               DateTime?
+  deletedByUserId         String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 
   provider           AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   extension          AiMarketplaceExtension? @relation(fields: [extensionId], references: [id])
@@ -4116,13 +6413,40 @@ model AiModel {
   primaryRoutes      AiRoute[]  @relation("AiRoutePrimaryModel")
   failoverRulesFrom  AiFailoverRule[] @relation("AiFailoverFromModel")
   failoverRulesTo    AiFailoverRule[] @relation("AiFailoverToModel")
+  rateHistory        AiModelRateHistory[]
 
   @@unique([scopeKey, providerId, modelKey])
   @@index([providerId, enabled])
+  @@index([modelFamily, enabled])
   @@index([source, modelCategory])
   @@index([extensionId])
   @@index([deletedAt])
   @@map("ai_models")
+}
+
+/// Append-only economics history for accurate usage cost analytics.
+model AiModelRateHistory {
+  id                      String   @id @default(cuid())
+  modelId                 String
+  rateVersion             Int
+  inputCostPerToken       Decimal  @db.Decimal(16, 12)
+  outputCostPerToken      Decimal  @db.Decimal(16, 12)
+  cachedInputCostPerToken Decimal? @db.Decimal(16, 12)
+  batchInputCostPerToken  Decimal? @db.Decimal(16, 12)
+  batchOutputCostPerToken Decimal? @db.Decimal(16, 12)
+  currency                String   @default("USD") @db.VarChar(8)
+  effectiveFrom           DateTime @default(now())
+  effectiveTo             DateTime?
+  changedByUserId         String?
+  changeReason            String?  @db.VarChar(500)
+  source                  String   @default("admin") @db.VarChar(32)
+  createdAt               DateTime @default(now())
+
+  model AiModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId, rateVersion])
+  @@index([modelId, effectiveFrom])
+  @@map("ai_model_rate_history")
 }
 
 /// Encrypted API credentials — plaintext never stored.
@@ -4133,7 +6457,8 @@ model AiApiKey {
   branchId            String?        @db.VarChar(64)
   providerId          String
   name                String
-  status              AiApiKeyStatus @default(ACTIVE)
+  status              AiApiKeyStatus @default(PENDING_TEST)
+  isPrimary           Boolean        @default(false)
   encryptedSecret     String         @db.Text
   encryptionKeyId     String         @default("env:v1") @db.VarChar(64)
   encryptionAlgorithm String         @default("aes-256-gcm") @db.VarChar(32)
@@ -4156,6 +6481,7 @@ model AiApiKey {
 
   @@index([providerId, status])
   @@index([scopeKey, providerId])
+  @@index([providerId, scopeKey, isPrimary])
   @@index([deletedAt])
   @@map("ai_api_keys")
 }
@@ -4271,7 +6597,9 @@ model AiUsageLog {
   fromProviderKey String?   @db.VarChar(32)
   requestId       String?   @db.VarChar(64)
   correlationId   String?   @db.VarChar(64)
+  sessionId       String?   @db.VarChar(64)
   metadataJson    Json?
+  retrievalMetadataJson Json?
   createdAt       DateTime  @default(now())
 
   provider        AiProvider?    @relation(fields: [providerId], references: [id])
@@ -4286,6 +6614,7 @@ model AiUsageLog {
   @@index([userId, createdAt])
   @@index([providerId, createdAt])
   @@index([routeId, createdAt])
+  @@index([sessionId, createdAt])
   @@map("ai_usage_logs")
 }
 

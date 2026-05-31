@@ -15,7 +15,6 @@ import { getAiSafetyService } from '../../ai-veterinary-core/safety/ai-safety.se
 import { ValidationError } from '../../../shared/errors/http.errors.js';
 import { getAiAuditService } from '../audit/ai-audit.service.js';
 import { getAiKnowledgeService } from '../knowledge/ai-knowledge.service.js';
-import { getAiOrchestratorService } from '../orchestrator/ai-orchestrator.service.js';
 import { omitUndefined } from '../../../shared/types/object.utils.js';
 
 export interface SymptomCheckInput {
@@ -35,6 +34,12 @@ export class SymptomCheckerService {
   readonly name = 'SymptomCheckerService';
 
   async getTaxonomy(species: LivestockSpecies) {
+    const { getSymptomTaxonomyService } = await import('../disease-intelligence/symptom/symptom-taxonomy.service.js');
+    const dieTaxonomy = await getSymptomTaxonomyService().getTaxonomy(species);
+    if (dieTaxonomy && dieTaxonomy.bodySystems.length > 0) {
+      return dieTaxonomy;
+    }
+
     const prisma = getPrisma();
     const nodes = await prisma.aiSymptomNode.findMany({
       where: { species: { has: species } },

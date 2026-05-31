@@ -1,7 +1,8 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { requireAiAdminActor } from '../../../../../../../../modules/ai/admin/ai-admin.guard.js';
 import {
-  getAiRegistryAdminService,
+  adminErrorMessage,
+  getAiModelRegistryService,
+  requireAiAdminCapability,
   toggleEnabledSchema,
 } from '../../../../../../../../modules/ai/admin/index.js';
 
@@ -9,7 +10,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAiAdminActor();
+  const auth = await requireAiAdminCapability('ai.registry.manage');
   if (!auth.ok) return auth.response;
   const { id } = await context.params;
   let json: unknown;
@@ -20,10 +21,13 @@ export async function POST(
   }
   try {
     const { enabled } = toggleEnabledSchema.parse(json);
-    const data = await getAiRegistryAdminService().toggleModel(id, enabled, auth.actor.id);
+    const data = await getAiModelRegistryService().toggleModel(id, enabled, auth.actor);
     return jsonOk(data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to toggle model';
-    return jsonError('AI_ADMIN_ERROR', message, 400);
+    return jsonError(
+      'AI_ADMIN_ERROR',
+      adminErrorMessage(error, 'Failed to toggle model'),
+      400,
+    );
   }
 }

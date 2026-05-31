@@ -12,11 +12,6 @@ function utcMonthStart(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
-function decimalToNumber(value: { toString(): string } | null | undefined): number {
-  if (value == null) return 0;
-  return Number(value);
-}
-
 export class AiPlatformAdminService {
   readonly name = 'AiPlatformAdminService';
 

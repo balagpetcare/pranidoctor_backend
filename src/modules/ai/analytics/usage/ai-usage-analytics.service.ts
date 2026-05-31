@@ -1,4 +1,8 @@
 import { getPrisma } from '../../../../shared/database/prisma.js';
+import {
+  aggregateLogs,
+  fetchUsageLogs,
+} from '../metrics/ai-analytics-source.util.js';
 import type {
   CostTrendPoint,
   DailyCostPoint,
@@ -10,7 +14,6 @@ import type {
 } from './ai-usage-analytics.types.js';
 import {
   buildUsageLogWhere,
-  buildUsageRecordWhere,
   decimalToNumber,
   hasScopedFilters,
   roundRate,
@@ -59,7 +62,7 @@ export class AiUsageAnalyticsService {
 
   async getTotals(filters: UsageAnalyticsFilters): Promise<UsageAnalyticsDashboard['totals']> {
     if (hasScopedFilters(filters)) {
-      return this.totalsFromRecords(filters);
+      return this.totalsFromLogs(filters);
     }
 
     const prisma = getPrisma();
@@ -92,7 +95,7 @@ export class AiUsageAnalyticsService {
 
   async getDailyCost(filters: UsageAnalyticsFilters): Promise<DailyCostPoint[]> {
     if (hasScopedFilters(filters)) {
-      return this.dailyCostFromRecords(filters);
+      return this.dailyCostFromLogs(filters);
     }
 
     const prisma = getPrisma();
@@ -162,50 +165,25 @@ export class AiUsageAnalyticsService {
   }
 
   async getProviderComparison(filters: UsageAnalyticsFilters): Promise<ProviderComparisonRow[]> {
-    const prisma = getPrisma();
-    const where = buildUsageRecordWhere(filters);
+    const logs = await fetchUsageLogs(filters);
+    const agg = aggregateLogs(logs);
+    const totalCost = agg.costUsd;
 
-    const [rows, successRows] = await Promise.all([
-      prisma.aiUsageRecord.groupBy({
-        by: ['provider'],
-        where,
-        _count: { id: true },
-        _sum: {
-          inputTokens: true,
-          outputTokens: true,
-          totalTokens: true,
-          costUsd: true,
-          latencyMs: true,
-        },
-      }),
-      prisma.aiUsageRecord.groupBy({
-        by: ['provider'],
-        where: { ...where, success: true },
-        _count: { id: true },
-      }),
-    ]);
-
-    const successMap = new Map(successRows.map((r) => [r.provider, r._count.id]));
-    const totalCost = rows.reduce((sum, row) => sum + decimalToNumber(row._sum.costUsd), 0);
-
-    return rows
-      .map((row) => {
-        const requests = row._count.id;
-        const successes = successMap.get(row.provider) ?? 0;
-        const failures = requests - successes;
-        const latencySum = row._sum.latencyMs ?? 0;
-        const costUsd = roundUsd(decimalToNumber(row._sum.costUsd));
+    return [...agg.byProvider.entries()]
+      .map(([provider, stats]) => {
+        const costUsd = roundUsd(stats.costUsd);
         return {
-          provider: row.provider,
-          requests,
-          successes,
-          failures,
-          successRate: roundRate(successes, requests),
-          totalTokens: row._sum.totalTokens ?? 0,
-          inputTokens: row._sum.inputTokens ?? 0,
-          outputTokens: row._sum.outputTokens ?? 0,
+          provider,
+          requests: stats.requests,
+          successes: stats.successes,
+          failures: stats.failures,
+          successRate: roundRate(stats.successes, stats.requests),
+          totalTokens: stats.totalTokens,
+          inputTokens: stats.inputTokens,
+          outputTokens: stats.outputTokens,
           costUsd,
-          avgLatencyMs: requests > 0 ? Math.round(latencySum / requests) : 0,
+          avgLatencyMs:
+            stats.requests > 0 ? Math.round(stats.latencyMsSum / stats.requests) : 0,
           shareOfCostPct: sharePct(costUsd, totalCost),
         };
       })
@@ -213,33 +191,28 @@ export class AiUsageAnalyticsService {
   }
 
   async getFeatureComparison(filters: UsageAnalyticsFilters): Promise<FeatureComparisonRow[]> {
-    const prisma = getPrisma();
-    const where = buildUsageRecordWhere(filters);
-
-    const rows = await prisma.aiUsageRecord.groupBy({
-      by: ['feature', 'provider'],
-      where,
-      _count: { id: true },
-      _sum: { totalTokens: true, costUsd: true },
-    });
-
+    const logs = await fetchUsageLogs(filters);
     const byFeature = new Map<
       string,
       { requests: number; totalTokens: number; costUsd: number; providers: Map<string, number> }
     >();
 
-    for (const row of rows) {
-      const existing = byFeature.get(row.feature) ?? {
+    for (const row of logs) {
+      const feature = row.feature ?? 'UNKNOWN';
+      const existing = byFeature.get(feature) ?? {
         requests: 0,
         totalTokens: 0,
         costUsd: 0,
         providers: new Map<string, number>(),
       };
-      existing.requests += row._count.id;
-      existing.totalTokens += row._sum.totalTokens ?? 0;
-      existing.costUsd += decimalToNumber(row._sum.costUsd);
-      existing.providers.set(row.provider, (existing.providers.get(row.provider) ?? 0) + row._count.id);
-      byFeature.set(row.feature, existing);
+      existing.requests += 1;
+      existing.totalTokens += row.totalTokens;
+      existing.costUsd += decimalToNumber(row.costUsd);
+      existing.providers.set(
+        row.providerKey,
+        (existing.providers.get(row.providerKey) ?? 0) + 1,
+      );
+      byFeature.set(feature, existing);
     }
 
     const totalCost = [...byFeature.values()].reduce((sum, row) => sum + row.costUsd, 0);
@@ -297,47 +270,51 @@ export class AiUsageAnalyticsService {
   }
 
   async getTopUsers(filters: UsageAnalyticsFilters, limit = 10) {
-    const prisma = getPrisma();
-    const where = buildUsageRecordWhere(filters);
-    const rows = await prisma.aiUsageRecord.groupBy({
-      by: ['userId'],
-      where: { ...where, userId: { not: null } },
-      _count: { id: true },
-      _sum: { totalTokens: true, costUsd: true },
-      orderBy: { _sum: { costUsd: 'desc' } },
-      take: limit,
-    });
+    const logs = await fetchUsageLogs(filters);
+    const byUser = new Map<string, { requests: number; totalTokens: number; costUsd: number }>();
 
-    return rows
-      .filter((row) => row.userId)
-      .map((row) => ({
-        userId: row.userId as string,
-        requests: row._count.id,
-        totalTokens: row._sum.totalTokens ?? 0,
-        costUsd: roundUsd(decimalToNumber(row._sum.costUsd)),
-      }));
+    for (const row of logs) {
+      if (!row.userId) continue;
+      const existing = byUser.get(row.userId) ?? { requests: 0, totalTokens: 0, costUsd: 0 };
+      existing.requests += 1;
+      existing.totalTokens += row.totalTokens;
+      existing.costUsd += decimalToNumber(row.costUsd);
+      byUser.set(row.userId, existing);
+    }
+
+    return [...byUser.entries()]
+      .map(([userId, stats]) => ({
+        userId,
+        requests: stats.requests,
+        totalTokens: stats.totalTokens,
+        costUsd: roundUsd(stats.costUsd),
+      }))
+      .sort((a, b) => b.costUsd - a.costUsd)
+      .slice(0, limit);
   }
 
   async getTopBranches(filters: UsageAnalyticsFilters, limit = 10) {
-    const prisma = getPrisma();
-    const where = buildUsageRecordWhere(filters);
-    const rows = await prisma.aiUsageRecord.groupBy({
-      by: ['branchId'],
-      where: { ...where, branchId: { not: null } },
-      _count: { id: true },
-      _sum: { totalTokens: true, costUsd: true },
-      orderBy: { _sum: { costUsd: 'desc' } },
-      take: limit,
-    });
+    const logs = await fetchUsageLogs(filters);
+    const byBranch = new Map<string, { requests: number; totalTokens: number; costUsd: number }>();
 
-    return rows
-      .filter((row) => row.branchId)
-      .map((row) => ({
-        branchId: row.branchId as string,
-        requests: row._count.id,
-        totalTokens: row._sum.totalTokens ?? 0,
-        costUsd: roundUsd(decimalToNumber(row._sum.costUsd)),
-      }));
+    for (const row of logs) {
+      if (!row.branchId) continue;
+      const existing = byBranch.get(row.branchId) ?? { requests: 0, totalTokens: 0, costUsd: 0 };
+      existing.requests += 1;
+      existing.totalTokens += row.totalTokens;
+      existing.costUsd += decimalToNumber(row.costUsd);
+      byBranch.set(row.branchId, existing);
+    }
+
+    return [...byBranch.entries()]
+      .map(([branchId, stats]) => ({
+        branchId,
+        requests: stats.requests,
+        totalTokens: stats.totalTokens,
+        costUsd: roundUsd(stats.costUsd),
+      }))
+      .sort((a, b) => b.costUsd - a.costUsd)
+      .slice(0, limit);
   }
 
   /** Recent AIMS usage log rows for drill-down. */
@@ -368,45 +345,24 @@ export class AiUsageAnalyticsService {
     });
   }
 
-  private async totalsFromRecords(
+  private async totalsFromLogs(
     filters: UsageAnalyticsFilters,
   ): Promise<UsageAnalyticsDashboard['totals']> {
-    const prisma = getPrisma();
-    const where = buildUsageRecordWhere(filters);
-    const [rows, successCount] = await Promise.all([
-      prisma.aiUsageRecord.aggregate({
-        where,
-        _count: { id: true },
-        _sum: { totalTokens: true, costUsd: true },
-      }),
-      prisma.aiUsageRecord.count({ where: { ...where, success: true } }),
-    ]);
-
-    const requests = rows._count.id;
+    const agg = aggregateLogs(await fetchUsageLogs(filters));
     return {
-      requests,
-      successes: successCount,
-      failures: requests - successCount,
-      totalTokens: rows._sum.totalTokens ?? 0,
-      costUsd: roundUsd(decimalToNumber(rows._sum.costUsd)),
+      requests: agg.requests,
+      successes: agg.successes,
+      failures: agg.failures,
+      totalTokens: agg.totalTokens,
+      costUsd: agg.costUsd,
     };
   }
 
-  private async dailyCostFromRecords(filters: UsageAnalyticsFilters): Promise<DailyCostPoint[]> {
-    const prisma = getPrisma();
-    const rows = await prisma.aiUsageRecord.findMany({
-      where: buildUsageRecordWhere(filters),
-      select: {
-        createdAt: true,
-        inputTokens: true,
-        outputTokens: true,
-        totalTokens: true,
-        costUsd: true,
-      },
-    });
-
+  private async dailyCostFromLogs(filters: UsageAnalyticsFilters): Promise<DailyCostPoint[]> {
+    const logs = await fetchUsageLogs(filters);
     const byDay = new Map<string, DailyCostPoint>();
-    for (const row of rows) {
+
+    for (const row of logs) {
       const date = row.createdAt.toISOString().slice(0, 10);
       const existing = byDay.get(date) ?? {
         date,
