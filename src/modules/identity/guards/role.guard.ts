@@ -13,6 +13,7 @@ const ROLE_SLUG_MAP: Record<UserRole, IdentityRoleSlug> = {
   [UserRole.CUSTOMER]: 'farmer',
   [UserRole.DOCTOR]: 'doctor',
   [UserRole.AI_TECHNICIAN]: 'ai_technician',
+  [UserRole.HEALTH_WORKER]: 'health_worker',
   [UserRole.ADMIN]: 'admin',
   [UserRole.SUPER_ADMIN]: 'super_admin',
   [UserRole.SUPPORT]: 'support',

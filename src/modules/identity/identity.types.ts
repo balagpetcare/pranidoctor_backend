@@ -7,6 +7,7 @@ export type IdentityRoleSlug =
   | 'farmer'
   | 'doctor'
   | 'ai_technician'
+  | 'health_worker'
   | 'admin'
   | 'super_admin'
   | 'support';

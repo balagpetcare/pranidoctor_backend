@@ -33,6 +33,8 @@ const ROLE_MATRIX: Record<
   UserRole,
   Partial<Record<ServiceInstanceAdminCapability, true>> | undefined
 > = {
+  // Health workers get no admin-panel capabilities (deny by default).
+  [UserRole.HEALTH_WORKER]: undefined,
   [UserRole.SUPER_ADMIN]: {
     'serviceInstance.view': true,
     'serviceInstance.review': true,

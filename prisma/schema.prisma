@@ -2219,6 +2219,7 @@ enum UserRole {
   AI_TECHNICIAN
   SUPPORT
   SUPER_ADMIN
+  HEALTH_WORKER
 }
 
 enum UserStatus {
