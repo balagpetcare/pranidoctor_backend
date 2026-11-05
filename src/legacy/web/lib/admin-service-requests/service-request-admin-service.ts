@@ -2,6 +2,9 @@ import type { Prisma } from "@/generated/prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { adminListPrescriptionsForServiceRequest } from "@/lib/admin-prescriptions/prescription-admin.service";
+import type { DoctorPrescriptionSummaryDto } from "@/lib/doctor-service-requests/doctor-clinical-service";
+
 import type { AdminListServiceRequestsQuery } from "./schemas";
 import { toServiceRequestDto } from "@/lib/mobile-service-requests/service-request-mapper";
 
@@ -81,9 +84,18 @@ export async function adminGetServiceRequest(requestId: string) {
     where: { id: requestId },
     include: adminInclude,
   });
-  return row ? toAdminDto(row) : null;
+  if (!row) return null;
+
+  const prescriptions = await adminListPrescriptionsForServiceRequest(requestId);
+
+  return {
+    ...toAdminDto(row),
+    prescriptions,
+  };
 }
 
 export type AdminServiceRequestDto = NonNullable<
   Awaited<ReturnType<typeof adminGetServiceRequest>>
->;
+> & {
+  prescriptions: DoctorPrescriptionSummaryDto[];
+};

@@ -7,7 +7,13 @@ import {
   recordProviderHealthMetric,
   setProviderUpMetric,
 } from '../usage/ai-usage.metrics.js';
-import { createOrchestratorAdapterFromKey, REGISTRY_PROVIDER_KEYS } from '../providers/orchestrator-bridge.js';
+import { ensureAiProvidersBootstrapped } from '../providers/provider-factory.js';
+import { getProviderRuntimeConfig } from '../providers/provider-config.js';
+import { getAiProviderRegistry } from '../providers/provider-registry.js';
+import { REGISTRY_PROVIDER_KEYS } from '../providers/orchestrator-bridge.js';
+import type { AiProviderKey } from '../providers/core/ai-provider.types.js';
+
+import { AI_HEALTH_PROBE_TIMEOUT_MS } from './ai-health.constants.js';
 
 export type ProviderHealthStatus = {
   provider: string;
@@ -15,38 +21,60 @@ export type ProviderHealthStatus = {
   reachable: boolean;
   latencyMs: number;
   errorCode?: string;
+  errorMessage?: string;
   lastProbedAt: string;
-};
-
-const PROBE_INPUT = {
-  feature: 'HEALTH_PROBE',
-  systemPrompt: 'Reply with OK only.',
-  userMessage: 'ping',
-  locale: 'en' as const,
-  maxTokens: 5,
-  temperature: 0,
+  endpoint?: string;
+  probeTimeoutMs?: number;
+  skipped?: boolean;
 };
 
 let latestSnapshot: Map<string, ProviderHealthStatus> = new Map();
 let probeTimer: ReturnType<typeof setInterval> | null = null;
 
+function normalizeRegistryKey(providerKey: string): AiProviderKey {
+  return providerKey.replace(/-/g, '_') as AiProviderKey;
+}
+
+function toDisplayKey(providerKey: string): string {
+  return providerKey.replace(/_/g, '-');
+}
+
 async function probeProvider(providerKey: string): Promise<ProviderHealthStatus> {
-  const displayKey = providerKey.replace(/_/g, '-');
-  let adapter;
+  const displayKey = toDisplayKey(providerKey);
+  const probedAt = new Date().toISOString();
+  let endpoint = '';
+  let probeTimeoutMs = AI_HEALTH_PROBE_TIMEOUT_MS;
+
   try {
-    adapter = createOrchestratorAdapterFromKey(providerKey);
+    const config = getProviderRuntimeConfig(normalizeRegistryKey(providerKey));
+    endpoint = config.baseUrl;
   } catch {
-    return {
+    endpoint = '(unknown)';
+  }
+
+  ensureAiProvidersBootstrapped();
+
+  let provider;
+  try {
+    provider = getAiProviderRegistry().getOrThrow(normalizeRegistryKey(providerKey));
+  } catch {
+    const status: ProviderHealthStatus = {
       provider: displayKey,
       configured: false,
       reachable: false,
       latencyMs: 0,
       errorCode: 'not_registered',
-      lastProbedAt: new Date().toISOString(),
+      errorMessage: 'Provider not registered in factory',
+      lastProbedAt: probedAt,
+      endpoint,
+      probeTimeoutMs,
+      skipped: true,
     };
+    setProviderUpMetric(displayKey, 0);
+    return status;
   }
 
-  const configured = adapter.isConfigured();
+  const configured = provider.isConfigured();
 
   if (!configured) {
     const status: ProviderHealthStatus = {
@@ -55,7 +83,11 @@ async function probeProvider(providerKey: string): Promise<ProviderHealthStatus>
       reachable: false,
       latencyMs: 0,
       errorCode: 'not_configured',
-      lastProbedAt: new Date().toISOString(),
+      errorMessage: 'No usable vault API key — skipped network probe',
+      lastProbedAt: probedAt,
+      endpoint,
+      probeTimeoutMs,
+      skipped: true,
     };
     setProviderUpMetric(displayKey, 0);
     return status;
@@ -63,28 +95,47 @@ async function probeProvider(providerKey: string): Promise<ProviderHealthStatus>
 
   const start = Date.now();
   try {
-    await adapter.complete(PROBE_INPUT);
-    const latencyMs = Date.now() - start;
+    const health = await provider.healthCheck();
+    const latencyMs = health.latencyMs ?? Date.now() - start;
     const status: ProviderHealthStatus = {
       provider: displayKey,
       configured: true,
-      reachable: true,
+      reachable: health.reachable,
       latencyMs,
-      lastProbedAt: new Date().toISOString(),
+      lastProbedAt: probedAt,
+      endpoint,
+      probeTimeoutMs,
+      skipped: false,
+      ...(health.reachable
+        ? {}
+        : {
+            errorCode: health.errorCode ?? 'probe_failed',
+            ...(health.message ? { errorMessage: health.message } : {}),
+          }),
     };
-    setProviderUpMetric(displayKey, 1);
-    recordProviderHealthMetric({ provider: displayKey, success: true, latencyMs });
+    setProviderUpMetric(displayKey, health.reachable ? 1 : 0);
+    recordProviderHealthMetric({
+      provider: displayKey,
+      success: health.reachable,
+      latencyMs,
+      ...(status.errorCode ? { errorCode: status.errorCode } : {}),
+    });
     return status;
   } catch (err) {
     const latencyMs = Date.now() - start;
     const errorCode = classifyProviderError(err);
+    const errorMessage = err instanceof Error ? err.message : 'Health probe failed';
     const status: ProviderHealthStatus = {
       provider: displayKey,
       configured: true,
       reachable: false,
       latencyMs,
       errorCode,
-      lastProbedAt: new Date().toISOString(),
+      errorMessage,
+      lastProbedAt: probedAt,
+      endpoint,
+      probeTimeoutMs,
+      skipped: false,
     };
     setProviderUpMetric(displayKey, 0);
     recordProviderHealthMetric({ provider: displayKey, success: false, latencyMs, errorCode });
@@ -113,21 +164,35 @@ export async function runAiProviderHealthProbes(options?: {
 }): Promise<ProviderHealthStatus[]> {
   const config = getAiPlatformConfig();
 
+  try {
+    const { getAiSecretService } = await import('../vault/ai-secret.service.js');
+    await getAiSecretService().refreshConfigurationCache();
+  } catch (err) {
+    getLogger().warn(
+      { err: err instanceof Error ? err.message : err },
+      'AI provider vault cache refresh failed — probes use last cache',
+    );
+  }
+
   if (options?.skipNetwork || process.env.NODE_ENV === 'test') {
     const results: ProviderHealthStatus[] = [...REGISTRY_PROVIDER_KEYS].map((providerKey) => {
+      ensureAiProvidersBootstrapped();
       let configured = false;
       try {
-        configured = createOrchestratorAdapterFromKey(providerKey).isConfigured();
+        configured = getAiProviderRegistry()
+          .getOrThrow(normalizeRegistryKey(providerKey))
+          .isConfigured();
       } catch {
         configured = false;
       }
-      const provider = providerKey.replace(/_/g, '-');
+      const provider = toDisplayKey(providerKey);
       return {
         provider,
         configured,
         reachable: configured,
         latencyMs: 0,
         lastProbedAt: new Date().toISOString(),
+        skipped: !configured,
       };
     });
     for (const r of results) latestSnapshot.set(r.provider, r);
@@ -136,17 +201,39 @@ export async function runAiProviderHealthProbes(options?: {
 
   logAiExecution('health_probe_start', { providers: [...REGISTRY_PROVIDER_KEYS] });
 
-  const results = await Promise.all([...REGISTRY_PROVIDER_KEYS].map((key) => probeProvider(key)));
+  const results: ProviderHealthStatus[] = [];
+  for (const key of REGISTRY_PROVIDER_KEYS) {
+    try {
+      results.push(await probeProvider(key));
+    } catch (err) {
+      const displayKey = toDisplayKey(key);
+      results.push({
+        provider: displayKey,
+        configured: false,
+        reachable: false,
+        latencyMs: 0,
+        errorCode: 'probe_exception',
+        errorMessage: err instanceof Error ? err.message : 'Probe threw unexpectedly',
+        lastProbedAt: new Date().toISOString(),
+        skipped: true,
+      });
+    }
+  }
 
   for (const status of results) {
     latestSnapshot.set(status.provider, status);
     if (options?.persist !== false && config.healthProbeEnabled) {
-      await persistSnapshot(status);
+      await persistSnapshot(status).catch(() => {
+        /* logged in persistSnapshot */
+      });
     }
   }
 
+  const configured = results.filter((r) => r.configured);
   logAiExecution('health_probe_complete', {
     reachable: results.filter((r) => r.reachable).length,
+    configured: configured.length,
+    skipped: results.filter((r) => r.skipped).length,
     total: results.length,
   });
 
@@ -155,7 +242,7 @@ export async function runAiProviderHealthProbes(options?: {
 
 export function getLatestProviderHealth(): ProviderHealthStatus[] {
   return [...REGISTRY_PROVIDER_KEYS].map((key) => {
-    const provider = key.replace(/_/g, '-');
+    const provider = toDisplayKey(key);
     return (
       latestSnapshot.get(provider) ?? {
         provider,
@@ -163,6 +250,9 @@ export function getLatestProviderHealth(): ProviderHealthStatus[] {
         reachable: false,
         latencyMs: 0,
         lastProbedAt: new Date(0).toISOString(),
+        skipped: true,
+        errorCode: 'not_probed',
+        errorMessage: 'No probe run yet',
       }
     );
   });
@@ -172,10 +262,20 @@ export function startAiHealthProbeScheduler(): void {
   const config = getAiPlatformConfig();
   if (!config.healthProbeEnabled || probeTimer) return;
 
-  void runAiProviderHealthProbes({ persist: true });
+  void runAiProviderHealthProbes({ persist: true }).catch((err) => {
+    getLogger().warn(
+      { err: err instanceof Error ? err.message : err },
+      'Initial AI provider health probe failed (non-fatal)',
+    );
+  });
 
   probeTimer = setInterval(() => {
-    void runAiProviderHealthProbes({ persist: true });
+    void runAiProviderHealthProbes({ persist: true }).catch((err) => {
+      getLogger().warn(
+        { err: err instanceof Error ? err.message : err },
+        'Scheduled AI provider health probe failed (non-fatal)',
+      );
+    });
   }, config.healthProbeIntervalSec * 1000);
   probeTimer.unref?.();
 }

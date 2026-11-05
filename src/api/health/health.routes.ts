@@ -14,6 +14,7 @@ import {
   getMobileHealthStatus,
   isMobileHealthOk,
 } from './mobile-health.service.js';
+import { checkAiProvidersHealth } from './ai-providers-health.service.js';
 import {
   checkAiHealthStatus,
   checkCacheHealth,
@@ -116,6 +117,19 @@ export function createHealthRouter(config: AppConfig): Router {
     res
       .status(statusCodeFor(body.check))
       .json(wantsLiteResponse(req.query) ? toLiteGranularResponse(body) : body);
+  });
+
+  router.get('/health/ai/providers', async (req: Request, res: Response) => {
+    const live = req.query.live === '1' || req.query.live === 'true';
+    const check = await checkAiProvidersHealth({ liveProbe: live });
+    const body = {
+      check,
+      timestamp: new Date().toISOString(),
+      diagnostics: check.diagnostics,
+    };
+    res
+      .status(statusCodeFor(check))
+      .json(wantsLiteResponse(req.query) ? { status: check.status, message: check.message } : body);
   });
 
   router.get('/health/modules', (_req: Request, res: Response) => {

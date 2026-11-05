@@ -14,5 +14,8 @@ export function classifyProviderError(err: unknown): string {
     return 'provider_5xx';
   }
   if (lower.includes('not configured')) return 'not_configured';
+  if (lower.includes('placeholder') || lower.includes('vault_placeholder')) {
+    return 'placeholder_secret';
+  }
   return 'provider_error';
 }

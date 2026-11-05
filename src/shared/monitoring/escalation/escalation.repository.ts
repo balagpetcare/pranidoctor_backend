@@ -16,10 +16,17 @@ import { getPrisma } from '../../database/prisma.js';
 import {
   doctorConsultBaseFilter,
   emergencyRequestFilter,
-  hoursAgo,
-  minutesAgo,
   type StaleServiceRequestRow,
 } from './escalation.helpers.js';
+import {
+  aiEscalationMonitoringScope,
+  assignedStaleAssignedAtFilter,
+  inProgressStalledStartedAtFilter,
+  maxRecordAgeFilter,
+  serviceRequestMonitoringScope,
+  supportTicketMonitoringScope,
+  windowSinceFilter,
+} from './monitoring-scope.js';
 
 export type EscalationMetricsSnapshot = {
   pendingDoctorRequests: number;
@@ -41,20 +48,20 @@ export type EscalationMetricsSnapshot = {
 export async function countPendingDoctorRequests(): Promise<number> {
   const prisma = getPrisma();
   return prisma.serviceRequest.count({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
       status: ServiceRequestStatus.PENDING,
-    },
+    }),
   });
 }
 
 export async function countOldestPendingAgeMinutes(): Promise<number> {
   const prisma = getPrisma();
   const oldest = await prisma.serviceRequest.findFirst({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
       status: ServiceRequestStatus.PENDING,
-    },
+    }),
     orderBy: { submittedAt: 'asc' },
     select: { submittedAt: true },
   });
@@ -65,24 +72,27 @@ export async function countOldestPendingAgeMinutes(): Promise<number> {
 export async function countPendingEmergencyUnassigned(olderThan: Date): Promise<number> {
   const prisma = getPrisma();
   return prisma.serviceRequest.count({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
       status: ServiceRequestStatus.PENDING,
       ...emergencyRequestFilter(),
-      submittedAt: { lt: olderThan },
-    },
+      submittedAt: {
+        lt: olderThan,
+        ...(maxRecordAgeFilter('submittedAt').submittedAt ?? {}),
+      },
+    }),
   });
 }
 
 type PriorityBand = 'emergency' | 'high' | 'normal';
 
 function assignedStaleWhere(band: PriorityBand, maxAgeMinutes: number) {
-  const assignedBefore = minutesAgo(maxAgeMinutes);
-  const base = {
+  const assignedBefore = assignedStaleAssignedAtFilter(maxAgeMinutes);
+  const base = serviceRequestMonitoringScope({
     ...doctorConsultBaseFilter(),
     status: ServiceRequestStatus.ASSIGNED,
-    assignedAt: { lt: assignedBefore },
-  };
+    assignedAt: assignedBefore,
+  });
 
   if (band === 'emergency') {
     return { ...base, ...emergencyRequestFilter() };
@@ -132,25 +142,26 @@ export async function findAssignedStaleByPriority(
   });
 }
 
+function inProgressStalledWhere(band: 'emergency' | 'normal', maxAgeMinutes: number) {
+  const startedBefore = inProgressStalledStartedAtFilter(maxAgeMinutes);
+  const base = serviceRequestMonitoringScope({
+    ...doctorConsultBaseFilter(),
+    status: ServiceRequestStatus.IN_PROGRESS,
+    startedAt: startedBefore,
+  });
+  return band === 'emergency'
+    ? { ...base, ...emergencyRequestFilter() }
+    : { ...base, NOT: emergencyRequestFilter() };
+}
+
 export async function countInProgressStalled(
   band: 'emergency' | 'normal',
   maxAgeMinutes: number,
 ): Promise<number> {
   const prisma = getPrisma();
-  const startedBefore = minutesAgo(maxAgeMinutes);
-  const base = {
-    ...doctorConsultBaseFilter(),
-    status: ServiceRequestStatus.IN_PROGRESS,
-    startedAt: { lt: startedBefore },
-  };
-  const where =
-    band === 'emergency'
-      ? { ...base, ...emergencyRequestFilter() }
-      : {
-          ...base,
-          NOT: emergencyRequestFilter(),
-        };
-  return prisma.serviceRequest.count({ where });
+  return prisma.serviceRequest.count({
+    where: inProgressStalledWhere(band, maxAgeMinutes),
+  });
 }
 
 export async function findInProgressStalled(
@@ -159,21 +170,8 @@ export async function findInProgressStalled(
   limit = 10,
 ): Promise<StaleServiceRequestRow[]> {
   const prisma = getPrisma();
-  const startedBefore = minutesAgo(maxAgeMinutes);
-  const base = {
-    ...doctorConsultBaseFilter(),
-    status: ServiceRequestStatus.IN_PROGRESS,
-    startedAt: { lt: startedBefore },
-  };
-  const where =
-    band === 'emergency'
-      ? { ...base, ...emergencyRequestFilter() }
-      : {
-          ...base,
-          NOT: emergencyRequestFilter(),
-        };
   return prisma.serviceRequest.findMany({
-    where,
+    where: inProgressStalledWhere(band, maxAgeMinutes),
     select: {
       id: true,
       priority: true,
@@ -191,7 +189,7 @@ export async function countOnlineConsultMissedWindow(): Promise<number> {
   const prisma = getPrisma();
   const now = new Date();
   return prisma.serviceRequest.count({
-    where: {
+    where: serviceRequestMonitoringScope({
       serviceType: ServiceRequestType.ONLINE_CONSULTATION_LATER,
       status: {
         in: [
@@ -201,7 +199,7 @@ export async function countOnlineConsultMissedWindow(): Promise<number> {
         ],
       },
       scheduledStart: { lt: now },
-    },
+    }),
   });
 }
 
@@ -209,7 +207,7 @@ export async function findOnlineConsultMissedWindow(limit = 10): Promise<StaleSe
   const prisma = getPrisma();
   const now = new Date();
   return prisma.serviceRequest.findMany({
-    where: {
+    where: serviceRequestMonitoringScope({
       serviceType: ServiceRequestType.ONLINE_CONSULTATION_LATER,
       status: {
         in: [
@@ -219,7 +217,7 @@ export async function findOnlineConsultMissedWindow(limit = 10): Promise<StaleSe
         ],
       },
       scheduledStart: { lt: now },
-    },
+    }),
     select: {
       id: true,
       priority: true,
@@ -236,21 +234,21 @@ export async function findOnlineConsultMissedWindow(limit = 10): Promise<StaleSe
 export async function countRejectionsSince(since: Date): Promise<number> {
   const prisma = getPrisma();
   return prisma.serviceRequest.count({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
       status: ServiceRequestStatus.REJECTED,
-      updatedAt: { gte: since },
-    },
+      updatedAt: windowSinceFilter(since),
+    }),
   });
 }
 
 export async function countAssignmentsSince(since: Date): Promise<number> {
   const prisma = getPrisma();
   return prisma.serviceRequest.count({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
-      assignedAt: { gte: since },
-    },
+      assignedAt: windowSinceFilter(since),
+    }),
   });
 }
 
@@ -260,12 +258,12 @@ export async function findRecentEmergencyRejections(
 ): Promise<StaleServiceRequestRow[]> {
   const prisma = getPrisma();
   return prisma.serviceRequest.findMany({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
       status: ServiceRequestStatus.REJECTED,
-      updatedAt: { gte: since },
+      updatedAt: windowSinceFilter(since),
       ...emergencyRequestFilter(),
-    },
+    }),
     select: {
       id: true,
       priority: true,
@@ -282,33 +280,33 @@ export async function findRecentEmergencyRejections(
 export async function countSupportOpenUnanswered(olderThanMinutes: number): Promise<number> {
   const prisma = getPrisma();
   const cutoff =
-    olderThanMinutes > 0 ? minutesAgo(olderThanMinutes) : new Date(Date.now() + 86_400_000);
+    olderThanMinutes > 0 ? new Date(Date.now() - olderThanMinutes * 60_000) : new Date(Date.now() + 86_400_000);
   return prisma.supportTicket.count({
-    where: {
+    where: supportTicketMonitoringScope({
       status: SupportTicketStatus.OPEN,
       ...(olderThanMinutes > 0 ? { createdAt: { lt: cutoff } } : {}),
       messages: { none: { authorType: SupportMessageAuthorType.SUPPORT } },
-    },
+    }),
   });
 }
 
 export async function countSupportUrgentOpen(olderThanMinutes: number): Promise<number> {
   const prisma = getPrisma();
   const cutoff =
-    olderThanMinutes > 0 ? minutesAgo(olderThanMinutes) : new Date(Date.now() + 86_400_000);
+    olderThanMinutes > 0 ? new Date(Date.now() - olderThanMinutes * 60_000) : new Date(Date.now() + 86_400_000);
   return prisma.supportTicket.count({
-    where: {
+    where: supportTicketMonitoringScope({
       status: SupportTicketStatus.OPEN,
       priority: SupportTicketPriority.URGENT,
       ...(olderThanMinutes > 0 ? { createdAt: { lt: cutoff } } : {}),
-    },
+    }),
   });
 }
 
 export async function countTechnicianComplaintsOpen(olderThanMinutes: number): Promise<number> {
   const prisma = getPrisma();
   const cutoff =
-    olderThanMinutes > 0 ? minutesAgo(olderThanMinutes) : new Date(Date.now() + 86_400_000);
+    olderThanMinutes > 0 ? new Date(Date.now() - olderThanMinutes * 60_000) : new Date(Date.now() + 86_400_000);
   return prisma.aiTechnicianComplaint.count({
     where: {
       status: AiTechnicianComplaintStatus.OPEN,
@@ -320,22 +318,22 @@ export async function countTechnicianComplaintsOpen(olderThanMinutes: number): P
 export async function countAiEscalationBacklog(): Promise<number> {
   const prisma = getPrisma();
   return prisma.aiEscalationRecord.count({
-    where: {
+    where: aiEscalationMonitoringScope({
       status: { in: [AiEscalationStatus.PENDING_REVIEW, AiEscalationStatus.QUEUED] },
-    },
+    }),
   });
 }
 
 export async function countAiEmergencySymptomUnreviewed(olderThanMinutes: number): Promise<number> {
   const prisma = getPrisma();
   const cutoff =
-    olderThanMinutes > 0 ? minutesAgo(olderThanMinutes) : new Date(Date.now() + 86_400_000);
+    olderThanMinutes > 0 ? new Date(Date.now() - olderThanMinutes * 60_000) : new Date(Date.now() + 86_400_000);
   return prisma.aiEscalationRecord.count({
-    where: {
+    where: aiEscalationMonitoringScope({
       reason: AiEscalationReason.EMERGENCY_SYMPTOM,
       status: { in: [AiEscalationStatus.PENDING_REVIEW, AiEscalationStatus.QUEUED] },
       ...(olderThanMinutes > 0 ? { flaggedAt: { lt: cutoff } } : {}),
-    },
+    }),
   });
 }
 
@@ -344,9 +342,9 @@ export async function countBillingFailedEmergency(): Promise<number> {
   return prisma.billingRecord.count({
     where: {
       paymentStatus: PaymentStatus.FAILED,
-      serviceRequest: {
+      serviceRequest: serviceRequestMonitoringScope({
         ...emergencyRequestFilter(),
-      },
+      }),
     },
   });
 }
@@ -354,11 +352,11 @@ export async function countBillingFailedEmergency(): Promise<number> {
 export async function countCancelledAfterAcceptSince(since: Date): Promise<number> {
   const prisma = getPrisma();
   const cancelled = await prisma.serviceRequest.findMany({
-    where: {
+    where: serviceRequestMonitoringScope({
       ...doctorConsultBaseFilter(),
       status: ServiceRequestStatus.CANCELLED,
-      cancelledAt: { gte: since },
-    },
+      cancelledAt: windowSinceFilter(since),
+    }),
     select: { id: true },
     take: 200,
   });

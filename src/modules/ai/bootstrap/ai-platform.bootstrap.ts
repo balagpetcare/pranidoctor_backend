@@ -47,7 +47,13 @@ export async function bootstrapAiPlatform(_config: AppConfig): Promise<void> {
   logInfo('AI marketplace extensions loaded', marketplace);
 
   const isTest = (_config.nodeEnv ?? 'development') === 'test';
-  await runAiProviderHealthProbes({ persist: !isTest, skipNetwork: isTest });
+  try {
+    await runAiProviderHealthProbes({ persist: !isTest, skipNetwork: isTest });
+  } catch (err) {
+    logWarn('AI provider health probes failed at bootstrap (non-fatal)', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
   startAiHealthProbeScheduler();
   logInfo('AI provider health probes initialized');
 }

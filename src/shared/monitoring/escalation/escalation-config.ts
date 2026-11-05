@@ -15,6 +15,28 @@ function parseRate(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 && n <= 1 ? n : fallback;
 }
 
+import { DEFAULT_DEMO_ID_PREFIXES } from '../demo-data.constants.js';
+
+function resolveNodeEnv(): string {
+  return (
+    process.env['APP_ENV']?.trim() ||
+    process.env['NODE_ENV']?.trim() ||
+    'development'
+  ).toLowerCase();
+}
+
+export function isProductionMonitoringEnvironment(): boolean {
+  return resolveNodeEnv() === 'production';
+}
+
+/** When false in development, alert webhooks/logs are suppressed (cycle still runs). */
+export function shouldDeliverMonitoringAlerts(): boolean {
+  const env = resolveNodeEnv();
+  if (env === 'test') return false;
+  if (env === 'production') return true;
+  return parseBool(process.env['MONITORING_ALERTS_IN_DEV'], false);
+}
+
 /** Master toggle — defaults on when general monitoring is enabled. */
 export function isEscalationMonitoringEnabled(): boolean {
   const raw = process.env['ESCALATION_MONITORING_ENABLED']?.trim().toLowerCase();
@@ -94,3 +116,36 @@ export function getConsultationFailureSpikeThreshold(): number {
 }
 
 export const ESCALATION_RUNBOOK = 'docs/production/operations/escalation-monitoring-plan.md';
+
+/** Exclude seeded/demo IDs from monitoring queries (default on). */
+export function isMonitoringDemoIdExclusionEnabled(): boolean {
+  return parseBool(process.env['MONITORING_EXCLUDE_DEMO_IDS'], true);
+}
+
+/** Exclude customers with user-app seed email domain (default on). */
+export function isMonitoringSeedCustomerExclusionEnabled(): boolean {
+  return parseBool(process.env['MONITORING_EXCLUDE_SEED_CUSTOMERS'], true);
+}
+
+/**
+ * Ignore records whose relevant timestamp is older than this many days.
+ * Prevents ancient seeded IN_PROGRESS rows from firing OPS-CON-03 at startup.
+ * 0 = disabled. Default: 45 prod, 14 non-prod.
+ */
+export function getMonitoringMaxRecordAgeDays(): number {
+  const raw = process.env['OPS_MONITORING_MAX_RECORD_AGE_DAYS'];
+  if (raw !== undefined && raw.trim() !== '') {
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+  return isProductionMonitoringEnvironment() ? 45 : 14;
+}
+
+export function getMonitoringExcludeIdPrefixes(): string[] {
+  const raw = process.env['MONITORING_EXCLUDE_ID_PREFIXES']?.trim();
+  if (!raw) return [...DEFAULT_DEMO_ID_PREFIXES];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}

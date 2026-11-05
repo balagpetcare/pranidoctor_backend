@@ -76,11 +76,15 @@ export class AiSecretService {
         deletedAt: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
-      select: { provider: { select: { providerKey: true } } },
+      select: {
+        encryptedSecret: true,
+        provider: { select: { providerKey: true } },
+      },
     });
 
     this.configuredProviders.clear();
     for (const row of rows) {
+      if (isPlaceholderCiphertext(row.encryptedSecret)) continue;
       this.configuredProviders.set(row.provider.providerKey, true);
     }
   }
@@ -119,6 +123,10 @@ export class AiSecretService {
     });
 
     if (!row) return undefined;
+
+    if (isPlaceholderCiphertext(row.encryptedSecret)) {
+      return undefined;
+    }
 
     const encryption = getEncryptionService();
     const secret = encryption.decrypt(row.encryptedSecret);

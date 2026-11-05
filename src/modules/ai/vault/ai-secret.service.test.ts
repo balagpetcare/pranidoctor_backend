@@ -197,6 +197,23 @@ describe('AiSecretService', () => {
     expect(prismaMock.aiApiKeyAuditLog.create).toHaveBeenCalled();
   });
 
+  it('refreshConfigurationCache excludes placeholder primary keys', async () => {
+    prismaMock.aiApiKey.findMany.mockResolvedValue([
+      {
+        encryptedSecret: 'ENC:PLACEHOLDER:v1:not-a-real-api-key',
+        provider: { providerKey: 'openai' },
+      },
+      {
+        encryptedSecret: 'v1:abc:def:ghi',
+        provider: { providerKey: 'anthropic' },
+      },
+    ]);
+
+    await service.refreshConfigurationCache();
+    expect(service.isProviderConfigured('openai')).toBe(false);
+    expect(service.isProviderConfigured('anthropic')).toBe(true);
+  });
+
   it('listKeys marks placeholder rows', async () => {
     prismaMock.aiApiKey.findMany.mockResolvedValue([
       {

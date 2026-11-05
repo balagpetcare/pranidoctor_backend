@@ -7,12 +7,14 @@ import {
 import { ESCALATION_RUNBOOK } from './escalation-config.js';
 import { formatSampleIds, minutesWaiting } from './escalation.helpers.js';
 import type { StaleServiceRequestRow } from './escalation.helpers.js';
+import { filterDemoSampleRows } from './monitoring-scope.js';
 
 function sampleMeta(rows: StaleServiceRequestRow[]) {
+  const scoped = filterDemoSampleRows(rows);
   return {
-    count: rows.length,
-    sampleIds: formatSampleIds(rows),
-    samples: rows.slice(0, 5).map((r) => ({
+    count: scoped.length,
+    sampleIds: formatSampleIds(scoped),
+    samples: scoped.slice(0, 5).map((r) => ({
       id: r.id,
       priority: r.priority,
       serviceType: r.serviceType,
@@ -46,13 +48,14 @@ export function alertDoctorAcceptSlaBreaches(
   rows: StaleServiceRequestRow[],
   maxMinutes: number,
 ): void {
-  if (rows.length === 0) return;
+  const scoped = filterDemoSampleRows(rows);
+  if (scoped.length === 0) return;
   const title =
     band === 'emergency'
       ? 'Emergency doctor accept SLA breach'
       : 'Doctor accept SLA breach';
-  const message = `${rows.length} assigned request(s) awaiting doctor accept >${maxMinutes} min (${band})`;
-  const metadata = { ...sampleMeta(rows), band, maxMinutes };
+  const message = `${scoped.length} assigned request(s) awaiting doctor accept >${maxMinutes} min (${band})`;
+  const metadata = { ...sampleMeta(scoped), band, maxMinutes };
 
   if (band === 'emergency') {
     sendCriticalAlert('OPS-REQ-02', title, message, metadata, `sr-accept:${band}`);
@@ -72,13 +75,14 @@ export function alertRejectionSpike(rejected: number, assigned: number, rate: nu
 }
 
 export function alertEmergencyConsultationRejected(rows: StaleServiceRequestRow[]): void {
-  if (rows.length === 0) return;
+  const scoped = filterDemoSampleRows(rows);
+  if (scoped.length === 0) return;
   sendWarningAlert(
     'OPS-CON-01',
     'Emergency consultation rejected',
-    `${rows.length} emergency consultation(s) rejected recently`,
-    sampleMeta(rows),
-    `emergency-rejected:${rows[0]?.id ?? 'batch'}`,
+    `${scoped.length} emergency consultation(s) rejected recently`,
+    sampleMeta(scoped),
+    `emergency-rejected:${scoped[0]?.id ?? 'batch'}`,
   );
 }
 
@@ -97,24 +101,26 @@ export function alertConsultationStalled(
   rows: StaleServiceRequestRow[],
   maxMinutes: number,
 ): void {
-  if (rows.length === 0) return;
+  const scoped = filterDemoSampleRows(rows);
+  if (scoped.length === 0) return;
   const send = band === 'emergency' ? sendWarningAlert : sendInformationalAlert;
   send(
     'OPS-CON-03',
     'Consultation stalled in progress',
-    `${rows.length} consultation(s) in IN_PROGRESS >${maxMinutes} min (${band})`,
-    { ...sampleMeta(rows), band, maxMinutes },
+    `${scoped.length} consultation(s) in IN_PROGRESS >${maxMinutes} min (${band})`,
+    { ...sampleMeta(scoped), band, maxMinutes },
     `stalled-${band}`,
   );
 }
 
 export function alertOnlineConsultMissedWindow(rows: StaleServiceRequestRow[]): void {
-  if (rows.length === 0) return;
+  const scoped = filterDemoSampleRows(rows);
+  if (scoped.length === 0) return;
   sendWarningAlert(
     'OPS-CON-04',
     'Online consultation missed scheduled window',
-    `${rows.length} online consultation(s) past scheduledStart without starting`,
-    sampleMeta(rows),
+    `${scoped.length} online consultation(s) past scheduledStart without starting`,
+    sampleMeta(scoped),
     'online-missed-window',
   );
 }

@@ -37,6 +37,7 @@ import {
   getEscalationCheckIntervalMs,
 } from './escalation-config.js';
 import { recordEscalationGaugeSnapshot } from './escalation.metrics.js';
+import { getMonitoringScopeMeta } from './monitoring-scope.js';
 import * as repo from './escalation.repository.js';
 
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -189,6 +190,7 @@ export async function runEscalationMonitoringCycle(): Promise<void> {
       assignedStale:
         assignedEmergency.length + assignedHigh.length + assignedNormal.length,
       aiBacklog,
+      monitoringScope: getMonitoringScopeMeta(),
     });
   } catch (error) {
     logError('Escalation monitoring cycle failed', error, {

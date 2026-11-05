@@ -1,5 +1,6 @@
 import { logInfo, logWarn } from '../../logger/logger.js';
 import { omitUndefined } from '../../types/object.utils.js';
+import { shouldDeliverMonitoringAlerts } from '../escalation/escalation-config.js';
 
 import {
   getAlertAppVersion,
@@ -64,6 +65,15 @@ export async function sendProductionAlert(
   input: ProductionAlertInput,
 ): Promise<SendAlertResult> {
   if (!isAlertingEnabled()) {
+    return { sent: false, reason: 'disabled' };
+  }
+
+  if (!shouldDeliverMonitoringAlerts()) {
+    logInfo('Alert suppressed (non-production monitoring)', {
+      alertId: input.alertId,
+      title: input.title,
+      environment: getAlertEnvironment(),
+    });
     return { sent: false, reason: 'disabled' };
   }
 

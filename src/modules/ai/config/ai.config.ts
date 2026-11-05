@@ -1,3 +1,4 @@
+import { AiApiKeyStatus } from '../../../generated/prisma/index.js';
 import { getEncryptionService } from '../vault/encryption.service.js';
 import { getAiSecretService } from '../vault/ai-secret.service.js';
 
@@ -107,6 +108,24 @@ export async function validateAiSecrets(
 
   if (!hasOpenAi && !hasAnthropic && !config.llmRequired) {
     warnings.push('No active vault API keys — rules-based fallback only');
+  }
+
+  try {
+    const keys = await getAiSecretService().listKeys();
+    const placeholders = keys.filter(
+      (k) => k.isPlaceholder && k.status === AiApiKeyStatus.ACTIVE,
+    );
+    if (placeholders.length > 0 && !hasOpenAi && !hasAnthropic) {
+      warnings.push(
+        `Vault has ${placeholders.length} seed/demo placeholder key(s) — replace with real API keys (reachable will stay 0 until then)`,
+      );
+    } else if (placeholders.length > 0) {
+      warnings.push(
+        `${placeholders.length} provider(s) still use seed placeholders — those providers are excluded from probes`,
+      );
+    }
+  } catch {
+    /* listKeys optional at startup */
   }
 
   if (process.env.OPENAI_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim()) {
