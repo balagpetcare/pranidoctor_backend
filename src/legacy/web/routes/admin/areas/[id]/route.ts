@@ -5,6 +5,7 @@ import {
   validateAreaParentPair,
   wouldAreaParentCreateCycle,
 } from "@/lib/admin-areas/parent-validation";
+import { getAncestorChain, getDescendantIds } from "@/lib/admin-areas/tree";
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { AreaType, Prisma } from "@/generated/prisma/client";
@@ -71,7 +72,27 @@ export async function GET(_request: Request, ctx: RouteCtx) {
       return jsonError("NOT_FOUND", "Area not found", 404);
     }
 
-    return jsonOk({ area });
+    const [ancestors, descendantIds] = await Promise.all([
+      getAncestorChain(prisma, id),
+      getDescendantIds(prisma, id),
+    ]);
+    const descendantRows = descendantIds.length
+      ? await prisma.area.groupBy({
+          by: ["type", "isActive"],
+          where: { id: { in: descendantIds } },
+          _count: { _all: true },
+        })
+      : [];
+    const descendants = {
+      total: descendantIds.length,
+      active: descendantRows.filter((r) => r.isActive).reduce((n, r) => n + r._count._all, 0),
+      byType: descendantRows.reduce<Record<string, number>>((acc, r) => {
+        acc[r.type] = (acc[r.type] ?? 0) + r._count._all;
+        return acc;
+      }, {}),
+    };
+
+    return jsonOk({ area, ancestors, descendants });
   } catch {
     return jsonError("DATABASE_ERROR", "Could not load area", 500);
   }

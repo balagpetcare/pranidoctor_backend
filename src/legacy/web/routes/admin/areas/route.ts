@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { requireAdminPanelApiAccess } from "@/lib/admin-auth/api-guard";
 import { validateAreaParentPair } from "@/lib/admin-areas/parent-validation";
+import { getDescendantIds } from "@/lib/admin-areas/tree";
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { AreaType, Prisma } from "@/generated/prisma/client";
@@ -94,6 +95,18 @@ export async function GET(request: Request) {
 
   if (isActive !== undefined) {
     filters.push({ isActive });
+  }
+
+  // scopeId: restrict to the whole subtree (district → its upazilas/unions/…); scopeSelf=true includes the root.
+  const scopeId = url.searchParams.get("scopeId")?.trim();
+  if (scopeId) {
+    try {
+      const ids = await getDescendantIds(prisma, scopeId);
+      if (url.searchParams.get("scopeSelf") === "true") ids.push(scopeId);
+      filters.push({ id: { in: ids } });
+    } catch {
+      return jsonError("DATABASE_ERROR", "Could not resolve scope", 500);
+    }
   }
 
   if (filters.length > 0) {
