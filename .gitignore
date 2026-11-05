@@ -50,3 +50,7 @@ data/
 *.pem
 *.key
 secrets/
+
+# curl cookie jars (never commit)
+cookies.txt
+.tmp-cookies.txt
