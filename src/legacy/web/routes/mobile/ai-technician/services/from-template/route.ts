@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/api-response";
+import { PRICING_ERROR_MESSAGES_BN } from "@/lib/mobile-ai-technician/ai-service-pricing";
 import { requireMobileAiTechnicianModuleUser } from "@/lib/mobile-ai-technician/mobile-module-guard";
 import { createTechnicianServiceFromTemplate } from "@/lib/mobile-ai-technician/semen-from-template-service";
 import { createServiceFromTemplateBodySchema } from "@/lib/mobile-ai-technician/semen-mobile-schemas";
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
     }
     if (result.ok === "TEMPLATE_NOT_FOUND") {
       return jsonError("TEMPLATE_NOT_FOUND", "টেমপ্লেট পাওয়া যায়নি", 404);
+    }
+    if (result.ok === "PRICING_ERROR") {
+      return jsonError(result.code, PRICING_ERROR_MESSAGES_BN[result.code], 422);
     }
     if (result.ok === "OFFER_DISCOUNT_BOTH") {
       return jsonError("OFFER_DISCOUNT_BOTH", "অফার মূল্য ও ছাড় একসাথে দেওয়া যাবে না", 422);

@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/api-response";
+import { PRICING_ERROR_MESSAGES_BN } from "@/lib/mobile-ai-technician/ai-service-pricing";
 import { requireMobileAiTechnicianModuleUser } from "@/lib/mobile-ai-technician/mobile-module-guard";
 import {
   deactivateTechnicianServiceForMobileUser,
@@ -50,6 +51,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
     if (result.ok === "VALIDATION_ERROR") {
       return jsonError("VALIDATION_ERROR", "তথ্য সঠিক নয়", 422, result.issues);
+    }
+    if (result.ok === "PRICING_ERROR") {
+      return jsonError(result.code, PRICING_ERROR_MESSAGES_BN[result.code], 422);
     }
     return jsonOk({ service: result.service });
   } catch {

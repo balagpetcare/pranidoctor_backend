@@ -5,6 +5,7 @@ import {
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
+import { resolveServicePricing } from "./ai-service-pricing";
 import type { CreateServiceFromTemplateBody } from "./semen-mobile-schemas";
 import { assertTechnicianCanUseTemplates } from "./semen-template-catalog-service";
 
@@ -60,10 +61,21 @@ export async function createTechnicianServiceFromTemplate(
   });
   if (dup) return { ok: "DUPLICATE_TEMPLATE_SERVICE" as const };
 
-  const basePrice =
-    body.basePrice !== undefined && body.basePrice !== null && String(body.basePrice).trim() !== ""
-      ? toDecimal(body.basePrice as number | string)
-      : template.defaultBasePrice;
+  // Technician-controlled pricing: semenPrice + aiServiceCharge (or a single basePrice).
+  // Catalog templates ship with a zero default price, so a real price is mandatory for them.
+  const pricing = resolveServicePricing(
+    {
+      basePrice: body.basePrice,
+      semenPrice: body.semenPrice,
+      aiServiceCharge: body.aiServiceCharge,
+    },
+    {
+      fallbackBasePrice: template.defaultBasePrice.toString(),
+      requirePositive: template.defaultBasePrice.isZero(),
+    },
+  );
+  if (!pricing.ok) return { ok: "PRICING_ERROR" as const, code: pricing.code };
+  const basePrice = toDecimal(pricing.basePrice);
 
   const offerPrice =
     body.offerPrice !== undefined && body.offerPrice !== null && String(body.offerPrice).trim() !== ""
@@ -93,6 +105,9 @@ export async function createTechnicianServiceFromTemplate(
           breedOrSemenType: breedLabel,
           description: template.shortDescription?.trim() || null,
           basePrice,
+          semenPrice: pricing.semenPrice === null ? null : toDecimal(pricing.semenPrice),
+          aiServiceCharge:
+            pricing.aiServiceCharge === null ? null : toDecimal(pricing.aiServiceCharge),
           visitFee:
             body.visitFee === undefined || body.visitFee === null
               ? null

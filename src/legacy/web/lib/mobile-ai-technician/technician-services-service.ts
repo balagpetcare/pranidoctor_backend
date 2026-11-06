@@ -5,6 +5,7 @@ import {
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
+import { resolveServicePricing, type PricingErrorCode } from "./ai-service-pricing";
 import { aggregateStockForService } from "./semen-inventory-service";
 import type {
   CreateAiTechnicianServiceBody,
@@ -103,6 +104,11 @@ export async function serializeAiTechnicianServiceForMobile(row: AiTechnicianSer
     breedOrSemenType: row.breedOrSemenType,
     description: row.description,
     basePrice: row.basePrice.toString(),
+    /** Technician-entered split (null for services created with a single price). */
+    semenPrice: row.semenPrice?.toString() ?? null,
+    aiServiceCharge: row.aiServiceCharge?.toString() ?? null,
+    /** Customer price before any offer / discount (= semenPrice + aiServiceCharge when split is used). */
+    totalCustomerPrice: row.basePrice.toString(),
     visitFee: row.visitFee?.toString() ?? null,
     emergencyFee: row.emergencyFee?.toString() ?? null,
     repeatServicePolicy: row.repeatServicePolicy,
@@ -154,6 +160,15 @@ export async function createTechnicianServiceForMobileUser(
     return { ok: "NOT_ALLOWED" as const, status: profile.status };
   }
 
+  const pricing = resolveServicePricing({
+    basePrice: body.basePrice,
+    semenPrice: body.semenPrice,
+    aiServiceCharge: body.aiServiceCharge,
+  });
+  if (!pricing.ok) {
+    return { ok: "PRICING_ERROR" as const, code: pricing.code };
+  }
+
   const created = await prisma.aiTechnicianService.create({
     data: {
       aiTechnicianId: profile.id,
@@ -161,7 +176,10 @@ export async function createTechnicianServiceForMobileUser(
       animalType: body.animalType,
       breedOrSemenType: body.breedOrSemenType?.trim() || null,
       description: body.description?.trim() || null,
-      basePrice: toDecimal(body.basePrice),
+      basePrice: toDecimal(pricing.basePrice),
+      semenPrice: pricing.semenPrice === null ? null : toDecimal(pricing.semenPrice),
+      aiServiceCharge:
+        pricing.aiServiceCharge === null ? null : toDecimal(pricing.aiServiceCharge),
       visitFee:
         body.visitFee === undefined || body.visitFee === null
           ? null
@@ -183,12 +201,78 @@ export async function createTechnicianServiceForMobileUser(
   return { ok: true as const, service: await serializeAiTechnicianServiceForMobile(full) };
 }
 
+type PricePatchInput = {
+  basePrice?: number | string;
+  semenPrice?: number | string | null;
+  aiServiceCharge?: number | string | null;
+};
+
+/**
+ * Computes the price columns to write for a PATCH.
+ *  - semenPrice / aiServiceCharge given: merged with the stored value of the other one, and
+ *    `basePrice` is re-derived as their sum (an explicit, different `basePrice` is rejected).
+ *  - only `basePrice` given: stored as is and any previous split is cleared, so a split can
+ *    never disagree with `basePrice` (keeps older clients that only know `basePrice` working).
+ */
+function resolvePricePatch(
+  existing: { semenPrice: Prisma.Decimal | null; aiServiceCharge: Prisma.Decimal | null },
+  p: PricePatchInput,
+):
+  | { ok: true; data: Prisma.AiTechnicianServiceUpdateInput }
+  | { ok: false; code: PricingErrorCode } {
+  const touchesSplit = p.semenPrice !== undefined || p.aiServiceCharge !== undefined;
+  if (!touchesSplit) {
+    if (p.basePrice === undefined) return { ok: true, data: {} };
+    const only = resolveServicePricing({ basePrice: p.basePrice });
+    if (!only.ok) return only;
+    return {
+      ok: true,
+      data: { basePrice: toDecimal(only.basePrice), semenPrice: null, aiServiceCharge: null },
+    };
+  }
+
+  const semenRaw = p.semenPrice !== undefined ? p.semenPrice : existing.semenPrice?.toString();
+  const chargeRaw =
+    p.aiServiceCharge !== undefined ? p.aiServiceCharge : existing.aiServiceCharge?.toString();
+  const blank = (v: unknown) => v == null || String(v).trim() === "";
+
+  // Both cleared: drop the split and keep the (optionally updated) single customer price.
+  if (blank(semenRaw) && blank(chargeRaw)) {
+    if (p.basePrice === undefined) {
+      return { ok: true, data: { semenPrice: null, aiServiceCharge: null } };
+    }
+    const only = resolveServicePricing({ basePrice: p.basePrice });
+    if (!only.ok) return only;
+    return {
+      ok: true,
+      data: { basePrice: toDecimal(only.basePrice), semenPrice: null, aiServiceCharge: null },
+    };
+  }
+
+  const resolved = resolveServicePricing({
+    basePrice: p.basePrice,
+    semenPrice: semenRaw,
+    aiServiceCharge: chargeRaw,
+  });
+  if (!resolved.ok) return resolved;
+  return {
+    ok: true,
+    data: {
+      basePrice: toDecimal(resolved.basePrice),
+      semenPrice: resolved.semenPrice === null ? null : toDecimal(resolved.semenPrice),
+      aiServiceCharge:
+        resolved.aiServiceCharge === null ? null : toDecimal(resolved.aiServiceCharge),
+    },
+  };
+}
+
 export type PatchTechnicianServiceResult =
   | { ok: true; service: Awaited<ReturnType<typeof serializeAiTechnicianServiceForMobile>> }
   | { ok: "NO_PROFILE" }
   | { ok: "NOT_ALLOWED"; status: AiTechnicianStatus }
   | { ok: "NOT_FOUND" }
   | { ok: "NOT_EDITABLE"; status: AiTechnicianServiceStatus }
+  | { ok: "PRICING_ERROR"; code: PricingErrorCode }
   | { ok: "VALIDATION_ERROR"; issues: unknown };
 
 export async function patchTechnicianServiceForMobileUser(
@@ -226,7 +310,9 @@ export async function patchTechnicianServiceForMobileUser(
     }
     const p = parsed.data as PatchTemplateBackedAiTechnicianServiceBody;
     const data: Prisma.AiTechnicianServiceUpdateInput = {};
-    if (p.basePrice !== undefined) data.basePrice = toDecimal(p.basePrice);
+    const priceChange = resolvePricePatch(existing, p);
+    if (!priceChange.ok) return { ok: "PRICING_ERROR", code: priceChange.code };
+    Object.assign(data, priceChange.data);
     if (p.visitFee !== undefined) {
       data.visitFee = p.visitFee === null ? null : toDecimal(p.visitFee);
     }
@@ -283,7 +369,9 @@ export async function patchTechnicianServiceForMobileUser(
   if (b.description !== undefined) {
     data.description = b.description?.trim() || null;
   }
-  if (b.basePrice !== undefined) data.basePrice = toDecimal(b.basePrice);
+  const manualPrice = resolvePricePatch(existing, b);
+  if (!manualPrice.ok) return { ok: "PRICING_ERROR", code: manualPrice.code };
+  Object.assign(data, manualPrice.data);
   if (b.visitFee !== undefined) {
     data.visitFee = b.visitFee === null ? null : toDecimal(b.visitFee);
   }

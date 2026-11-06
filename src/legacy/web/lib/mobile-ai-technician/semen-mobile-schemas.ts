@@ -22,6 +22,9 @@ export const createServiceFromTemplateBodySchema = z
   .object({
     templateId: z.string().trim().min(1),
     basePrice: nonNegDecimal.optional().nullable(),
+    /** Technician semen price; with `aiServiceCharge` it defines the customer price. */
+    semenPrice: nonNegDecimal.optional().nullable(),
+    aiServiceCharge: nonNegDecimal.optional().nullable(),
     offerPrice: nonNegDecimal.optional().nullable(),
     discountPercent: z
       .union([

@@ -24,13 +24,26 @@ export const createAiTechnicianServiceBodySchema = z
     animalType: z.nativeEnum(AnimalType),
     breedOrSemenType: optionalTrim(200),
     description: optionalTrim(8000),
-    basePrice: nonNegDecimal,
+    /** Customer price. Optional when `semenPrice` + `aiServiceCharge` are given (then derived). */
+    basePrice: nonNegDecimal.optional().nullable(),
+    semenPrice: nonNegDecimal.optional().nullable(),
+    aiServiceCharge: nonNegDecimal.optional().nullable(),
     visitFee: nonNegDecimal.optional().nullable(),
     emergencyFee: nonNegDecimal.optional().nullable(),
     repeatServicePolicy: optionalTrim(4000),
     followUpIncluded: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((b, ctx) => {
+    const has = (v: unknown) => v != null && String(v).trim() !== "";
+    if (!has(b.basePrice) && !(has(b.semenPrice) && has(b.aiServiceCharge))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["basePrice"],
+        message: "basePrice অথবা semenPrice ও aiServiceCharge দিন",
+      });
+    }
+  });
 
 export type CreateAiTechnicianServiceBody = z.infer<
   typeof createAiTechnicianServiceBodySchema
@@ -43,6 +56,8 @@ export const patchAiTechnicianServiceBodySchema = z
     breedOrSemenType: optionalTrim(200),
     description: optionalTrim(8000),
     basePrice: nonNegDecimal.optional(),
+    semenPrice: nonNegDecimal.optional().nullable(),
+    aiServiceCharge: nonNegDecimal.optional().nullable(),
     visitFee: nonNegDecimal.optional().nullable(),
     emergencyFee: nonNegDecimal.optional().nullable(),
     repeatServicePolicy: optionalTrim(4000),
@@ -58,6 +73,8 @@ export type PatchAiTechnicianServiceBody = z.infer<
 export const patchTemplateBackedAiTechnicianServiceBodySchema = z
   .object({
     basePrice: nonNegDecimal.optional(),
+    semenPrice: nonNegDecimal.optional().nullable(),
+    aiServiceCharge: nonNegDecimal.optional().nullable(),
     visitFee: nonNegDecimal.optional().nullable(),
     emergencyFee: nonNegDecimal.optional().nullable(),
     offerPrice: nonNegDecimal.optional().nullable(),

@@ -793,6 +793,10 @@ model AiTechnicianService {
   /// Technician can hide listing without changing admin `status`.
   isAvailable                  Boolean                    @default(true)
   technicianServiceNote        String?
+  /// Technician-entered semen price. When set together with `aiServiceCharge`, `basePrice` (customer price) = semenPrice + aiServiceCharge.
+  semenPrice                   Decimal?                   @db.Decimal(12, 2)
+  /// Technician-entered AI service charge (see `semenPrice`).
+  aiServiceCharge              Decimal?                   @db.Decimal(12, 2)
   aiServiceRequests            AiServiceRequest[]
   aiTechnician                 AiTechnicianProfile        @relation(fields: [aiTechnicianId], references: [id], onDelete: Cascade)
   semenServiceTemplate         SemenServiceTemplate?      @relation(fields: [semenServiceTemplateId], references: [id], onDelete: Restrict)
