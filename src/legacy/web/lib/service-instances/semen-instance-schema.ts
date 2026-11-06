@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { Prisma } from "@/generated/prisma/client";
 
 import { PRANI_SCHEMA_VERSION, type PraniSchemaDocument } from "./semen-instance-schema.types";

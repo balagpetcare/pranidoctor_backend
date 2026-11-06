@@ -51,6 +51,7 @@ function purposeMaxBytes(env: StorageEnv, purpose: MobileUploadPurpose): number 
     case MobileUploadPurpose.AI_TECHNICIAN_TRAINING_CERTIFICATE:
     case MobileUploadPurpose.AI_TECHNICIAN_AI_CERTIFICATE:
     case MobileUploadPurpose.AI_TECHNICIAN_OTHER:
+    case MobileUploadPurpose.PARTNER_DOCUMENT:
       return mb("UPLOAD_MAX_AI_TECHNICIAN_DOCUMENT_MB", 8);
     case MobileUploadPurpose.ADMIN_SEMEN_PROVIDER_LOGO:
     case MobileUploadPurpose.ADMIN_SEMEN_TEMPLATE_COVER:
@@ -91,6 +92,7 @@ function allowedMimeForPurpose(env: StorageEnv, purpose: MobileUploadPurpose): S
     MobileUploadPurpose.AI_TECHNICIAN_TRAINING_CERTIFICATE,
     MobileUploadPurpose.AI_TECHNICIAN_AI_CERTIFICATE,
     MobileUploadPurpose.AI_TECHNICIAN_OTHER,
+    MobileUploadPurpose.PARTNER_DOCUMENT,
     MobileUploadPurpose.AI_SERVICE_INSTANCE_DOCUMENT,
     MobileUploadPurpose.SUPPORT_ATTACHMENT,
   ];

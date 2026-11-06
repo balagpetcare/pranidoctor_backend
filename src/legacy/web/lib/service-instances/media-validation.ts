@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { ServiceInstanceMediaKind } from "@/generated/prisma/client";
 
 const IMAGE_MIMES = new Set([

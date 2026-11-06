@@ -1,15 +1,15 @@
 # Location import report
 
-Generated: 2026-05-21T23:08:58.656Z
+Generated: 2026-11-05T17:57:11.934Z
 
-Data directory: `D:\PraniDoctor\pranidoctor-web\data\locations`
+Data directory: `E:\PraniDoctor\pranidoctor-web\data\locations`
 
 | Level | Inserted | Updated | Skipped | Invalid |
 |-------|----------|---------|---------|---------|
-| Division | 0 | 8 | 0 | 0 |
-| District | 0 | 64 | 0 | 0 |
-| Upazila | 0 | 494 | 0 | 0 |
-| Union | 0 | 4536 | 4 | 0 |
+| Division | 8 | 0 | 0 | 0 |
+| District | 64 | 0 | 0 | 0 |
+| Upazila | 494 | 0 | 0 | 0 |
+| Union | 4536 | 0 | 4 | 0 |
 | Village | 0 | 0 | 0 | 0 |
 
 ## Summary

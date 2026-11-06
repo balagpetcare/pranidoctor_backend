@@ -1,0 +1,1 @@
+export { handlePasswordReset as POST } from '@auth/compat/partner-password.adapter.js';

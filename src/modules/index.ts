@@ -16,6 +16,7 @@ export { createSyncModule, SyncModule, createOfflineModule, OfflineModule } from
 export { createLivestockModule, LivestockModule } from './livestock/index.js';
 export { createFeedConsumptionModule, FeedConsumptionModule } from './feed-consumption/index.js';
 export { createFeedRecommendationModule, FeedRecommendationModule } from './feed-recommendation/index.js';
+export { createDiscoveryModule, DiscoveryModule } from './discovery/index.js';
 
 import { createAuthModule } from './auth/index.js';
 import { createUsersModule } from './users/index.js';
@@ -34,6 +35,7 @@ import { createSyncModule, createOfflineModule } from './offline-architecture/in
 import { createLivestockModule } from './livestock/index.js';
 import { createFeedConsumptionModule } from './feed-consumption/index.js';
 import { createFeedRecommendationModule } from './feed-recommendation/index.js';
+import { createDiscoveryModule } from './discovery/index.js';
 import type { ModuleDefinition } from '../shared/module/module.types.js';
 import { filterFoundationModules } from '../shared/config/foundation-modules.config.js';
 
@@ -58,6 +60,7 @@ export function createAllModules(): ModuleDefinition[] {
     createLivestockModule(),
     createFeedConsumptionModule(),
     createFeedRecommendationModule(),
+    createDiscoveryModule(),
   ];
 
   return filterFoundationModules(modules);

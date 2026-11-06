@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { ServiceInstanceAuditAction } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";

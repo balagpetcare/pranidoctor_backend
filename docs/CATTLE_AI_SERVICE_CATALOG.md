@@ -145,3 +145,33 @@ npx vitest run src/legacy/web/lib/cattle-ai-catalog src/legacy/web/lib/mobile-ai
 
 The importer's Prisma adapter and the migration are verified by type-check and review only; run the dry run against a
 staging database before production (see Deploying).
+
+
+## Server deploy runbook (nothing is lost on a new server)
+
+What lives where:
+
+| Item | Where it persists | On a fresh server |
+|---|---|---|
+| Suppliers, breeds, 114 catalog templates | `prisma/seed-data/cattle-ai-service-catalog.json` (git) | `npm run db:seed:catalogs` recreates them |
+| Price columns (`semenPrice`, `aiServiceCharge`) | migration `20260624120000_ai_service_price_split` (git) | applied by `db:migrate:deploy` |
+| Admin screens (paginated list, detail, upload form) | web repo (git) | deployed with the app |
+| Technician prices, edited template text, approvals | database | **back up the database**, not reproducible from a seed |
+| Uploaded template images/videos | `UploadedFile` rows + the storage bucket/disk | **back up both**; the seed cannot carry binary media |
+
+Order on a new or updated server:
+
+```
+npm run db:migrate:deploy            # guarded; take a DB backup first on production
+npm run db:seed:catalogs -- --dry-run
+npm run db:seed:catalogs
+```
+
+The import is create-only and idempotent, so it is safe to run on every deploy: existing templates (including admin edits,
+approvals and uploaded media) are never overwritten.
+
+## Admin list API additions
+
+`GET /api/admin/semen-service-templates` now also returns `stats` (`total`, `approved`, `notApproved`, `active` for the current
+search scope, ignoring the status/active filters), `limit` and `offset`. Ordering is `updatedAt desc, id asc` so pages stay
+stable after a bulk import (all rows share one timestamp).

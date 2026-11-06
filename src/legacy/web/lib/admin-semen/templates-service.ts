@@ -131,26 +131,45 @@ export async function adminListSemenTemplates(params: {
   limit: number;
   offset: number;
 }) {
-  const where: Prisma.SemenServiceTemplateWhereInput = {};
+  const scopeWhere: Prisma.SemenServiceTemplateWhereInput = {};
+  if (params.animalType) scopeWhere.animalType = params.animalType;
+  if (params.semenProviderId?.trim()) scopeWhere.semenProviderId = params.semenProviderId.trim();
+  if (params.q?.trim()) {
+    scopeWhere.internalName = { contains: params.q.trim(), mode: "insensitive" };
+  }
+  const where: Prisma.SemenServiceTemplateWhereInput = { ...scopeWhere };
   if (params.isActive !== undefined) where.isActive = params.isActive;
   if (params.approvalStatus) where.approvalStatus = params.approvalStatus;
-  if (params.animalType) where.animalType = params.animalType;
-  if (params.semenProviderId?.trim()) where.semenProviderId = params.semenProviderId.trim();
-  if (params.q?.trim()) {
-    const q = params.q.trim();
-    where.internalName = { contains: q, mode: "insensitive" };
-  }
-  const [total, rows] = await Promise.all([
+  const [total, rows, scopeTotal, scopeApproved, scopeActive] = await Promise.all([
     prisma.semenServiceTemplate.count({ where }),
     prisma.semenServiceTemplate.findMany({
       where,
-      orderBy: [{ updatedAt: "desc" }],
+      // `id` tie-breaker keeps pages stable when many rows share one updatedAt (bulk import).
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
       take: params.limit,
       skip: params.offset,
       include: templateInclude,
     }),
+    prisma.semenServiceTemplate.count({ where: scopeWhere }),
+    prisma.semenServiceTemplate.count({
+      where: { ...scopeWhere, approvalStatus: SemenTemplateApprovalStatus.APPROVED },
+    }),
+    prisma.semenServiceTemplate.count({ where: { ...scopeWhere, isActive: true } }),
   ]);
-  return { total, templates: rows.map(serializeSemenTemplate) };
+  return {
+    total,
+    // Distribution for the current search scope (ignores the status/active filters),
+    // so summary cards stay correct on every page.
+    stats: {
+      total: scopeTotal,
+      approved: scopeApproved,
+      notApproved: scopeTotal - scopeApproved,
+      active: scopeActive,
+    },
+    limit: params.limit,
+    offset: params.offset,
+    templates: rows.map(serializeSemenTemplate),
+  };
 }
 
 export async function adminGetSemenTemplate(id: string) {

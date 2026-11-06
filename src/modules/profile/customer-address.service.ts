@@ -66,6 +66,7 @@ export class CustomerAddressService {
 
     let nextAddress: CustomerAddressJson | undefined;
     let primaryVillageId: string | undefined | null;
+    let primaryVillageName: string | undefined | null;
 
     if (input.area !== undefined) {
       nextAddress = customerAddressJsonSchema.parse({
@@ -116,8 +117,16 @@ export class CustomerAddressService {
         resolved.resolved.areaLabel ??
         (hierarchyJoined.length > 0 ? hierarchyJoined : undefined);
 
+      // A typed village replaces any previously chosen catalog village.
+      const staleVillage: Record<string, unknown> = { ...existingJson };
+      if (customVillageName && !d.villageId) {
+        delete staleVillage.villageId;
+        delete staleVillage.villageNameBn;
+        delete staleVillage.villageNameEn;
+      }
+
       nextAddress = customerAddressJsonSchema.parse({
-        ...existingJson,
+        ...staleVillage,
         ...(nextAddress ?? {}),
         ...resolved.resolved,
         ...(customVillageName
@@ -135,6 +144,10 @@ export class CustomerAddressService {
 
       if (resolved.resolved.villageId) {
         primaryVillageId = resolved.resolved.villageId;
+        primaryVillageName = null;
+      } else if (customVillageName) {
+        primaryVillageId = null;
+        primaryVillageName = customVillageName;
       }
     }
 
@@ -161,7 +174,8 @@ export class CustomerAddressService {
         input.name !== undefined ||
         nextAddress !== undefined ||
         input.locale !== undefined ||
-        primaryVillageId !== undefined
+        primaryVillageId !== undefined ||
+        primaryVillageName !== undefined
       ) {
         await tx.customerProfile.update({
           where: { id: user.customerProfile!.id },
@@ -173,6 +187,9 @@ export class CustomerAddressService {
             ...(input.locale !== undefined ? { locale: input.locale } : {}),
             ...(primaryVillageId !== undefined
               ? { primaryVillageId: primaryVillageId ?? null }
+              : {}),
+            ...(primaryVillageName !== undefined
+              ? { primaryVillageName: primaryVillageName ?? null }
               : {}),
             ...(profileCompletedAt !== undefined ? { profileCompletedAt } : {}),
           },
