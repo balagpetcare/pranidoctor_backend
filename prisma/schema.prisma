@@ -29,6 +29,7 @@ model User {
   contentPostsAuthored              ContentPost[]               @relation("ContentPostAuthor")
   customerProfile                   CustomerProfile?
   doctorProfile                     DoctorProfile?
+  healthWorkerProfile               HealthWorkerProfile?
   notifications                     Notification[]
   notificationSettings              NotificationSettings?
   mobileUserSettings                MobileUserSettings?
@@ -43,6 +44,7 @@ model User {
   serviceInstanceReviews            ServiceInstanceReview[]
   serviceInstanceStatusLogs         ServiceInstanceStatusLog[]
   uploadedFiles                     UploadedFile[]
+  partnerDocuments                  PartnerDocument[]
   voiceSessions                     VoiceSession[]
   refreshTokens                     RefreshToken[]
   userDevices                       UserDevice[]
@@ -156,8 +158,21 @@ model DoctorProfile {
   /// Placeholder or CDN URL for profile photo until uploads exist.
   profilePhotoUrl                String?
   visitFeeBdt                    Decimal?                       @db.Decimal(12, 2)
+  /// Fee for an emergency (instant) consultation.
+  emergencyFeeBdt                Decimal?                       @db.Decimal(12, 2)
+  /// Fee for a regular online (chat / audio / video) consultation.
+  onlineFeeBdt                   Decimal?                       @db.Decimal(12, 2)
+  /// Denormalised review aggregate (kept in sync by the review pipeline) so listings never aggregate per request.
+  ratingAvg                      Decimal                        @default(0) @db.Decimal(3, 2)
+  ratingCount                    Int                            @default(0)
+  /// Species groups served: cattle_goat | poultry_duck | pet.
+  speciesFocus                   String[]                       @default([])
+  /// Admin feedback when an application is rejected or needs changes (shown to the partner).
+  reviewNote                     String?
+  reviewedAt                     DateTime?
   billingRecords                 BillingRecord[]
   complaints                     Complaint[]
+  tracks                         DoctorTrack[]
   user                           User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
   doctorProfileAreas             DoctorProfileArea[]
   doctorProfileServiceCategories DoctorProfileServiceCategory[]
@@ -172,6 +187,8 @@ model DoctorProfile {
   treatmentWorkflows             TreatmentWorkflow[]
 
   @@index([providerStatus])
+  @@index([providerStatus, acceptsOnlineConsultation])
+  @@index([providerStatus, acceptsEmergency])
 }
 
 model AiTechnicianProfile {
@@ -191,6 +208,8 @@ model AiTechnicianProfile {
   metadataJson                         Json?
   /// Default fee for AI / technician field services (BDT).
   serviceFeeBdt                        Decimal?                             @db.Decimal(12, 2)
+  ratingAvg                            Decimal                              @default(0) @db.Decimal(3, 2)
+  ratingCount                          Int                                  @default(0)
   adminNote                            String?
   certificateNumber                    String?
   correctionNote                       String?
@@ -248,6 +267,7 @@ model AiTechnicianProfile {
 }
 
 model CustomerProfile {
+  farms              Farm[]
   id                 String           @id @default(cuid())
   userId             String           @unique
   displayName        String
@@ -262,6 +282,8 @@ model CustomerProfile {
   coverPhotoThumbUrl    String?
   /// P2 — denormalized village FK for service matching (optional).
   primaryVillageId   String?
+  /// Free-text village typed by the user when it is not in the village catalog.
+  primaryVillageName String?
   profileCompletedAt DateTime?
   animals            AnimalProfile[]
   milkRecords        MilkRecord[]
@@ -485,6 +507,7 @@ model Area {
   parent                   Area?                     @relation("AreaHierarchy", fields: [parentId], references: [id])
   children                 Area[]                    @relation("AreaHierarchy")
   doctorProfileAreas       DoctorProfileArea[]
+  healthWorkerProfileAreas HealthWorkerProfileArea[]
   serviceRequests          ServiceRequest[]
 
   @@index([parentId])
@@ -653,6 +676,7 @@ model UploadedFile {
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @updatedAt
   aiTechnicianDocument AiTechnicianDocument?
+  partnerDocument      PartnerDocument?
   semenProviderLogo    SemenProvider?
   semenTemplateMedia   SemenServiceTemplateMedia?
   serviceInstanceMedia ServiceInstanceMedia[]
@@ -3060,6 +3084,8 @@ enum AiPaymentStatus {
 
 /// Mobile multipart upload `purpose` (universal upload pipeline; COMMAND 03).
 enum MobileUploadPurpose {
+  /// Partner (doctor / AI technician / health worker) verification document.
+  PARTNER_DOCUMENT
   AI_TECHNICIAN_NID_FRONT
   AI_TECHNICIAN_NID_BACK
   AI_TECHNICIAN_PROFILE_PHOTO
@@ -6742,4 +6768,284 @@ model AiMarketplaceExtension {
   @@index([providerKey])
   @@index([deletedAt])
   @@map("ai_marketplace_extensions")
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Discovery foundation (service hub, unified provider search, presence)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ProviderKind {
+  DOCTOR
+  AI_TECHNICIAN
+  HEALTH_WORKER
+}
+
+/// Hot, frequently-written online/offline state, kept out of the profile tables so
+/// heartbeat writes never contend with profile reads.
+model ProviderPresence {
+  id         String       @id @default(cuid())
+  kind       ProviderKind
+  providerId String
+  isOnline   Boolean      @default(false)
+  lastSeenAt DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([kind, providerId])
+  @@index([kind, isOnline, lastSeenAt])
+}
+
+/// Weekly availability window of a service partner (Asia/Dhaka local time).
+/// One schedule per user; applies to every service role the user provides.
+model PartnerScheduleSlot {
+  id          String   @id @default(cuid())
+  userId      String
+  /// 0 = Sunday … 6 = Saturday
+  weekday     Int
+  /// Minutes from local midnight, 0..1439
+  startMinute Int
+  /// Minutes from local midnight, 1..1440 (exclusive end)
+  endMinute   Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId, weekday])
+}
+
+/// Animal health worker (injection, saline, deworming on a doctor's prescription).
+model HealthWorkerProfile {
+  id               String                    @id @default(cuid())
+  userId           String                    @unique
+  displayName      String?
+  bio              String?
+  certification    String?
+  experienceYears  Int?
+  serviceFeeBdt    Decimal?                  @db.Decimal(12, 2)
+  profilePhotoUrl  String?
+  phone            String?
+  acceptsHomeVisit Boolean                   @default(true)
+  /// e.g. { "services": ["injection", "saline", "deworming"] }
+  servicesJson     Json?
+  providerStatus   ProviderStatus            @default(PENDING_VERIFICATION)
+  verifiedAt       DateTime?
+  /// Admin feedback when an application is rejected or needs changes (shown to the partner).
+  reviewNote       String?
+  reviewedAt       DateTime?
+  ratingAvg        Decimal                   @default(0) @db.Decimal(3, 2)
+  ratingCount      Int                       @default(0)
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areas            HealthWorkerProfileArea[]
+
+  @@index([providerStatus])
+}
+
+model HealthWorkerProfileArea {
+  id             String              @id @default(cuid())
+  healthWorkerId String
+  areaId         String
+  priority       Int?
+  createdAt      DateTime            @default(now())
+  healthWorker   HealthWorkerProfile @relation(fields: [healthWorkerId], references: [id], onDelete: Cascade)
+  area           Area                @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@unique([healthWorkerId, areaId])
+  @@index([areaId])
+}
+
+// ─── Farm entity (customer-owned farms, typed) ───────────────────────────────
+
+model Farm {
+  /// Client-compatible id: always starts with "farm-" (fattening batches key on it).
+  id            String       @id
+  customerId    String
+  name          String
+  /// Code from FarmTypeConfig (top-level type), e.g. CATTLE.
+  type          String       @default("OTHER")
+  /// Code from FarmTypeConfig (child of type), e.g. CATTLE_DAIRY.
+  subType       String?
+  divisionId    String?
+  districtId    String?
+  upazilaId     String?
+  unionId       String?
+  villageId     String?
+  villageName   String?
+  line1         String?
+  locationLabel String?
+  coverPhotoUrl String?
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  customer CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, active])
+  @@index([unionId])
+}
+
+/// Admin-managed catalog of farm types (parentCode null) and sub types (parentCode = type code).
+model FarmTypeConfig {
+  id         String   @id
+  /// Stable machine key stored on Farm.type / Farm.subType. Never changed after creation.
+  code       String   @unique
+  parentCode String?
+  labelBn    String
+  labelEn    String
+  hintBn     String?
+  hintEn     String?
+  /// ANIMAL = animals added one by one, FLOCK = flocks/batches. Sub types inherit the parent's.
+  unit       String   @default("ANIMAL")
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([parentCode, sortOrder])
+}
+
+/// How a provider delivers one of their services.
+enum ProviderServiceMode {
+  ONLINE_CONSULTATION
+  HOME_VISIT
+  CLINIC_VISIT
+  EMERGENCY
+  FIELD_SERVICE
+}
+
+/// A "gig": one concrete service a provider offers (title, price, mode, species).
+/// Polymorphic on (kind, providerId) like ProviderPresence — no FK, so one table serves
+/// doctors, AI technicians and health workers. Shown on the public profile.
+model ProviderServiceOffering {
+  id              String              @id @default(cuid())
+  kind            ProviderKind
+  providerId      String
+  title           String              @db.VarChar(120)
+  description     String?             @db.VarChar(1000)
+  mode            ProviderServiceMode
+  priceBdt        Decimal             @db.Decimal(12, 2)
+  durationMinutes Int?
+  species         String[]            @default([])
+  isActive        Boolean             @default(true)
+  /// Set by an admin to hide a gig without deleting it.
+  adminHidden     Boolean             @default(false)
+  sortOrder       Int                 @default(0)
+  /// Master-catalog item this gig was created from (null for a custom service).
+  catalogId       String?
+  /// Catalog gigs are pre-approved; custom ones wait for an admin before customers see them.
+  approval        OfferingApproval    @default(APPROVED)
+  approvalNote    String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([kind, providerId, isActive, sortOrder])
+  @@index([approval])
+}
+
+enum PartnerApplicantRole {
+  DOCTOR
+  AI_TECHNICIAN
+  HEALTH_WORKER
+}
+
+enum PartnerDocumentType {
+  NID_FRONT
+  NID_BACK
+  SELFIE
+  BVC_CERTIFICATE
+  DEGREE_CERTIFICATE
+  TRAINING_CERTIFICATE
+  AI_CERTIFICATE
+  EXPERIENCE_PROOF
+  SIGNATURE
+  STAMP_SEAL
+  ORGANIZATION_ID
+  OTHER
+  PET_EXPERIENCE_CERTIFICATE
+  PET_PRACTICE_PROOF
+  PET_CLINIC_PHOTO
+}
+
+enum PartnerDocumentReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+/// Verification document uploaded by a partner applicant for one role (file lives on `UploadedFile`).
+model PartnerDocument {
+  id             String                      @id @default(cuid())
+  userId         String
+  role           PartnerApplicantRole
+  type           PartnerDocumentType
+  title          String?
+  uploadedFileId String                      @unique
+  reviewStatus   PartnerDocumentReviewStatus @default(PENDING_REVIEW)
+  reviewNote     String?
+  reviewedAt     DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadedFile   UploadedFile                @relation(fields: [uploadedFileId], references: [id])
+
+  @@index([userId, role])
+  @@index([reviewStatus])
+}
+
+enum DoctorTrackKind {
+  CATTLE_GOAT
+  POULTRY_DUCK
+  PET
+}
+
+/// One practice track of a doctor. Cattle/goat and poultry/duck are approved with the doctor;
+/// the pet track needs its own details, documents and admin approval.
+model DoctorTrack {
+  id               String          @id @default(cuid())
+  doctorProfileId  String
+  kind             DoctorTrackKind
+  status           ProviderStatus  @default(PENDING_VERIFICATION)
+  reviewNote       String?
+  reviewedAt       DateTime?
+  /// Pet track only — where the doctor practises.
+  practiceName     String?
+  practiceType     String?
+  practiceAddress  String?
+  practiceLicenseNo String?
+  yearsPracticing  Int?
+  monthlyCases     Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  doctorProfile    DoctorProfile   @relation(fields: [doctorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorProfileId, kind])
+  @@index([kind, status])
+}
+
+enum OfferingApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Admin-managed master list of services providers can pick from.
+model ServiceCatalogItem {
+  id                       String                @id @default(cuid())
+  key                      String                @unique
+  titleBn                  String                @db.VarChar(120)
+  description              String?               @db.VarChar(500)
+  /// CONSULTATION | SURGERY | TREATMENT | VACCINATION | FIELD
+  category                 String
+  providerKinds            ProviderKind[]
+  /// Practice tracks it applies to: cattle_goat | poultry_duck | pet.
+  species                  String[]
+  mode                     ProviderServiceMode
+  minPriceBdt              Decimal?              @db.Decimal(12, 2)
+  maxPriceBdt              Decimal?              @db.Decimal(12, 2)
+  suggestedDurationMinutes Int?
+  isActive                 Boolean               @default(true)
+  sortOrder                Int                   @default(0)
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  @@index([isActive, sortOrder])
 }

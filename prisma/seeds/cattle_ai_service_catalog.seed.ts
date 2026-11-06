@@ -77,7 +77,7 @@ function createPrismaCatalogDb(): CatalogDb {
         async (tx) => {
           const adapter: CatalogTx = {
             async acquireImportLock() {
-              await tx.$queryRaw`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK_KEY})`;
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK_KEY})`;
             },
             findProviderBySlug: (slug) =>
               tx.semenProvider.findUnique({ where: { slug }, select: { id: true } }),
