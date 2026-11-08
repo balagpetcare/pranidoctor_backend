@@ -31,6 +31,13 @@ function formatBdt(amount: number): string {
 }
 
 const RECENT_LIMIT = 8;
+const TREND_DAYS = 14;
+/** Dhaka is UTC+6 with no DST — bucket requests by local calendar day. */
+const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+function dhakaDayKey(d: Date): string {
+  return new Date(d.getTime() + DHAKA_OFFSET_MS).toISOString().slice(0, 10);
+}
 
 function serviceRequestStatusLabel(status: ServiceRequestStatus): string {
   switch (status) {
@@ -94,6 +101,8 @@ export async function GET(request: Request) {
       doctorPending,
       doctorSuspended,
       doctorRejected,
+      trendRows,
+      emergencyOpen,
     ] = await Promise.all([
       prisma.doctorProfile.count(),
       prisma.aiTechnicianProfile.count(),
@@ -152,7 +161,26 @@ export async function GET(request: Request) {
       prisma.doctorProfile.count({
         where: { providerStatus: ProviderStatus.REJECTED },
       }),
+      prisma.serviceRequest.findMany({
+        where: { submittedAt: { gte: new Date(Date.now() - (TREND_DAYS + 1) * 24 * 60 * 60 * 1000) } },
+        select: { submittedAt: true, status: true },
+      }),
+      prisma.serviceRequest.count({
+        where: { serviceType: ServiceRequestType.EMERGENCY_DOCTOR, status: { in: pendingStatuses } },
+      }),
     ]);
+
+    const buckets = new Map<string, { total: number; completed: number }>();
+    for (let i = TREND_DAYS - 1; i >= 0; i -= 1) {
+      buckets.set(dhakaDayKey(new Date(Date.now() - i * 24 * 60 * 60 * 1000)), { total: 0, completed: 0 });
+    }
+    for (const row of trendRows) {
+      const bucket = buckets.get(dhakaDayKey(row.submittedAt));
+      if (!bucket) continue;
+      bucket.total += 1;
+      if (row.status === ServiceRequestStatus.COMPLETED) bucket.completed += 1;
+    }
+    const requestsDaily = [...buckets.entries()].map(([date, v]) => ({ date, ...v }));
 
     const sum = revenueAgg._sum.total;
     const amount = sum == null ? 0 : Number(sum);
@@ -224,6 +252,8 @@ export async function GET(request: Request) {
       charts,
       doctorStats,
       revenue,
+      trends: { requestsDaily },
+      operations: { emergencyOpen },
       generatedAt: new Date().toISOString(),
     });
   } catch {
