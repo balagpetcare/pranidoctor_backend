@@ -1,6 +1,6 @@
 import { requireAdminPanelApiAccess } from "@/lib/admin-auth/api-guard";
 import { jsonError, jsonOk } from "@/lib/api-response";
-import { x, listAuthAudit } from "@/lib/admin-directory/service";
+import { listAuthAudit, listAuthAuditQuerySchema } from "@/lib/admin-directory/service";
 
 export async function GET(request: Request) {
   const authError = await requireAdminPanelApiAccess();
