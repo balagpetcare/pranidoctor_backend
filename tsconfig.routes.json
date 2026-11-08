@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": false
+  },
+  "include": [
+    "src/legacy/web/routes/admin/users/route.ts",
+    "src/legacy/web/routes/admin/customers/route.ts",
+    "src/legacy/web/routes/admin/animals/route.ts",
+    "src/legacy/web/routes/admin/audit/auth/route.ts",
+    "src/legacy/web/routes/admin/dashboard/page-data/route.ts",
+    "src/legacy/web/routes/admin/areas/bulk/route.ts",
+    "src/legacy/web/routes/admin/areas/[id]/route.ts",
+    "src/legacy/web/routes/admin/areas/sync-from-locations/route.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "$comment": "Type-check coverage for admin route files (excluded from the main tsconfig). Known baseline errors, deliberately not listed here: areas/route.ts:201 (exactOptionalPropertyTypes) and feed-items/route.ts:29."
+}

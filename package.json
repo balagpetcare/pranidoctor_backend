@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "npm run typecheck && tsc -p tsconfig.build.json",
+    "typecheck:admin-routes": "node scripts/typecheck-admin-routes.mjs",
     "typecheck:legacy": "tsc --noEmit -p tsconfig.json",
     "typecheck:ai": "node scripts/typecheck-ai.mjs",
     "start": "node dist/server.js",
