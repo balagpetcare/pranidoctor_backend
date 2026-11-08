@@ -8,12 +8,17 @@ const { createPrismaClient, getPrisma } = await import("./src/shared/database/pr
 createPrismaClient({ config: loadConfig() });
 const prisma = getPrisma();
 
+if (!process.env.PD_CHECK_EMAIL || !process.env.PD_CHECK_PASSWORD) {
+  console.error("Set PD_CHECK_EMAIL and PD_CHECK_PASSWORD (test admin, never commit them).");
+  process.exit(1);
+}
+
 const loginRes = await fetch("http://localhost:3000/api/admin/auth/login", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    email: "admin@pranidoctor.com",
-    password: "12345678",
+    email: process.env.PD_CHECK_EMAIL,
+    password: process.env.PD_CHECK_PASSWORD,
   }),
 });
 const token = loginRes.headers.getSetCookie()[0].split(";")[0].split("=").slice(1).join("=");
