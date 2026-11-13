@@ -2740,6 +2740,8 @@ enum ServiceRequestType {
   EMERGENCY_DOCTOR
   AI_SERVICE
   ONLINE_CONSULTATION_LATER
+  /// Free Zone: free consultation question (quota-limited per customer).
+  FREE_CONSULTATION
 }
 
 enum ServiceRequestStatus {
@@ -7048,4 +7050,164 @@ model ServiceCatalogItem {
   updatedAt                DateTime              @updatedAt
 
   @@index([isActive, sortOrder])
+}
+
+// ─── Free Zone ───
+
+/// Doctor-published free consultation windows (Free Zone). Booking against a slot is a later phase.
+model PartnerFreeSlot {
+  id          String   @id @default(cuid())
+  userId      String
+  startsAt    DateTime
+  endsAt      DateTime
+  capacity    Int      @default(1)
+  /// TEXT | AUDIO | VIDEO
+  mode        String   @default("TEXT")
+  animalTypes String[] @default([])
+  note        String?  @db.VarChar(300)
+  createdAt   DateTime @default(now())
+  bookings    FreeSlotBooking[]
+
+  @@index([userId, startsAt])
+  @@index([startsAt])
+}
+
+/// A customer's reservation of a doctor's free slot. status: BOOKED | CANCELLED
+model FreeSlotBooking {
+  id          String          @id @default(cuid())
+  slotId      String
+  customerId  String
+  status      String          @default("BOOKED")
+  createdAt   DateTime        @default(now())
+  cancelledAt DateTime?
+  slot        PartnerFreeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, customerId])
+  @@index([customerId, status])
+  @@index([slotId, status])
+}
+
+/// Append-only points ledger. (userId, eventType, refId) is unique so awards are idempotent.
+model PointLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  refId     String
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventType, refId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+/// Admin-defined reward period for the Free Zone doctor leaderboard. status: DRAFT | ACTIVE | CLOSED.
+model FreeZoneRewardPeriod {
+  id        String                 @id @default(cuid())
+  title     String
+  startsAt  DateTime
+  endsAt    DateTime
+  topN      Int                    @default(3)
+  minPoints Int                    @default(1)
+  status    String                 @default("DRAFT")
+  note      String?                @db.VarChar(500)
+  createdAt DateTime               @default(now())
+  closedAt  DateTime?
+  prizes    FreeZoneRewardPrize[]
+  winners   FreeZoneRewardWinner[]
+  appeals   FreeZoneRewardAppeal[]
+
+  @@index([status, endsAt])
+}
+
+model FreeZoneRewardPrize {
+  id          String               @id @default(cuid())
+  periodId    String
+  rank        Int
+  title       String
+  description String?              @db.VarChar(300)
+  period      FreeZoneRewardPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, rank])
+}
+
+/// status: PENDING | AWARDED | REVOKED.
+model FreeZoneRewardWinner {
+  id         String               @id @default(cuid())
+  periodId   String
+  userId     String
+  rank       Int
+  points     Int
+  prizeTitle String?
+  status     String               @default("PENDING")
+  adminNote  String?              @db.VarChar(300)
+  awardedAt  DateTime?
+  createdAt  DateTime             @default(now())
+  period     FreeZoneRewardPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, userId])
+  @@index([userId])
+}
+
+/// status: OPEN | ACCEPTED | REJECTED. One appeal per doctor per period.
+model FreeZoneRewardAppeal {
+  id        String               @id @default(cuid())
+  periodId  String
+  userId    String
+  note      String               @db.VarChar(1000)
+  status    String               @default("OPEN")
+  adminNote String?              @db.VarChar(300)
+  createdAt DateTime             @default(now())
+  period    FreeZoneRewardPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, userId])
+}
+
+/// Customer review of a completed free consultation (once per request).
+model FreeZoneReview {
+  id           String   @id @default(cuid())
+  requestId    String   @unique
+  customerId   String
+  doctorUserId String
+  rating       Int
+  comment      String?  @db.VarChar(1000)
+  /// APPROVED | HIDDEN
+  status       String   @default("APPROVED")
+  createdAt    DateTime @default(now())
+
+  @@index([doctorUserId, status])
+}
+
+/// Public Q&A thread on a free question. authorRole: DOCTOR | CUSTOMER.
+/// status: VISIBLE | HIDDEN_BY_OWNER (asker hid it) | AUTO_HIDDEN (report threshold) | HIDDEN_BY_ADMIN.
+model FreeQuestionComment {
+  id           String    @id @default(cuid())
+  requestId    String
+  authorUserId String
+  authorRole   String    @db.VarChar(16)
+  body         String    @db.VarChar(1000)
+  status       String    @default("VISIBLE") @db.VarChar(24)
+  hiddenAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  reports FreeQuestionCommentReport[]
+
+  @@index([requestId, createdAt])
+  @@index([status])
+}
+
+/// One report per (comment, reporter). status: OPEN | DISMISSED | ACTIONED.
+model FreeQuestionCommentReport {
+  id             String    @id @default(cuid())
+  commentId      String
+  reporterUserId String
+  reason         String?   @db.VarChar(300)
+  status         String    @default("OPEN") @db.VarChar(16)
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  comment FreeQuestionComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, reporterUserId])
+  @@index([status, createdAt])
 }

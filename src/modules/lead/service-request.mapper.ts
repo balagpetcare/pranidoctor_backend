@@ -4,11 +4,13 @@ import {
   ServiceRequestType,
 } from '../../generated/prisma/index.js';
 
-export const SERVICE_TYPE_EXPECTED_CATEGORY_SLUG: Record<ServiceRequestType, string> = {
+export const SERVICE_TYPE_EXPECTED_CATEGORY_SLUG: Record<ServiceRequestType, string | null> = {
   [ServiceRequestType.DOCTOR_HOME_VISIT]: 'doctor-visit',
   [ServiceRequestType.EMERGENCY_DOCTOR]: 'emergency',
   [ServiceRequestType.AI_SERVICE]: 'ai-service',
   [ServiceRequestType.ONLINE_CONSULTATION_LATER]: 'online-consultation',
+  // Free consultations are created only through the Free Zone flow, never via the generic lead path (always a mismatch here).
+  [ServiceRequestType.FREE_CONSULTATION]: null,
 };
 
 export const CUSTOMER_CANCELLABLE_STATUSES: ServiceRequestStatus[] = [
